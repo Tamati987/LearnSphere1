@@ -1,0 +1,5 @@
+git clone https://github.com/ton-username/LearnSphere.git
+cd LearnSphere
+git add .
+git commit -m "Initial commit"
+git push origin main
