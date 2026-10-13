@@ -44,6 +44,17 @@ const cfg = {
   address: process.env.BUSINESS_ADDRESS || '',      // adresse postale
   siteUrl: (process.env.SITE_URL || '').replace(/\/$/, '')
 };
+
+// Liens de paiement par carte (Visa / Mastercard) fournis par un prestataire certifié.
+// Les numéros de carte sont saisis chez le prestataire, jamais sur ce site.
+// Seules les adresses https sont acceptées ; un lien absent masque le bouton.
+const safeUrl = v => {
+  try { const u = new URL(String(v || '').trim()); return u.protocol === 'https:' ? u.href : ''; } catch { return ''; }
+};
+const PAY = {
+  fr: { STARTER: safeUrl(process.env.PAY_LINK_STARTER), PRO: safeUrl(process.env.PAY_LINK_PRO), CUSTOM: safeUrl(process.env.PAY_LINK_CUSTOM) },
+  en: { STARTER: safeUrl(process.env.PAY_LINK_STARTER_EN), PRO: safeUrl(process.env.PAY_LINK_PRO_EN), CUSTOM: safeUrl(process.env.PAY_LINK_CUSTOM_EN) }
+};
 const ai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
 const ADMIN_OK = ADMIN_TOKEN.length >= 24 && !ADMIN_TOKEN.startsWith('replace-with');
@@ -172,6 +183,8 @@ async function renderPage(file) {
       CONTACT_HREF: cfg.email ? `mailto:${cfg.email}` : (en ? '/en#contact' : '/#contact'),
       CONTACT_LABEL: cfg.email || (en ? 'the contact form' : 'le formulaire de contact'),
       EMAIL_HIDDEN: cfg.email ? '' : 'hidden',
+      ...Object.fromEntries(Object.entries(PAY[en ? 'en' : 'fr']).flatMap(([k, url]) => [[`PAY_${k}`, url || '#'], [`PAY_${k}_HIDDEN`, url ? '' : 'hidden']])),
+      PAY_NOTE_HIDDEN: Object.values(PAY[en ? 'en' : 'fr']).some(Boolean) ? '' : 'hidden',
       RETENTION_MONTHS: Math.round(RETENTION_DAYS / 30.4),
       OG_IMAGE: cfg.siteUrl ? `${cfg.siteUrl}/og-image.png` : '/og-image.png'
     };
@@ -210,7 +223,7 @@ app.get('/admin', (_req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html'
 app.use(express.static(PUBLIC_DIR, { index: false, maxAge: '1h' }));
 
 // ---------- API ----------
-app.get('/api/health', (_req, res) => res.json({ ok: true, ai: ai ? 'configured' : 'demo', storage: PERSISTENT ? 'persistent' : 'ephemeral' }));
+app.get('/api/health', (_req, res) => res.json({ ok: true, ai: ai ? 'configured' : 'demo', storage: PERSISTENT ? 'persistent' : 'ephemeral', payments: { fr: Object.values(PAY.fr).filter(Boolean).length, en: Object.values(PAY.en).filter(Boolean).length } }));
 
 const MSG = {
   fr: { ok: 'Merci ! Votre demande a bien été enregistrée. Nous revenons vers vous rapidement.', name: 'Veuillez saisir votre nom.', email: 'Veuillez saisir une adresse e-mail valide.', message: 'Votre message doit contenir au moins 8 caractères.', consent: 'Merci d’accepter l’utilisation de vos informations pour traiter la demande.', store: 'Impossible d’enregistrer la demande pour le moment.', empty: 'Écrivez un message.', noReply: 'Je n’ai pas de réponse pour le moment.', aiDown: 'L’assistant est temporairement indisponible. Réessayez plus tard.' },

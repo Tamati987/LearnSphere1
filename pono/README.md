@@ -35,3 +35,13 @@ Les demandes de plus de `RETENTION_DAYS` jours (365 par défaut) sont supprimée
 - Limite par visiteur : 30 messages de chat / 15 min, 8 demandes de contact / heure.
 - Plafond IA quotidien (`AI_DAILY_LIMIT`). Au-delà, réponses de démo, sans coût.
 - Anti-robot (honeypot), consentement vérifié côté serveur, en-têtes de sécurité (Helmet/CSP).
+
+## Paiement par carte (Visa / Mastercard)
+Le site n'enregistre jamais de numéro de carte : chaque bouton « Payer par carte »
+ouvre la page sécurisée d'un prestataire de paiement, qui verse ensuite l'argent
+sur votre IBAN.
+1. Créez un lien de paiement par forfait chez votre prestataire.
+2. Dans Railway → Variables, collez-les dans `PAY_LINK_STARTER`, `PAY_LINK_PRO`,
+   `PAY_LINK_CUSTOM` (site français) et `PAY_LINK_*_EN` (site anglais, en USD).
+3. Les boutons apparaissent automatiquement ; un lien vide (ou non https) reste masqué.
+   `/api/health` indique combien de liens sont actifs.
