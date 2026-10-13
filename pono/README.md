@@ -4,6 +4,7 @@
 ```
 server.js          serveur (site, formulaire, assistant IA, admin)
 public/            pages du site (index, confidentialité, mentions légales, admin)
+public/en/         version anglaise (/en, /en/privacy, /en/legal) — prix en USD
 .env.example       variables à configurer
 ```
 

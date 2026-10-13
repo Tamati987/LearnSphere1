@@ -74,7 +74,7 @@ function card(lead) {
   const amount = el("input", { type: "number", min: 0, step: 100, value: lead.amount || "", placeholder: "Montant XPF", ariaLabel: "Montant en XPF" });
   amount.addEventListener("change", () => save(lead, { amount: Number(amount.value) || 0 }));
   return el("article", { className: `lead status-${(lead.status || "nouveau").replace(/\s/g, "-")}` }, [
-    el("header", {}, [el("strong", { textContent: lead.name }), el("span", { className: "tag", textContent: lead.subject || "—" }), el("span", { className: "meta", textContent: `${date} · ${lead.email}` })]),
+    el("header", {}, [el("strong", { textContent: lead.name }), el("span", { className: "tag", textContent: `${lead.subject || "—"}${lead.lang === "en" ? " · 🌍 EN" : ""}` }), el("span", { className: "meta", textContent: `${date} · ${lead.email}` })]),
     el("p", { textContent: lead.message }),
     el("div", { className: "deal" }, [status, amount]),
     el("div", { className: "actions" }, actions)
