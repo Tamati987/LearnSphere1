@@ -20,6 +20,16 @@ mainNav?.querySelectorAll("a").forEach(link => link.addEventListener("click", ()
   menuToggle?.setAttribute("aria-expanded", "false");
 }));
 
+// ---------- Choix d'un forfait : pré-remplit le formulaire ----------
+document.querySelectorAll(".plan-button").forEach(button => button.addEventListener("click", () => {
+  const form = $("#contactForm");
+  if (!form) return;
+  form.elements.subject.value = button.dataset.plan;
+  const message = form.elements.message;
+  if (!message.value.trim()) message.value = `Bonjour, le ${button.dataset.plan} m'intéresse. Mon activité : `;
+  setTimeout(() => form.elements.name.focus({ preventScroll: true }), 400);
+}));
+
 // ---------- Formulaire de contact ----------
 const contactForm = $("#contactForm");
 const formStatus = $("#formStatus");
