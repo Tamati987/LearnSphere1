@@ -289,3 +289,90 @@ test('config rejects malformed prices and PayPal environments', () => {
   assert.equal(loadConfig({ PRODUCT_PRICE: '19' }).product.price, '19.00');
   assert.equal(loadConfig({ PAYPAL_ENV: 'live' }).paypal.apiBase, 'https://api-m.paypal.com');
 });
+
+const tool = require('../src/tool');
+
+test('generator: free templates work, Pro ones are refused, daily limit applies', async () => {
+  const t = await start();
+  try {
+    const page = await (await t.req('/outil')).text();
+    assert.match(page, /Générateur de demandes IA/);
+    assert.match(page, /id="catalog"/);
+    assert.doesNotMatch(page, /Rôle : /, 'prompt-building logic is not shipped to the browser');
+
+    const free = tool.templates.find((x) => x.free);
+    const paid = tool.templates.find((x) => !x.free);
+
+    const locked = await t.post('/api/outil/generer', { templateId: paid.id, values: {} });
+    assert.equal(locked.status, 402);
+
+    const unknown = await t.post('/api/outil/generer', { templateId: 'nope', values: {} });
+    assert.equal(unknown.status, 404);
+
+    for (let i = 0; i < tool.FREE_DAILY_LIMIT; i++) {
+      const ok = await t.post('/api/outil/generer', { templateId: free.id, values: { [free.fields[0].name]: 'boulangerie <b>' } });
+      assert.equal(ok.status, 200, `free call ${i + 1}`);
+      const { prompt } = await ok.json();
+      assert.match(prompt, /^Rôle : /);
+      assert.match(prompt, /Format : /);
+    }
+    const over = await t.post('/api/outil/generer', { templateId: free.id, values: {} });
+    assert.equal(over.status, 429);
+    assert.equal((await over.json()).upsell, true);
+  } finally {
+    await t.close();
+  }
+});
+
+test('generator: buyers get every template without limit', async () => {
+  const t = await start();
+  try {
+    const { id } = await (await t.post('/api/orders', { waiver: true })).json();
+    const { token } = await (await t.post(`/api/orders/${id}/capture`)).json();
+
+    const page = await t.req(`/cours/${token}/outil`);
+    assert.equal(page.status, 200);
+    assert.match(await page.text(), /Version Pro/);
+    assert.equal((await t.req(`/cours/${'c'.repeat(64)}/outil`)).status, 404);
+
+    for (let i = 0; i < tool.FREE_DAILY_LIMIT + 3; i++) {
+      for (const tpl of tool.templates.slice(0, 2)) {
+        const r = await t.post('/api/outil/generer', { templateId: tpl.id, values: {}, token });
+        assert.equal(r.status, 200);
+      }
+    }
+    const paid = tool.templates.find((x) => !x.free);
+    assert.equal((await t.post('/api/outil/generer', { templateId: paid.id, values: {}, token: 'f'.repeat(64) })).status, 402);
+  } finally {
+    await t.close();
+  }
+});
+
+test('generator: every template builds a complete prompt and caps field length', () => {
+  assert.ok(tool.templates.length >= 15);
+  const ids = new Set();
+  for (const tpl of tool.templates) {
+    assert.ok(!ids.has(tpl.id), `duplicate id ${tpl.id}`);
+    ids.add(tpl.id);
+    const values = Object.fromEntries(tpl.fields.map((f) => [f.name, 'x'.repeat(5000)]));
+    const { prompt } = tool.generate(tpl.id, values, { pro: true });
+    for (const part of ['Rôle : ', 'Contexte : ', 'Tâche : ', 'Format : ']) assert.ok(prompt.includes(part), `${tpl.id} ${part}`);
+    assert.doesNotMatch(prompt, /x{1501}/, `${tpl.id} must cap fields`);
+    const empty = tool.generate(tpl.id, {}, { pro: true }).prompt;
+    assert.doesNotMatch(empty, /undefined/, `${tpl.id} handles empty values`);
+  }
+});
+
+test('home page shows photos from the allowed image CDN', async () => {
+  const t = await start();
+  try {
+    const res = await t.req('/');
+    const html = await res.text();
+    assert.equal((html.match(/<img /g) || []).length, 4);
+    assert.match(html, /https:\/\/images\.unsplash\.com\/photo-/);
+    assert.match(res.headers.get('content-security-policy'), /img-src[^;]*https:\/\/images\.unsplash\.com/);
+    assert.match(html, /href="\/outil"/);
+  } finally {
+    await t.close();
+  }
+});

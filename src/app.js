@@ -7,6 +7,7 @@ const helmet = require('helmet');
 const { rateLimit } = require('express-rate-limit');
 const views = require('./views');
 const { verifyPaidOrder, PayPalError } = require('./paypal');
+const tool = require('./tool');
 
 const TOKEN_RE = /^[a-f0-9]{64}$/;
 const PAYPAL_ID_RE = /^[A-Z0-9]{8,32}$/;
@@ -31,7 +32,7 @@ function createApp({ config, store, paypal, logger = console }) {
           defaultSrc: ["'self'"],
           scriptSrc: ["'self'", 'https://www.paypal.com', 'https://*.paypal.com'],
           styleSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", 'data:', 'https://*.paypal.com', 'https://*.paypalobjects.com'],
+          imgSrc: ["'self'", 'data:', 'https://images.unsplash.com', 'https://*.paypal.com', 'https://*.paypalobjects.com'],
           connectSrc: ["'self'", 'https://*.paypal.com'],
           frameSrc: ['https://*.paypal.com'],
           formAction: ["'self'"],
@@ -45,11 +46,23 @@ function createApp({ config, store, paypal, logger = console }) {
   );
 
   app.use(express.static(path.join(__dirname, '..', 'public'), { maxAge: '1h' }));
-  app.use(express.json({ limit: '2kb' }));
+  app.use(express.json({ limit: '16kb' }));
   app.use(express.urlencoded({ extended: false, limit: '2kb' }));
 
   const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 60, standardHeaders: 'draft-7', legacyHeaders: false });
   const recoverLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: 'draft-7', legacyHeaders: false });
+
+  const toolLimiter = rateLimit({
+    windowMs: 24 * 60 * 60 * 1000,
+    limit: tool.FREE_DAILY_LIMIT,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    skip: (req) => req.isPro === true,
+    handler: (req, res) => res.status(429).json({
+      error: `Limite gratuite atteinte (${tool.FREE_DAILY_LIMIT} demandes par jour). Passez à la version Pro, incluse avec le Kit IA Pro, pour un usage illimité.`,
+      upsell: true,
+    }),
+  });
 
   const baseUrl = (req) => config.siteUrl || `${req.protocol}://${req.get('host')}`;
   const html = (res, status, body) => res.status(status).type('html').send(body);
@@ -156,6 +169,37 @@ function createApp({ config, store, paypal, logger = console }) {
       next(err);
     }
   }
+
+  // --- Prompt generator -------------------------------------------------
+
+  app.get('/outil', (req, res) => html(res, 200, views.toolPage(config)));
+
+  app.get('/cours/:token/outil', requireAccess, (req, res) => html(res, 200, views.toolPage(config, { token: req.params.token })));
+
+  async function resolvePro(req, res, next) {
+    const token = req.body && typeof req.body.token === 'string' ? req.body.token : '';
+    try {
+      req.isPro = TOKEN_RE.test(token) && Boolean(await store.findPaidByTokenHash(hashToken(token)));
+      next();
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // Pro-only templates are refused before the free quota is counted.
+  function checkTier(req, res, next) {
+    const tpl = tool.templates.find((t) => t.id === String((req.body || {}).templateId || ''));
+    if (!tpl) return res.status(404).json({ error: 'Modèle inconnu.' });
+    if (!tpl.free && !req.isPro) return res.status(402).json({ error: 'Ce modèle fait partie de la version Pro.', upsell: true });
+    next();
+  }
+
+  app.post('/api/outil/generer', apiLimiter, resolvePro, checkTier, toolLimiter, (req, res) => {
+    const body = req.body || {};
+    const result = tool.generate(String(body.templateId || ''), body.values, { pro: req.isPro });
+    if (result.error) return res.status(result.status).json({ error: result.error, upsell: result.status === 402 });
+    res.json({ prompt: result.prompt });
+  });
 
   app.get('/cours/:token', requireAccess, (req, res) => html(res, 200, views.courseIndex(config, req.params.token)));
 

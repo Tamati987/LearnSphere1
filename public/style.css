@@ -98,3 +98,37 @@ form input {
 .callout { border-left: 4px solid var(--accent); background: var(--soft); padding: 12px 16px; border-radius: 0 10px 10px 0; margin: 1.5em 0; }
 .pager { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--line); margin-top: 40px; padding-top: 16px; font-size: .95rem; }
 .foot { border-top: 1px solid var(--line); margin-top: 56px; padding-top: 16px; padding-bottom: 32px; color: var(--muted); font-size: .9rem; }
+
+/* --- Photos & hero --- */
+.hero { display: grid; grid-template-columns: 1.15fr .85fr; gap: 40px; align-items: center; max-width: none; }
+.hero-img { width: 100%; height: auto; aspect-ratio: 7 / 8; object-fit: cover; border-radius: 20px; box-shadow: 0 20px 50px rgba(20, 24, 40, .18); background: var(--soft); }
+@media (max-width: 760px) {
+  .hero { grid-template-columns: 1fr; gap: 24px; padding-top: 28px; }
+  .hero-img { aspect-ratio: 4 / 3; }
+}
+.cta-row { display: flex; flex-wrap: wrap; gap: 12px; }
+.btn.ghost { background: transparent; color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+.grid3 > div { overflow: hidden; }
+.card-img { display: block; width: calc(100% + 40px); height: auto; aspect-ratio: 5 / 3; object-fit: cover; margin: -20px -20px 16px; background: var(--soft); }
+.included { padding-left: 1.2em; margin: 0 0 16px; font-size: .95rem; }
+nav a + a { margin-left: 18px; }
+@media (max-width: 420px) { nav a + a { margin-left: 10px; } .top nav a { font-size: .85rem; } }
+
+/* --- Tool --- */
+.tool-promo { background: var(--soft); border-radius: 18px; padding: 24px; margin: 40px 0; }
+.tool-promo h2 { margin-top: .2em; }
+.tool { padding: 24px 0; }
+.tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 16px; }
+@media (max-width: 760px) { .tool-grid { grid-template-columns: 1fr; } }
+.tool label { display: block; font-weight: 600; margin: 12px 0 6px; }
+.tool select, .tool input, .tool textarea {
+  display: block; width: 100%; margin-top: 6px; padding: 10px 12px; font: inherit; font-weight: 400;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text);
+}
+.tool textarea#out { font: .9rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--soft); }
+.tool .btn { margin-top: 14px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.lock { display: inline-block; font-size: .75rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); }
+.badge { display: inline-block; font-weight: 700; padding: 6px 12px; border-radius: 999px; background: var(--soft); color: var(--accent); }
+.upsell { margin-top: 16px; padding: 16px; border: 2px solid var(--accent); border-radius: 12px; }
+.upsell p { margin-top: 0; }

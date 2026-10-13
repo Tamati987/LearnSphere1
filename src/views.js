@@ -1,6 +1,10 @@
 'use strict';
 
 const { modules } = require('./content');
+const { publicCatalog, templates, FREE_DAILY_LIMIT } = require('./tool');
+
+const TOTAL_COUNT = templates.length;
+const FREE_COUNT = templates.filter((t) => t.free).length;
 
 function esc(value) {
   return String(value ?? '')
@@ -13,6 +17,13 @@ function esc(value) {
 
 function formatPrice(price) {
   return `${price.replace('.', ',').replace(/,00$/, '')} €`;
+}
+
+// Free-license photos (Unsplash License: commercial use allowed), served by
+// Unsplash's CDN at the right size for each screen.
+function photo(id, alt, { w, h, cls = '', eager = false }) {
+  const src = (width) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&crop=faces,entropy&q=70&w=${width}&h=${Math.round((width * h) / w)}`;
+  return `<img class="${cls}" src="${src(w)}" srcset="${src(Math.round(w / 2))} ${Math.round(w / 2)}w, ${src(w)} ${w}w, ${src(w * 2)} ${w * 2}w" sizes="(max-width: 760px) 100vw, ${w}px" width="${w}" height="${h}" alt="${esc(alt)}"${eager ? ' fetchpriority="high"' : ' loading="lazy"'} decoding="async">`;
 }
 
 function layout({ title, body, config, scripts = '' }) {
@@ -30,11 +41,11 @@ function layout({ title, body, config, scripts = '' }) {
 </head>
 <body>
 ${testBanner}
-<header class="top"><div class="wrap"><a class="logo" href="/">Learn<span>Sphere</span></a><nav><a href="/retrouver">Retrouver mon accès</a></nav></div></header>
+<header class="top"><div class="wrap"><a class="logo" href="/">Learn<span>Sphere</span></a><nav><a href="/outil">Générateur IA</a><a href="/retrouver">Retrouver mon accès</a></nav></div></header>
 <main class="wrap">${body}</main>
 <footer class="wrap foot">
   <a href="/mentions-legales">Mentions légales</a> · <a href="/cgv">CGV</a> · <a href="/confidentialite">Confidentialité</a>
-  <p>© ${new Date().getFullYear()} LearnSphere${config.seller.name ? ` — ${esc(config.seller.name)}` : ''}</p>
+  <p>© ${new Date().getFullYear()} LearnSphere${config.seller.name ? ` — ${esc(config.seller.name)}` : ''} · Photos : Unsplash</p>
 </footer>
 ${scripts}
 </body>
@@ -50,6 +61,7 @@ function home(config) {
   const buy = config.salesEnabled
     ? `<div class="buybox" id="buy">
         <p class="price">${formatPrice(p.price)} <small>paiement unique · accès à vie</small></p>
+        <ul class="included"><li>7 modules + 40 demandes prêtes à copier</li><li>Générateur IA Pro : ${TOTAL_COUNT} modèles, illimité</li><li>Mises à jour incluses</li></ul>
         <label class="waiver"><input type="checkbox" id="waiver">
           <span>J'accepte les <a href="/cgv" target="_blank" rel="noopener">conditions générales de vente</a>, je demande l'accès immédiat au contenu numérique et je reconnais <strong>renoncer à mon droit de rétractation</strong> dès le début de l'accès (art. L221-28 13° du Code de la consommation).</span>
         </label>
@@ -66,16 +78,35 @@ function home(config) {
 
   const body = `
 <section class="hero">
-  <p class="kicker">Formation en ligne · 7 modules · 2 h 30</p>
-  <h1>Gagnez du temps chaque semaine grâce à l'IA, sans être technicien.</h1>
-  <p class="lead">Le kit pratique pour indépendants, commerçants et petites équipes : des méthodes simples et 40 demandes prêtes à copier pour vos emails, vos réseaux sociaux, votre organisation et vos tableurs.</p>
-  <a class="btn" href="#buy">Accéder au kit — ${formatPrice(p.price)}</a>
+  <div class="hero-text">
+    <p class="kicker">Formation en ligne · 7 modules · Générateur IA inclus</p>
+    <h1>Gagnez du temps chaque semaine grâce à l'IA, sans être technicien.</h1>
+    <p class="lead">Le kit pratique pour indépendants, commerçants et petites équipes : des méthodes simples, 40 demandes prêtes à copier et un générateur qui écrit pour vous les demandes parfaites.</p>
+    <div class="cta-row">
+      <a class="btn" href="#buy">Accéder au kit — ${formatPrice(p.price)}</a>
+      <a class="btn ghost" href="/outil">Essayer le générateur gratuit</a>
+    </div>
+  </div>
+  ${photo('1573497019940-1c28c88b4f3e', 'Professionnelle souriante au travail', { w: 560, h: 640, cls: 'hero-img', eager: true })}
 </section>
 
 <section class="grid3">
-  <div><h3>Concret</h3><p>Chaque module part d'une tâche réelle de votre quotidien, avec un exemple à copier et un exercice de 5 à 10 minutes.</p></div>
-  <div><h3>Tous les outils</h3><p>ChatGPT, Claude, Gemini, Copilot, Le Chat : la méthode marche avec l'assistant que vous utilisez déjà, y compris en version gratuite.</p></div>
-  <div><h3>Responsable</h3><p>Confidentialité, RGPD, vérification des faits : utilisez l'IA sans mettre en danger vos clients.</p></div>
+  <div>${photo('1499750310107-5fef28a66643', 'Bureau de travail avec ordinateur portable et carnet', { w: 400, h: 240, cls: 'card-img' })}<h3>Concret</h3><p>Chaque module part d'une tâche réelle de votre quotidien, avec un exemple à copier et un exercice de 5 à 10 minutes.</p></div>
+  <div>${photo('1460925895917-afdab827c52f', 'Ordinateur portable affichant des graphiques', { w: 400, h: 240, cls: 'card-img' })}<h3>Tous les outils</h3><p>ChatGPT, Claude, Gemini, Copilot, Le Chat : la méthode marche avec l'assistant que vous utilisez déjà, y compris en version gratuite.</p></div>
+  <div>${photo('1522202176988-66273c2fd55f', 'Petite équipe travaillant ensemble autour d’ordinateurs', { w: 400, h: 240, cls: 'card-img' })}<h3>Responsable</h3><p>Confidentialité, RGPD, vérification des faits : utilisez l'IA sans mettre en danger vos clients.</p></div>
+</section>
+
+<section class="tool-promo">
+  <div>
+    <p class="kicker">Nouveau</p>
+    <h2>Le Générateur de demandes IA</h2>
+    <p>Choisissez une tâche (répondre à un email, relancer une facture, planifier vos publications…), remplissez 2 ou 3 champs : le générateur rédige une demande complète et structurée à coller dans ChatGPT, Claude ou Gemini.</p>
+    <ul class="checks">
+      <li><strong>Gratuit :</strong> ${FREE_COUNT} modèles, ${FREE_DAILY_LIMIT} demandes par jour.</li>
+      <li><strong>Pro (inclus avec le kit) :</strong> les ${TOTAL_COUNT} modèles, sans limite.</li>
+    </ul>
+    <a class="btn" href="/outil">Essayer gratuitement</a>
+  </div>
 </section>
 
 <section>
@@ -123,7 +154,9 @@ function courseIndex(config, token) {
   const items = modules
     .map((m) => `<li><a href="/cours/${esc(token)}/${m.slug}"><strong>${esc(m.title)}</strong><span>${esc(m.summary)} · ${esc(m.duration)}</span></a></li>`)
     .join('');
-  const body = `<section><h1>Votre formation</h1><p class="muted">Avancez à votre rythme. Conseil : un module par jour, avec l'exercice.</p><ul class="program links">${items}</ul></section>`;
+  const body = `<section><h1>Votre formation</h1><p class="muted">Avancez à votre rythme. Conseil : un module par jour, avec l'exercice.</p>
+<p><a class="btn" href="/cours/${esc(token)}/outil">Ouvrir le Générateur IA Pro</a></p>
+<ul class="program links">${items}</ul></section>`;
   return layout({ title: 'Votre formation', body, config });
 }
 
@@ -140,6 +173,42 @@ function courseModule(config, token, slug) {
   </nav>`;
   const body = `<article class="lesson"><p class="kicker">${esc(m.duration)}</p><h1>${esc(m.title)}</h1>${m.html}${nav}</article>`;
   return layout({ title: m.title, body, config });
+}
+
+function toolPage(config, { token = null } = {}) {
+  const pro = Boolean(token);
+  const catalog = publicCatalog();
+  const intro = pro
+    ? '<p class="badge">Version Pro : tous les modèles, sans limite</p>'
+    : `<p class="muted">Version gratuite : ${FREE_COUNT} modèles et ${FREE_DAILY_LIMIT} demandes par jour. Les modèles marqués <span class="lock">Pro</span> sont inclus avec le <a href="/#buy">Kit IA Pro</a>.</p>`;
+  const body = `
+<section class="tool" id="tool" data-pro="${pro ? '1' : '0'}" data-token="${pro ? esc(token) : ''}">
+  <h1>Générateur de demandes IA</h1>
+  ${intro}
+  <div class="tool-grid">
+    <div>
+      <label for="tpl">1. Choisissez une tâche</label>
+      <select id="tpl"></select>
+      <form id="tool-form" novalidate>
+        <div id="fields"></div>
+        <button class="btn" type="submit">2. Générer ma demande</button>
+      </form>
+      <p id="tool-error" class="error" hidden></p>
+      <div id="upsell" class="upsell" hidden>
+        <p><strong>Ce modèle fait partie de la version Pro.</strong> Débloquez les ${TOTAL_COUNT} modèles sans limite avec le Kit IA Pro.</p>
+        <a class="btn" href="/#buy">Découvrir le kit</a>
+      </div>
+    </div>
+    <div>
+      <label for="out">3. Copiez-la dans votre assistant IA</label>
+      <textarea id="out" readonly rows="16" placeholder="Votre demande apparaîtra ici."></textarea>
+      <button class="btn ghost" type="button" id="copy" disabled>Copier</button>
+      <p class="muted small">Relisez toujours la réponse de l'IA avant de l'envoyer à un client.</p>
+    </div>
+  </div>
+</section>
+<script type="application/json" id="catalog">${JSON.stringify(catalog).replace(/</g, '\\u003c')}</script>`;
+  return layout({ title: 'Générateur de demandes IA', body, config, scripts: '<script src="/tool.js" defer></script>' });
 }
 
 function recoverForm(config, { error = '', values = {} } = {}) {
@@ -223,4 +292,4 @@ function legal(config, page) {
   return layout({ title: page_.title, body: `<article class="lesson"><h1>${esc(page_.title)}</h1>${page_.html}</article>`, config });
 }
 
-module.exports = { home, accessGranted, courseIndex, courseModule, recoverForm, message, legal, esc };
+module.exports = { home, accessGranted, courseIndex, courseModule, toolPage, recoverForm, message, legal, esc };
