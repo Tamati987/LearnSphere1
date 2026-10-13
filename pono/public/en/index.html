@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="PONO helps small businesses handle customer requests, replies, lead follow-up and repetitive tasks.">
-  <meta name="theme-color" content="#101c2c">
-  <title>PONO — Fewer tasks, more time</title>
+  <meta name="description" content="PONO, the AI assistant for small businesses: reply to customers faster, follow up on leads and save time every day.">
+  <meta name="theme-color" content="#13b3c0">
+  <title>PONO — Your AI assistant for customer requests</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="alternate" hreflang="fr" href="/">
   <link rel="alternate" hreflang="en" href="/en">
@@ -13,7 +13,7 @@
   <meta property="og:type" content="website">
   <meta property="og:locale" content="en_US">
   <meta property="og:site_name" content="PONO">
-  <meta property="og:title" content="PONO — Fewer tasks, more time">
+  <meta property="og:title" content="PONO — Your AI assistant for customer requests">
   <meta property="og:description" content="The assistant for small businesses and freelancers: customer requests, replies and lead follow-up.">
   <meta property="og:image" content="{{OG_IMAGE}}">
   <meta property="og:image:width" content="1200">
@@ -21,7 +21,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap">
   <link rel="stylesheet" href="/styles.css">
   <script src="/app.js" defer></script>
 </head>
@@ -31,93 +31,123 @@
     <a class="brand" href="#home" aria-label="PONO, home"><span class="brand-mark">P</span><span>PONO</span></a>
     <button class="menu-toggle" id="menuToggle" aria-expanded="false" aria-controls="mainNav">Menu</button>
     <nav id="mainNav" class="main-nav" aria-label="Main navigation">
-      <a href="#solutions">Solutions</a>
-      <a href="#how-it-works">How it works</a>
+      <a href="#use-cases">Use cases</a>
+      <a href="#why">Why PONO</a>
       <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
       <a href="#contact">Contact</a>
       <a class="lang-switch" href="/" hreflang="fr" lang="fr" aria-label="Version française">FR</a>
-      <a class="nav-cta" href="#contact">Talk to PONO <span aria-hidden="true">↗</span></a>
+      <a class="nav-cta" href="#contact">Get started <span aria-hidden="true">→</span></a>
     </nav>
   </header>
 
   <main id="content">
-    <section class="hero section-wrap" id="home">
-      <div class="hero-copy">
-        <p class="eyebrow"><span class="status-dot"></span> The assistant for busy professionals</p>
-        <h1>Fewer tasks.<br><span>More time.</span></h1>
-        <p class="hero-text">PONO helps you organise customer requests, reply more easily and keep track of your leads, without making your day more complicated.</p>
-        <div class="hero-actions">
-          <a class="button button-primary" href="#contact">Discover PONO <span aria-hidden="true">→</span></a>
-          <a class="button button-quiet" href="#how-it-works">See how it works</a>
+    <div class="section-wrap">
+      <section class="hero" id="home">
+        <div class="hero-copy">
+          <div class="hero-tag"><span class="badge-ai">AI Assistant</span> For small businesses and freelancers</div>
+          <h1>Your personal assistant for <span class="hl">your customers</span></h1>
+          <p class="hero-text">PONO drafts your replies, gathers your requests and reminds you who to follow up with. You save time, and your customers get a fast answer.</p>
+          <div class="hero-actions">
+            <button class="button button-primary open-chat" type="button">Try the assistant <span class="arrow" aria-hidden="true">→</span></button>
+            <a class="button button-quiet" href="#pricing">See pricing <span class="arrow" aria-hidden="true">→</span></a>
+          </div>
+          <div class="hero-proof">
+            <div class="avatars" aria-hidden="true"><span class="av1">AR</span><span class="av2">MC</span><span class="av3">SP</span><span class="av4">RE</span></div>
+            <p>Trades, restaurants, salons, guesthouses: first call free, no commitment.</p>
+          </div>
         </div>
-        <div class="hero-proof"><span class="proof-icon">✦</span><p>Built for small businesses and freelancers, wherever you are.</p></div>
-      </div>
-      <div class="hero-visual" role="img" aria-label="Abstract illustration of the PONO assistant">
-        <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
-        <div class="glow"></div>
-        <div class="assistant-card">
-          <div class="assistant-top"><span class="mini-logo">P</span><div><strong>PONO Assistant</strong><small><span class="status-dot"></span> Ready to help</small></div><span class="dots">•••</span></div>
-          <div class="chat-bubble bubble-user">I need to reply to three customers…</div>
-          <div class="chat-bubble bubble-ai"><span class="mini-logo">P</span><p>Let's sort that out. Which customer comes first?</p></div>
-          <div class="task-row"><span class="task-check">✓</span><div><strong>Customer request</strong><small>Handle first</small></div><span class="task-arrow">↗</span></div>
-          <div class="task-row"><span class="task-check muted">○</span><div><strong>Draft a reply</strong><small>Check before sending</small></div></div>
-          <div class="assistant-footer"><span>Your day, better organised.</span><span class="sparkle">✦</span></div>
+
+        <div class="dash" role="img" aria-label="Example PONO dashboard showing this week's customer requests">
+          <div class="dash-top"><strong>Dashboard</strong><span class="example">Example</span></div>
+          <div class="dash-grid">
+            <div class="stats">
+              <div class="stat"><b>128</b><small>requests this month</small></div>
+              <div class="stat"><b>96</b><small>replies drafted</small></div>
+              <div class="stat"><b>34</b><small>follow-ups due</small></div>
+              <div class="stat"><b>11 h</b><small>time saved</small></div>
+            </div>
+            <div class="chart">
+              <small>Requests per day</small>
+              <svg viewBox="0 0 160 70" aria-hidden="true"><path d="M0 52 L20 44 L40 48 L60 30 L80 36 L100 20 L120 26 L140 12 L160 18 L160 70 L0 70 Z" fill="#e2f8fa"/><path d="M0 52 L20 44 L40 48 L60 30 L80 36 L100 20 L120 26 L140 12 L160 18" fill="none" stroke="#13b3c0" stroke-width="2.5" stroke-linejoin="round"/><circle cx="140" cy="12" r="4" fill="#0d2530"/></svg>
+              <small>Mon · Tue · Wed · Thu · Fri · Sat · Sun</small>
+            </div>
+          </div>
+          <div class="inbox">
+            <div class="tabs"><span class="on">All</span><span>To do</span></div>
+            <div class="contact-row"><div class="avatars"><span class="av1">SK</span></div><div><strong>Sarah K.</strong><small>Air-con quote</small></div><span class="pill todo">To do</span></div>
+            <div class="contact-row"><div class="avatars"><span class="av3">ML</span></div><div><strong>Mike L.</strong><small>Saturday booking</small></div><span class="pill done">Replied</span></div>
+            <div class="contact-row"><div class="avatars"><span class="av4">TR</span></div><div><strong>Teva R.</strong><small>Opening hours</small></div><span class="pill done">Replied</span></div>
+          </div>
         </div>
-        <div class="floating-chip chip-top">✦ Easy to use</div>
-        <div class="floating-chip chip-bottom"><span class="status-dot"></span> A helping hand every day</div>
+      </section>
+    </div>
+
+    <section class="sectors section-wrap" aria-label="Who it's for">
+      <p>Made for <b>businesses that don't have time to answer everything</b></p>
+      <div class="sector-list"><span>Trades</span><span>Mechanics</span><span>Restaurants</span><span>Salons</span><span>Guesthouses</span><span>Shops</span></div>
+    </section>
+
+    <section class="section" id="use-cases">
+      <div class="section-wrap usecases">
+        <div class="section-heading">
+          <p class="eyebrow">Use cases</p>
+          <h2>What PONO does <span class="hl">for you</span></h2>
+          <p>The small, time-consuming tasks, finally taken care of.</p>
+        </div>
+        <div class="usecase-grid">
+          <article class="usecase"><span class="icon" aria-hidden="true">✉</span><span class="corner" aria-hidden="true">↗</span><h3>Customer replies</h3><p>Clear, polite answers to incoming messages, ready to send once you've checked them.</p></article>
+          <article class="usecase"><span class="icon" aria-hidden="true">↻</span><span class="corner" aria-hidden="true">↗</span><h3>Lead follow-ups</h3><p>PONO reminds you who hasn't replied and drafts the follow-up message.</p></article>
+          <article class="usecase"><span class="icon" aria-hidden="true">✎</span><span class="corner" aria-hidden="true">↗</span><h3>Quote requests</h3><p>The useful details are gathered so you can price the job faster.</p></article>
+          <article class="usecase"><span class="icon" aria-hidden="true">?</span><span class="corner" aria-hidden="true">↗</span><h3>Frequent questions</h3><p>Hours, prices, availability: the assistant handles the questions that keep coming back.</p></article>
+        </div>
       </div>
     </section>
 
-    <section class="trust-strip" aria-label="PONO principles">
-      <div><span>01</span> Simple, every day</div><div><span>02</span> Made for professionals</div><div><span>03</span> You stay in control</div>
+    <section class="section-wrap split" id="why">
+      <div class="split-visual" aria-hidden="true">
+        <div class="mock-chat">
+          <div class="head"><span class="mini-logo">P</span><div><strong>PONO Assistant</strong><small><span class="status-dot"></span> Online</small></div></div>
+          <div class="bubble user">Hi, are you open on Saturday?</div>
+          <div class="bubble ai">Hello! Yes, from 8 am to 12 pm. Would you like me to note an appointment request?</div>
+          <div class="bubble user">Yes, 10 am please</div>
+          <div class="bubble ai">Noted. The team will confirm your slot as soon as possible.</div>
+        </div>
+        <div class="ring-card"><div class="ring"><b>7/10</b></div><small>requests handled today (example)</small></div>
+      </div>
+      <div class="split-copy">
+        <p class="eyebrow">Why PONO</p>
+        <h2>The simple way to handle <span class="hl">customer requests</span></h2>
+        <p>An assistant that speaks like you, knows your business and always leaves you the final word.</p>
+        <ul class="feature-list">
+          <li><span class="icon" aria-hidden="true">✦</span><div><strong>Your replies, your way</strong><p>Your tone, your wording and your business details.</p></div></li>
+          <li><span class="icon" aria-hidden="true">⚙</span><div><strong>Tailored to your trade</strong><p>Set up with your services, prices and opening hours.</p></div></li>
+          <li><span class="icon" aria-hidden="true">↻</span><div><strong>Monthly improvements</strong><p>We fine-tune the assistant with you at your monthly check-in.</p></div></li>
+          <li><span class="icon" aria-hidden="true">⚡</span><div><strong>Nothing to install</strong><p>Everything runs online, from your phone or computer.</p></div></li>
+        </ul>
+      </div>
     </section>
 
-    <section class="section-wrap section" id="solutions">
-      <div class="section-heading">
-        <p class="eyebrow">WHAT PONO CAN DO FOR YOU</p>
-        <h2>The support your business needs.</h2>
-        <p>Practical tools for the small tasks that eat up your time.</p>
-      </div>
-      <div class="feature-grid">
-        <article class="feature-card"><div class="feature-icon icon-violet">✳</div><h3>Faster replies</h3><p>Prepare clear answers to common questions and adjust them before you send.</p><span class="card-number">01 / ASSISTANCE</span></article>
-        <article class="feature-card"><div class="feature-icon icon-green">↗</div><h3>Organised requests</h3><p>Keep the useful details in one place, so you know who contacted you and why.</p><span class="card-number">02 / ORGANISATION</span></article>
-        <article class="feature-card"><div class="feature-icon icon-orange">◎</div><h3>Lead follow-up</h3><p>Prepare follow-ups and next steps. Nothing is sent automatically without you.</p><span class="card-number">03 / FOLLOW-UP</span></article>
-      </div>
-      <p class="small-note">Available features depend on your setup. Automatic sending, calendars and integrations must be added and tested before use.</p>
-    </section>
-
-    <section class="workflow-section" id="how-it-works">
-      <div class="section-wrap workflow-layout">
-        <div class="workflow-copy">
-          <p class="eyebrow">NO COMPLEXITY</p>
-          <h2>You explain.<br><span>PONO helps.</span></h2>
-          <p>No need to change the way you work. Start with one request, then move forward step by step.</p>
-          <a class="text-link" href="#contact">Tell us about your business <span aria-hidden="true">→</span></a>
+    <section class="section" id="how-it-works">
+      <div class="section-wrap steps-band">
+        <div>
+          <p class="eyebrow">How it works</p>
+          <h2>You explain.<br><span class="hl">PONO helps.</span></h2>
+          <p class="lead">No need to change the way you work. Start with one request, then move forward step by step.</p>
+          <a class="button button-primary" href="#contact">Tell us about your business <span class="arrow" aria-hidden="true">→</span></a>
         </div>
         <div class="steps">
           <div class="step"><span class="step-num">1</span><div><h3>You share the need</h3><p>A customer message, a frequent question or a task to prepare.</p></div></div>
-          <div class="step"><span class="step-num">2</span><div><h3>PONO drafts a reply</h3><p>The assistant helps you structure the information and suggests an answer.</p></div></div>
-          <div class="step"><span class="step-num">3</span><div><h3>You check and decide</h3><p>You stay in charge of decisions and of every message sent to your customers.</p></div></div>
+          <div class="step"><span class="step-num">2</span><div><h3>PONO drafts a reply</h3><p>The assistant structures the information and suggests an answer.</p></div></div>
+          <div class="step"><span class="step-num">3</span><div><h3>You check and decide</h3><p>You stay in charge of every message sent to your customers.</p></div></div>
         </div>
       </div>
     </section>
 
-    <section class="section-wrap section usecase-section">
+    <section class="section-wrap section" id="pricing">
       <div class="section-heading">
-        <p class="eyebrow">WHO IS IT FOR?</p>
-        <h2>An assistant for busy days.</h2>
-      </div>
-      <div class="usecase-list">
-        <div><span class="usecase-emoji">🔧</span><strong>Trades & mechanics</strong><p>Prepare replies to quote and availability requests.</p></div>
-        <div><span class="usecase-emoji">✂️</span><strong>Salons & freelancers</strong><p>Answer frequent questions and prepare appointment requests.</p></div>
-        <div><span class="usecase-emoji">🧾</span><strong>Small businesses</strong><p>Structure requests, notes and next actions.</p></div>
-      </div>
-    </section>
-
-    <section class="section-wrap section pricing-section" id="pricing">
-      <div class="section-heading">
-        <p class="eyebrow">PRICING</p>
-        <h2>Simple plans, no commitment.</h2>
+        <p class="eyebrow">Pricing</p>
+        <h2>Simple plans, <span class="hl">no commitment</span></h2>
         <p>Pick a plan and we'll get back to you to set it up together. Prices in US dollars.</p>
       </div>
       <div class="pricing-grid">
@@ -130,7 +160,7 @@
             <li>All your customer requests in one place</li>
             <li>One support session per month</li>
           </ul>
-          <a class="button button-quiet plan-button" href="#contact" data-plan="Forfait Démarrage" data-plan-label="Starter plan">Choose Starter <span aria-hidden="true">→</span></a>
+          <a class="button button-quiet plan-button" href="#contact" data-plan="Forfait Démarrage" data-plan-label="Starter plan">Choose Starter <span class="arrow" aria-hidden="true">→</span></a>
         </article>
         <article class="price-card featured">
           <span class="price-badge">Most popular</span>
@@ -143,7 +173,7 @@
             <li>Quote and message templates in your name</li>
             <li>Priority support</li>
           </ul>
-          <a class="button button-primary plan-button" href="#contact" data-plan="Forfait Pro" data-plan-label="Pro plan">Choose Pro <span aria-hidden="true">→</span></a>
+          <a class="button button-primary plan-button" href="#contact" data-plan="Forfait Pro" data-plan-label="Pro plan">Choose Pro <span class="arrow" aria-hidden="true">→</span></a>
         </article>
         <article class="price-card">
           <h3>Custom</h3>
@@ -154,22 +184,50 @@
             <li>Assistant configured for your trade</li>
             <li>Training for your team</li>
           </ul>
-          <a class="button button-quiet plan-button" href="#contact" data-plan="Forfait Sur mesure" data-plan-label="Custom plan">Request a quote <span aria-hidden="true">→</span></a>
+          <a class="button button-quiet plan-button" href="#contact" data-plan="Forfait Sur mesure" data-plan-label="Custom plan">Request a quote <span class="arrow" aria-hidden="true">→</span></a>
         </article>
       </div>
       <p class="small-note">First call free. Your plan starts only after your written approval. Based in French Polynesia, we work remotely with clients anywhere.</p>
     </section>
 
+    <section class="section-wrap section faq" id="faq">
+      <div class="faq-intro">
+        <p class="eyebrow">FAQ</p>
+        <h2>Got <span class="hl">a question?</span></h2>
+        <p>Answers to the questions we hear most often. For anything else, the assistant is here.</p>
+        <button class="button button-dark open-chat" type="button">Ask my question <span class="arrow" aria-hidden="true">→</span></button>
+      </div>
+      <div class="faq-list">
+        <details open><summary>How long does it take to get started?</summary><p>After a free first call, we set up the assistant with you: your services, prices and hours. Allow a few days depending on your business.</p></details>
+        <details><summary>Do I need to install any software?</summary><p>No. Everything runs online, from a phone or a computer.</p></details>
+        <details><summary>Does the assistant send messages on my behalf?</summary><p>No. PONO drafts the replies and follow-ups, and you decide whether to send them. You stay in control.</p></details>
+        <details><summary>Which languages does PONO support?</summary><p>English and French. The assistant can also reply in your customer's language.</p></details>
+        <details><summary>How much does it cost?</summary><p>USD 89 per month for Starter, USD 179 for Pro, or a custom quote from USD 320.</p></details>
+        <details><summary>Can I cancel anytime?</summary><p>Yes, plans have no commitment. You stop at the end of the current month.</p></details>
+      </div>
+    </section>
+
+    <div class="section-wrap">
+      <section class="cta-band" aria-label="Try PONO">
+        <div>
+          <h2>See how PONO would answer your customers</h2>
+          <p>Ask a question the way one of your customers would. It's free and instant.</p>
+        </div>
+        <button class="button button-primary open-chat" type="button">Start the demo <span class="arrow" aria-hidden="true">→</span></button>
+      </section>
+    </div>
+
     <section class="contact-section" id="contact">
       <div class="section-wrap contact-layout">
         <div class="contact-copy">
-          <p class="eyebrow">LET'S TALK</p>
-          <h2>Let's make room for what matters.</h2>
-          <p>Tell us about your business and what takes up most of your time. We'll look at how PONO could help.</p>
+          <p class="eyebrow">Let's talk</p>
+          <h2>Ready to save time <span class="hl">every day?</span></h2>
+          <p>Tell us about your business and what takes up most of your time. We'll get back to you to see how PONO can help.</p>
           <div class="contact-detail" {{EMAIL_HIDDEN}}><span class="detail-icon">✉</span><div><small>WRITE TO US</small><a id="contactEmail" href="{{CONTACT_HREF}}">{{CONTACT_LABEL}}</a></div></div>
           <p class="privacy-note">Never send passwords or banking details through this form.</p>
         </div>
         <form id="contactForm" class="contact-form">
+          <p class="form-title">Try PONO <span class="badge-ai">Free</span></p>
           <div class="form-row">
             <label>Your name *<input name="name" autocomplete="name" required maxlength="100" placeholder="First and last name"></label>
             <label>Your email *<input name="email" type="email" autocomplete="email" required maxlength="180" placeholder="you@example.com"></label>
@@ -181,25 +239,31 @@
           <label>How could PONO help you? *<textarea name="message" rows="4" required maxlength="3000" placeholder="Tell us which tasks take up your time…"></textarea></label>
           <label class="honeypot" aria-hidden="true">Leave empty<input name="website" tabindex="-1" autocomplete="off"></label>
           <label class="consent"><input name="consent" type="checkbox" required><span>I agree that the information entered will be used to answer my request (see our <a href="/en/privacy" style="text-decoration:underline">privacy policy</a>). *</span></label>
-          <button class="button button-primary submit-button" type="submit">Send my request <span aria-hidden="true">→</span></button>
+          <button class="button button-primary submit-button" type="submit">Send my request <span class="arrow" aria-hidden="true">→</span></button>
           <p id="formStatus" class="form-status" role="status" aria-live="polite"></p>
-          <small class="form-footnote">* Required fields. Your request is stored securely and read by our team. Details in our <a href="/en/privacy" style="text-decoration:underline">privacy policy</a>.</small>
+          <small class="form-footnote">* Required fields. Your request is stored securely and read by our team.</small>
         </form>
       </div>
     </section>
   </main>
 
   <footer class="site-footer">
-    <a class="brand footer-brand" href="#home"><span class="brand-mark">P</span><span>PONO</span></a>
-    <p>A little more clarity in your day.</p>
-    <div class="footer-links"><a href="#solutions">Solutions</a><a href="#pricing">Pricing</a><a href="#contact">Contact</a><a href="/en/privacy">Privacy</a><a href="/en/legal">Legal notice</a><a href="/" hreflang="fr" lang="fr">Français</a></div>
+    <div class="footer-main">
+      <div class="footer-about">
+        <a class="brand" href="#home"><span class="brand-mark">P</span><span>PONO</span></a>
+        <p>The AI assistant for small businesses. A little more clarity in your day.</p>
+      </div>
+      <div class="footer-col"><strong>Quick links</strong><a href="#use-cases">Use cases</a><a href="#why">Why PONO</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></div>
+      <div class="footer-col"><strong>Services</strong><a href="#contact">Contact</a><a href="#pricing">Custom quote</a><a href="/" hreflang="fr" lang="fr">Français</a></div>
+      <div class="footer-col"><strong>Legal</strong><a href="/en/legal">Legal notice</a><a href="/en/privacy">Privacy</a></div>
+    </div>
     <small>© <span id="year"></span> PONO. All rights reserved.</small>
   </footer>
 
-  <button class="chat-launcher" id="chatLauncher" aria-label="Open the PONO assistant" aria-expanded="false" aria-controls="chatPanel"><span class="launcher-icon" aria-hidden="true">✳</span><span>Chat with PONO</span><span class="launcher-arrow">↗</span></button>
+  <button class="chat-launcher" id="chatLauncher" aria-label="Open the PONO assistant" aria-expanded="false" aria-controls="chatPanel"><span class="launcher-icon" aria-hidden="true">✳</span><span>Chat with PONO</span><span class="launcher-arrow" aria-hidden="true">↗</span></button>
   <section class="chat-panel" id="chatPanel" aria-label="Conversation with PONO" hidden>
     <div class="chat-panel-header"><span class="mini-logo">P</span><div><strong>PONO Assistant</strong><small><span class="status-dot"></span> Assistant online</small></div><button id="chatClose" aria-label="Close the conversation">×</button></div>
-    <div class="chat-messages" id="chatMessages" aria-live="polite"><div class="message assistant-message">Hello! 👋 I'm the PONO assistant. What would you like to organise today?</div></div>
+    <div class="chat-messages" id="chatMessages" aria-live="polite"><div class="message assistant-message">Hello! 👋 I'm the PONO assistant. Ask me a question the way one of your customers would.</div></div>
     <form class="chat-input-row" id="chatForm"><label class="visually-hidden" for="chatInput">Your message</label><input id="chatInput" name="message" maxlength="1500" autocomplete="off" required placeholder="Type your message…"><button type="submit" aria-label="Send message">↑</button></form>
     <p class="chat-disclaimer">Automated assistant: answers may be inaccurate. Your messages are processed by an AI provider (<a href="/en/privacy" style="text-decoration:underline">learn more</a>). Don't share sensitive data.</p>
   </section>

@@ -93,6 +93,7 @@ function toggleChat(open) {
 }
 chatLauncher?.addEventListener("click", () => toggleChat(chatPanel.hidden));
 chatClose?.addEventListener("click", () => toggleChat(false));
+document.querySelectorAll(".open-chat").forEach(button => button.addEventListener("click", () => toggleChat(true)));
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && chatPanel && !chatPanel.hidden) toggleChat(false);
 });
