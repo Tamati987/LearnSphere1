@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Demandes — PONO</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    body{background:#f6f7fb}.admin{max-width:900px;margin:0 auto;padding:30px 18px 60px}
+    .admin h1{font-family:Manrope,sans-serif;letter-spacing:-.03em;margin:0 0 18px}
+    .login{display:flex;gap:8px;flex-wrap:wrap}.login input{flex:1;min-width:220px;border:1px solid #e1e5ed;border-radius:10px;padding:12px}
+    .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:18px 0;color:#4b5668;font-size:.9rem}
+    .warn{background:#fff4e5;color:#8a4b00;border-radius:12px;padding:12px 14px;font-size:.88rem;margin-top:14px}
+    .lead{background:#fff;border:1px solid #e4e8ef;border-radius:16px;padding:18px;margin-bottom:12px}
+    .lead header{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline}.lead strong{font-size:1.02rem}
+    .lead .meta{color:#667286;font-size:.82rem}.lead .tag{background:#efedff;color:#5546b8;border-radius:999px;padding:2px 10px;font-size:.75rem;font-weight:700}
+    .lead p{white-space:pre-wrap;overflow-wrap:anywhere;margin:10px 0}.lead .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .lead .actions a,.lead .actions button{font-size:.8rem;padding:8px 12px;border-radius:9px;border:1px solid #e1e5ed;background:#fff;cursor:pointer;font-weight:700;color:#29364a}
+    .lead .actions button{color:#b53e45}.empty,.err{color:#667286;padding:20px 0}.err{color:#b53e45}
+  </style>
+</head>
+<body>
+  <main class="admin">
+    <h1>Demandes de contact</h1>
+    <form class="login" id="login">
+      <label class="visually-hidden" for="token">Jeton admin</label>
+      <input id="token" type="password" autocomplete="current-password" placeholder="Jeton admin (ADMIN_TOKEN)" required>
+      <button class="button button-primary" type="submit">Afficher</button>
+    </form>
+    <div id="out"></div>
+  </main>
+  <script src="/admin.js" defer></script>
+</body>
+</html>

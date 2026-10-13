@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Confidentialité — PONO</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/styles.css">
+  <style>.legal{max-width:780px}.legal h1{font-family:Manrope,sans-serif;line-height:1.1;font-size:clamp(2.4rem,7vw,3.6rem);letter-spacing:-.04em;margin:0 0 10px}.legal h2{font-family:Manrope,sans-serif;font-size:1.2rem;margin:38px 0 8px}.legal p,.legal li{color:#4b5668}.legal a{text-decoration:underline}.legal .updated{color:#667286;font-size:.85rem}</style>
+</head>
+<body>
+  <header class="site-header"><a class="brand" href="/"><span class="brand-mark">P</span><span>PONO</span></a><a class="nav-cta" href="/">Retour au site</a></header>
+  <main class="section-wrap section legal">
+    <p class="eyebrow">INFORMATIONS</p>
+    <h1>Politique de confidentialité</h1>
+    <p class="updated">Dernière mise à jour : octobre 2026</p>
+
+    <h2>Qui est responsable de vos données ?</h2>
+    <p>{{OWNER}}, {{ADDRESS}} ({{LEGAL_ID}}).<br>Contact pour toute question sur vos données : <a href="mailto:{{EMAIL}}">{{EMAIL}}</a>.</p>
+
+    <h2>Quelles données sont recueillies ?</h2>
+    <ul>
+      <li><strong>Formulaire de contact :</strong> nom, adresse e-mail, téléphone (facultatif), type d'activité et contenu de votre message.</li>
+      <li><strong>Assistant de discussion :</strong> le texte des messages que vous écrivez. Ces messages ne sont pas enregistrés sur notre serveur.</li>
+      <li><strong>Données techniques :</strong> votre adresse IP est utilisée temporairement pour limiter les abus (nombre de requêtes). Elle n'est pas conservée avec vos demandes.</li>
+    </ul>
+    <p>Le site n'utilise ni cookie publicitaire ni outil de mesure d'audience.</p>
+
+    <h2>Pourquoi ?</h2>
+    <p>Uniquement pour répondre à votre demande et, le cas échéant, échanger avec vous sur nos services. Ces données reposent sur votre consentement, donné en cochant la case du formulaire. Elles ne sont ni vendues ni utilisées pour de la publicité.</p>
+
+    <h2>Combien de temps sont-elles conservées ?</h2>
+    <p>Les demandes de contact sont supprimées automatiquement au bout de {{RETENTION_MONTHS}} mois, ou plus tôt si vous le demandez.</p>
+
+    <h2>Qui y a accès ?</h2>
+    <p>Seule l'équipe PONO peut consulter les demandes. Nous faisons appel à deux prestataires techniques :</p>
+    <ul>
+      <li><strong>Railway Corp.</strong> (États-Unis) héberge le site et les demandes de contact.</li>
+      <li><strong>OpenAI</strong> (États-Unis) génère les réponses de l'assistant. Le texte de vos messages de discussion lui est transmis pour produire une réponse. Voir la <a href="https://openai.com/policies/privacy-policy" rel="noopener" target="_blank">politique de confidentialité d'OpenAI</a>.</li>
+    </ul>
+    <p>Ces prestataires étant situés hors de Polynésie française, vos données peuvent être traitées aux États-Unis.</p>
+
+    <h2>Vos droits</h2>
+    <p>Conformément à la loi « Informatique et Libertés », vous pouvez demander l'accès à vos données, leur rectification ou leur suppression, et retirer votre consentement à tout moment. Pour cela, écrivez à <a href="mailto:{{EMAIL}}">{{EMAIL}}</a>. Nous répondons sous un mois.</p>
+    <p>Si vous estimez que vos droits ne sont pas respectés, vous pouvez saisir la CNIL (<a href="https://www.cnil.fr" rel="noopener" target="_blank">cnil.fr</a>).</p>
+
+    <h2>Conseils</h2>
+    <p>N'envoyez jamais de mot de passe, d'informations bancaires ou de données de santé, ni dans le formulaire, ni dans l'assistant.</p>
+  </main>
+  <footer class="site-footer"><div class="footer-links" style="margin-left:0"><a href="/">Accueil</a><a href="/mentions-legales">Mentions légales</a></div><small>© PONO — {{LOCATION}}</small></footer>
+</body>
+</html>
