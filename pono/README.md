@@ -45,3 +45,14 @@ sur votre IBAN.
    `PAY_LINK_CUSTOM` (site français) et `PAY_LINK_*_EN` (site anglais, en USD).
 3. Les boutons apparaissent automatiquement ; un lien vide (ou non https) reste masqué.
    `/api/health` indique combien de liens sont actifs.
+
+## Espace client
+Après un paiement, ouvrez `/admin` :
+- **Créer son espace client** sur la demande du client (ou le formulaire « Espaces clients »).
+- Copiez le lien affiché (`/espace/…`) et envoyez-le au client. Il n'est montré qu'une fois ;
+  « Nouveau lien » en crée un autre et désactive l'ancien. « Suspendre » coupe l'accès.
+
+Le client y trouve : son assistant (configuré avec ses informations), un outil pour préparer
+ses réponses, le suivi de ses demandes, et pour Pro / Sur mesure les relances datées et
+les modèles de messages. Les données sont dans `clients.json` (même volume que les demandes) ;
+seule l'empreinte des liens est enregistrée.

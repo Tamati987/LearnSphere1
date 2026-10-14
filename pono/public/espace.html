@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Espace client — PONO</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/espace.css">
+  <script src="/espace.js" defer></script>
+</head>
+<body class="space">
+  <header class="site-header">
+    <a class="brand" href="/" target="_blank" rel="noopener"><span class="brand-mark">P</span><span>PONO</span></a>
+    <span class="space-label">Espace client</span>
+  </header>
+
+  <main class="section-wrap space-main">
+    <div id="state" class="space-state">Chargement de votre espace…</div>
+
+    <div id="app" hidden>
+      <section class="space-hero">
+        <div>
+          <p class="eyebrow">Votre espace</p>
+          <h1 id="bizName">—</h1>
+          <p class="space-sub">Forfait <span id="planName" class="plan-pill">—</span> <span id="aiMode" class="mode-pill"></span></p>
+        </div>
+        <div class="space-stats">
+          <div class="stat"><b id="statOpen">0</b><small>demandes en cours</small></div>
+          <div class="stat"><b id="statDue">0</b><small>relances à faire</small></div>
+          <div class="stat"><b id="statWon">0</b><small>clients gagnés</small></div>
+        </div>
+      </section>
+
+      <div id="profileHint" class="hint" hidden>Complétez <a href="#infos">vos informations</a> (services, prix, horaires) pour que l'assistant réponde juste à vos clients.</div>
+
+      <nav class="tabs-nav" aria-label="Sections de l'espace">
+        <a href="#assistant">Mon assistant</a>
+        <a href="#reponse">Préparer une réponse</a>
+        <a href="#demandes">Mes demandes</a>
+        <a href="#modeles">Modèles</a>
+        <a href="#infos">Mes informations</a>
+      </nav>
+
+      <section class="panel" id="panel-assistant" data-tab="assistant">
+        <h2>Mon assistant</h2>
+        <p class="lead-text">Testez votre assistant comme le ferait un de vos clients. Il répond avec vos informations.</p>
+        <div class="chat-box">
+          <div class="chat-messages" id="chatLog" aria-live="polite"></div>
+          <form class="chat-input-row" id="chatForm"><label class="visually-hidden" for="chatText">Message</label><input id="chatText" maxlength="1500" autocomplete="off" required placeholder="Ex. : Vous êtes ouverts samedi ?"><button type="submit" aria-label="Envoyer">↑</button></form>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-reponse" data-tab="reponse" hidden>
+        <h2>Préparer une réponse</h2>
+        <p class="lead-text">Collez le message reçu d'un client : PONO prépare une réponse que vous relisez avant de l'envoyer.</p>
+        <form id="draftForm" class="stack">
+          <label>Nom du client (facultatif)<input id="draftCustomer" maxlength="80" placeholder="Ex. : Hina"></label>
+          <label>Message reçu *<textarea id="draftMessage" rows="4" maxlength="3000" required placeholder="Collez ici le message de votre client…"></textarea></label>
+          <button class="button button-primary" type="submit">Préparer la réponse <span class="arrow" aria-hidden="true">→</span></button>
+        </form>
+        <div id="draftOut" class="draft-out" hidden>
+          <label>Réponse proposée (modifiable)<textarea id="draftText" rows="8"></textarea></label>
+          <div class="row-actions">
+            <button class="button button-dark" type="button" id="draftCopy">Copier la réponse</button>
+            <button class="button button-quiet" type="button" id="draftSave" hidden>Enregistrer comme modèle</button>
+            <span class="status-line" id="draftStatus" role="status"></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-demandes" data-tab="demandes" hidden>
+        <h2>Mes demandes</h2>
+        <p class="lead-text">Notez chaque demande client pour ne plus en oublier aucune.</p>
+        <div id="dueBox" class="due-box" hidden></div>
+        <form id="reqForm" class="req-form">
+          <label>Client *<input name="customer" maxlength="100" required placeholder="Nom du client"></label>
+          <label>Contact<input name="contact" maxlength="150" placeholder="Téléphone ou e-mail"></label>
+          <label class="wide">Demande<input name="subject" maxlength="200" placeholder="Ex. : Devis climatisation"></label>
+          <label class="pro-only">Relancer le<input name="followUp" type="date"></label>
+          <button class="button button-primary" type="submit">Ajouter <span class="arrow" aria-hidden="true">+</span></button>
+        </form>
+        <div class="filters" role="group" aria-label="Filtrer les demandes">
+          <button type="button" data-filter="open" aria-pressed="true">En cours</button>
+          <button type="button" data-filter="all" aria-pressed="false">Toutes</button>
+          <button type="button" data-filter="done" aria-pressed="false">Terminées</button>
+        </div>
+        <div id="reqList" class="req-list"></div>
+      </section>
+
+      <section class="panel" id="panel-modeles" data-tab="modeles" hidden>
+        <h2>Modèles de messages</h2>
+        <div id="tplLocked" class="locked" hidden>
+          <strong>Disponible avec le forfait Pro</strong>
+          <p>Enregistrez vos messages types (devis, relance, confirmation) et retrouvez-les en un clic. Le forfait Pro ajoute aussi les relances automatiques dans vos demandes.</p>
+          <a class="button button-primary" href="/#tarifs" target="_blank" rel="noopener">Voir le forfait Pro <span class="arrow" aria-hidden="true">→</span></a>
+        </div>
+        <div id="tplArea" hidden>
+          <p class="lead-text">Vos messages types, prêts à copier.</p>
+          <form id="tplForm" class="stack">
+            <label>Titre *<input name="title" maxlength="100" required placeholder="Ex. : Relance devis"></label>
+            <label>Texte *<textarea name="body" rows="4" maxlength="3000" required placeholder="Bonjour, je reviens vers vous au sujet de…"></textarea></label>
+            <button class="button button-primary" type="submit">Enregistrer le modèle <span class="arrow" aria-hidden="true">+</span></button>
+          </form>
+          <div id="tplList" class="tpl-list"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-infos" data-tab="infos" hidden>
+        <h2>Mes informations</h2>
+        <p class="lead-text">L'assistant utilise uniquement ces informations pour répondre. Plus elles sont précises, meilleures sont les réponses.</p>
+        <form id="profileForm" class="stack">
+          <label>Nom de l'entreprise<input name="business" maxlength="120"></label>
+          <label>Services proposés<textarea name="services" rows="3" maxlength="1500" placeholder="Ex. : Réparation de climatiseurs, entretien annuel, installation…"></textarea></label>
+          <label>Prix<textarea name="prices" rows="3" maxlength="1500" placeholder="Ex. : Entretien 8 000 XPF, déplacement offert à Papeete…"></textarea></label>
+          <label>Horaires<input name="hours" maxlength="600" placeholder="Ex. : du lundi au vendredi 7 h – 16 h, samedi 8 h – 12 h"></label>
+          <label>Adresse ou zone<input name="address" maxlength="300" placeholder="Ex. : Faa'a, interventions sur tout Tahiti"></label>
+          <label>Ton des réponses<input name="tone" maxlength="300" placeholder="Ex. : chaleureux, tutoiement, avec un « Ia ora na »"></label>
+          <label>Questions fréquentes<textarea name="faq" rows="6" maxlength="4000" placeholder="Une question et sa réponse par ligne. Ex. : Acceptez-vous la carte ? Oui, Visa et Mastercard."></textarea></label>
+          <div class="row-actions"><button class="button button-primary" type="submit">Enregistrer <span class="arrow" aria-hidden="true">→</span></button><span class="status-line" id="profileStatus" role="status"></span></div>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer"><small>Espace personnel PONO. Ne partagez pas ce lien : il donne accès à votre espace. Besoin d'aide ? Utilisez le <a href="/#contact" target="_blank" rel="noopener" style="text-decoration:underline">formulaire de contact</a>.</small></footer>
+</body>
+</html>

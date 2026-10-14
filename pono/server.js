@@ -16,6 +16,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { mountClientSpace } from './clients.js';
 
 dotenv.config();
 const app = express();
@@ -313,6 +314,9 @@ app.delete('/api/admin/leads/:id', adminLimit, requireAdmin, async (req, res) =>
     return removed ? res.json({ ok: true }) : res.status(404).json({ error: 'Demande introuvable.' });
   } catch (err) { console.error('Lead delete error:', err); return res.status(500).json({ error: 'Suppression impossible.' }); }
 });
+
+// ---------- Espace client ----------
+mountClientSpace(app, { DATA_DIR, PUBLIC_DIR, text, ai, takeAiCredit, requireAdmin, adminLimit, limiter });
 
 // ---------- Erreurs ----------
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Route introuvable.' }));
