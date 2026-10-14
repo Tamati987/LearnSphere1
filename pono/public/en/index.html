@@ -160,8 +160,9 @@
             <li>All your customer requests in one place</li>
             <li>One support session per month</li>
           </ul>
-          <a class="button button-quiet plan-button" href="#contact" data-plan="Forfait Démarrage" data-plan-label="Starter plan">Choose Starter <span class="arrow" aria-hidden="true">→</span></a>
-          <a class="button button-pay" href="{{PAY_STARTER}}" {{PAY_STARTER_HIDDEN}} target="_blank" rel="noopener"><span aria-hidden="true">🔒</span> Pay by card</a>
+          <a class="button button-quiet plan-button" href="#contact" data-plan="Forfait Démarrage" data-plan-label="Starter plan" {{PAY_STARTER_SHOWN}}>Choose Starter <span class="arrow" aria-hidden="true">→</span></a>
+          <a class="button button-pay" href="{{PAY_STARTER}}" {{PAY_STARTER_HIDDEN}} target="_blank" rel="noopener"><span aria-hidden="true">🔒</span> Choose &amp; pay <span class="arrow" aria-hidden="true">→</span></a>
+          <a class="plan-ask" href="#contact" data-plan="Forfait Démarrage" data-plan-label="Starter plan" {{PAY_STARTER_HIDDEN}}>Questions before paying?</a>
         </article>
         <article class="price-card featured">
           <span class="price-badge">Most popular</span>
@@ -174,8 +175,9 @@
             <li>Quote and message templates in your name</li>
             <li>Priority support</li>
           </ul>
-          <a class="button button-primary plan-button" href="#contact" data-plan="Forfait Pro" data-plan-label="Pro plan">Choose Pro <span class="arrow" aria-hidden="true">→</span></a>
-          <a class="button button-pay" href="{{PAY_PRO}}" {{PAY_PRO_HIDDEN}} target="_blank" rel="noopener"><span aria-hidden="true">🔒</span> Pay by card</a>
+          <a class="button button-primary plan-button" href="#contact" data-plan="Forfait Pro" data-plan-label="Pro plan" {{PAY_PRO_SHOWN}}>Choose Pro <span class="arrow" aria-hidden="true">→</span></a>
+          <a class="button button-pay" href="{{PAY_PRO}}" {{PAY_PRO_HIDDEN}} target="_blank" rel="noopener"><span aria-hidden="true">🔒</span> Choose &amp; pay <span class="arrow" aria-hidden="true">→</span></a>
+          <a class="plan-ask" href="#contact" data-plan="Forfait Pro" data-plan-label="Pro plan" {{PAY_PRO_HIDDEN}}>Questions before paying?</a>
         </article>
         <article class="price-card">
           <h3>Custom</h3>
@@ -186,12 +188,13 @@
             <li>Assistant configured for your trade</li>
             <li>Training for your team</li>
           </ul>
-          <a class="button button-quiet plan-button" href="#contact" data-plan="Forfait Sur mesure" data-plan-label="Custom plan">Request a quote <span class="arrow" aria-hidden="true">→</span></a>
-          <a class="button button-pay" href="{{PAY_CUSTOM}}" {{PAY_CUSTOM_HIDDEN}} target="_blank" rel="noopener"><span aria-hidden="true">🔒</span> Pay the deposit</a>
+          <a class="button button-quiet plan-button" href="#contact" data-plan="Forfait Sur mesure" data-plan-label="Custom plan" {{PAY_CUSTOM_SHOWN}}>Request a quote <span class="arrow" aria-hidden="true">→</span></a>
+          <a class="button button-pay" href="{{PAY_CUSTOM}}" {{PAY_CUSTOM_HIDDEN}} target="_blank" rel="noopener"><span aria-hidden="true">🔒</span> Pay the deposit <span class="arrow" aria-hidden="true">→</span></a>
+          <a class="plan-ask" href="#contact" data-plan="Forfait Sur mesure" data-plan-label="Custom plan" {{PAY_CUSTOM_HIDDEN}}>Questions before paying?</a>
         </article>
       </div>
       <p class="pay-note" {{PAY_NOTE_HIDDEN}}><span class="card-brands" aria-hidden="true"><b>VISA</b><b>Mastercard</b></span> Secure payment on our payment provider's page. We never see your card details.</p>
-      <p class="small-note">First call free. Your plan starts only after your written approval. Based in French Polynesia, we work remotely with clients anywhere.</p>
+      <p class="small-note">First call free. After your payment, we contact you to set up your assistant. Based in French Polynesia, we work remotely with clients anywhere.</p>
     </section>
 
     <section class="section-wrap section faq" id="faq">

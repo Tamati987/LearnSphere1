@@ -26,7 +26,7 @@ mainNav?.querySelectorAll("a").forEach(link => link.addEventListener("click", ()
 }));
 
 // ---------- Choix d'un forfait : pré-remplit le formulaire ----------
-document.querySelectorAll(".plan-button").forEach(button => button.addEventListener("click", () => {
+document.querySelectorAll(".plan-button, .plan-ask").forEach(button => button.addEventListener("click", () => {
   const form = $("#contactForm");
   if (!form) return;
   form.elements.subject.value = button.dataset.plan;

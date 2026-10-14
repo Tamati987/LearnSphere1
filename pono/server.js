@@ -183,7 +183,7 @@ async function renderPage(file) {
       CONTACT_HREF: cfg.email ? `mailto:${cfg.email}` : (en ? '/en#contact' : '/#contact'),
       CONTACT_LABEL: cfg.email || (en ? 'the contact form' : 'le formulaire de contact'),
       EMAIL_HIDDEN: cfg.email ? '' : 'hidden',
-      ...Object.fromEntries(Object.entries(PAY[en ? 'en' : 'fr']).flatMap(([k, url]) => [[`PAY_${k}`, url || '#'], [`PAY_${k}_HIDDEN`, url ? '' : 'hidden']])),
+      ...Object.fromEntries(Object.entries(PAY[en ? 'en' : 'fr']).flatMap(([k, url]) => [[`PAY_${k}`, url || '#'], [`PAY_${k}_HIDDEN`, url ? '' : 'hidden'], [`PAY_${k}_SHOWN`, url ? 'hidden' : '']])),
       PAY_NOTE_HIDDEN: Object.values(PAY[en ? 'en' : 'fr']).some(Boolean) ? '' : 'hidden',
       RETENTION_MONTHS: Math.round(RETENTION_DAYS / 30.4),
       OG_IMAGE: cfg.siteUrl ? `${cfg.siteUrl}/og-image.png` : '/og-image.png'
