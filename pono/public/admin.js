@@ -6,7 +6,20 @@ const xpf = n => `${Math.round(n || 0).toLocaleString("fr-FR")} XPF`;
 const PLANS = ["Démarrage", "Pro", "Sur mesure"];
 const planFromSubject = s => (s === "Forfait Pro" ? "Pro" : s === "Forfait Sur mesure" ? "Sur mesure" : "Démarrage");
 let lastLink = null; // { clientId, url } : lien affiché juste après sa création
-try { token = sessionStorage.getItem("pono-admin") || ""; } catch {}
+// Connexion : lien personnel /admin#cle=… (une seule fois), puis mémorisé sur cet appareil
+const fromLink = new URLSearchParams(location.hash.slice(1)).get("cle");
+if (fromLink) { token = fromLink; history.replaceState(null, "", location.pathname); }
+else { try { token = localStorage.getItem("pono-admin") || sessionStorage.getItem("pono-admin") || ""; } catch {} }
+const loginForm = document.getElementById("login");
+function setLoggedIn(on) {
+  loginForm.hidden = on;
+  document.getElementById("logout").hidden = !on;
+  document.getElementById("guide").hidden = !on;
+}
+document.getElementById("logout").addEventListener("click", () => {
+  try { localStorage.removeItem("pono-admin"); sessionStorage.removeItem("pono-admin"); } catch {}
+  token = ""; setLoggedIn(false); out.replaceChildren();
+});
 
 function el(tag, props = {}, children = []) {
   const node = Object.assign(document.createElement(tag), props);
@@ -25,7 +38,8 @@ async function load() {
   out.replaceChildren(el("p", { className: "empty", textContent: "Chargement…" }));
   try {
     const [{ leads, storage }, { clients }] = await Promise.all([api("/api/admin/leads"), api("/api/admin/clients")]);
-    try { sessionStorage.setItem("pono-admin", token); } catch {}
+    try { localStorage.setItem("pono-admin", token); } catch {}
+    setLoggedIn(true);
     const blocks = [];
     if (storage !== "persistent") blocks.push(el("div", { className: "warn", textContent: "⚠ Stockage non persistant : ces demandes seront effacées au prochain déploiement. Ajoutez un volume Railway." }));
     const download = el("button", { className: "button button-quiet", type: "button", textContent: "Télécharger (CSV)" });
@@ -34,12 +48,13 @@ async function load() {
     refresh.addEventListener("click", load);
     blocks.push(summary(leads));
     blocks.push(clientSection(clients));
-    blocks.push(el("h2", { className: "section-title", textContent: "Demandes de contact" }));
+    blocks.push(el("h2", { className: "section-title", textContent: "Les personnes qui vous ont écrit" }));
     blocks.push(el("div", { className: "bar" }, [el("span", { textContent: `${leads.length} demande${leads.length > 1 ? "s" : ""}` }), refresh, download]));
     if (!leads.length) blocks.push(el("p", { className: "empty", textContent: "Aucune demande pour le moment." }));
     for (const lead of leads) blocks.push(card(lead, clients));
     out.replaceChildren(...blocks);
   } catch (error) {
+    if (/Jeton/.test(error.message)) { try { localStorage.removeItem("pono-admin"); } catch {} setLoggedIn(false); }
     out.replaceChildren(el("p", { className: "err", textContent: error.message }));
   }
 }
@@ -51,8 +66,8 @@ function summary(leads) {
   const tile = (label, value, hint) => el("div", { className: "tile" }, [el("small", { textContent: label }), el("strong", { textContent: value }), el("span", { textContent: hint })]);
   const clients = by("client"), quotes = by("devis envoyé"), fresh = by("nouveau");
   return el("div", { className: "tiles" }, [
-    tile("Signé", xpf(sum(clients)), `${clients.length} client${clients.length > 1 ? "s" : ""}`),
-    tile("En négociation", xpf(sum(quotes)), `${quotes.length} devis envoyé${quotes.length > 1 ? "s" : ""}`),
+    tile("Argent gagné", xpf(sum(clients)), `${clients.length} client${clients.length > 1 ? "s" : ""}`),
+    tile("Bientôt signé", xpf(sum(quotes)), `${quotes.length} devis envoyé${quotes.length > 1 ? "s" : ""}`),
     tile("À rappeler", String(fresh.length), fresh.length ? "Répondez vite : c'est là que se gagnent les clients" : "Tout est traité")
   ]);
 }
@@ -94,7 +109,7 @@ function clientSection(clients) {
   form.addEventListener("submit", e => { e.preventDefault(); createClient({ name: name.value, email: email.value, plan: plan.value }); });
   const list = clients.length ? clients.map(clientCard) : [el("p", { className: "empty", textContent: "Aucun espace client. Créez-en un après chaque paiement Pro ou Sur mesure." })];
   return el("section", { className: "clients" }, [
-    el("h2", { className: "section-title", textContent: `Espaces clients (${clients.length})` }), form, ...list
+    el("h2", { className: "section-title", textContent: `Mes clients payants (${clients.length})` }), el("p", { className: "hint-line", textContent: "Un client a payé ? Cliquez sur « Créer son espace client » sur sa demande plus bas, ou tapez son nom ici." }), form, ...list
   ]);
 }
 
