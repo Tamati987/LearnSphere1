@@ -90,6 +90,13 @@
             android:text="Autoriser Jarvis à ouvrir des applis"
             android:visibility="gone" />
 
+        <Button
+            android:id="@+id/battery"
+            style="@style/Secondary"
+            android:layout_marginTop="8dp"
+            android:text="Autoriser l'écoute écran verrouillé"
+            android:visibility="gone" />
+
         <ScrollView
             android:id="@+id/scroll"
             android:layout_width="match_parent"

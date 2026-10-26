@@ -20,6 +20,9 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Écoute écran éteint : processeur gardé éveillé et exemption d'économie de batterie. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Permet au service d'ouvrir des applis quand l'écran de Jarvis est fermé. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 

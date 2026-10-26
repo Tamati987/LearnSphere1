@@ -64,6 +64,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     private lateinit var brain: JarvisBrain
     private lateinit var actions: PhoneActions
     private var smsReceiverRegistered = false
+    private var wakeLock: android.os.PowerManager.WakeLock? = null
 
     /** Nouveaux SMS : Jarvis les annonce à voix haute. */
     private val smsReceiver = object : BroadcastReceiver() {
@@ -110,6 +111,10 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         voice = prefs.elevenLabsKey.takeIf { it.isNotBlank() }?.let { ElevenLabsVoice(this, it) }
         tts = TextToSpeech(this, this)
         startInForeground()
+        // Garde le processeur éveillé écran éteint : sinon le micro s'arrête et « Hey Jarvis » n'est plus entendu.
+        wakeLock = getSystemService(android.os.PowerManager::class.java)
+            .newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "jarvis:listen")
+            .apply { setReferenceCounted(false); acquire() }
         startWakeWord()
     }
 
@@ -124,6 +129,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     }
 
     override fun onDestroy() {
+        wakeLock?.release()
         wakeWord?.release()
         if (smsReceiverRegistered) unregisterReceiver(smsReceiver)
         recognizer?.destroy()
