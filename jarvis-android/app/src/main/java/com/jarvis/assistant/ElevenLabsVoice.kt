@@ -46,7 +46,8 @@ class ElevenLabsVoice(private val context: Context, private val apiKey: String) 
                 val error = connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
                 throw IllegalStateException("ElevenLabs a répondu $code ${error.take(200)}")
             }
-            val file = File(context.cacheDir, "jarvis-voice.mp3")
+            // Un fichier par phrase : la suivante se prépare pendant que celle-ci est lue.
+            val file = File.createTempFile("jarvis-voice", ".mp3", context.cacheDir)
             connection.inputStream.use { input -> file.outputStream().use { input.copyTo(it) } }
             return file
         } finally {
@@ -65,8 +66,8 @@ class ElevenLabsVoice(private val context: Context, private val apiKey: String) 
                     .build()
             )
             setDataSource(file.absolutePath)
-            setOnCompletionListener { stop(); onDone() }
-            setOnErrorListener { _, _, _ -> stop(); onDone(); true }
+            setOnCompletionListener { stop(); file.delete(); onDone() }
+            setOnErrorListener { _, _, _ -> stop(); file.delete(); onDone(); true }
             prepare()
             start()
         }

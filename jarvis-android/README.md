@@ -48,7 +48,9 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 ## Coûts et confidentialité
 
 - « Hey Jarvis » est détecté sur le téléphone : rien n'est envoyé tant que vous ne l'avez pas dit.
-- Ce que vous dites ensuite est transcrit par la reconnaissance vocale Google, puis envoyé à Claude (modèle `claude-opus-5-5`, effort bas pour aller vite).
+- Ce que vous dites ensuite est transcrit par la reconnaissance vocale Google, puis envoyé à Claude (modèle `claude-opus-5-5`, effort bas, mode rapide quand le compte y a accès).
+- Pour répondre vite, Claude répond en flux : Jarvis commence à parler dès la première phrase écrite, et la voix de chaque phrase est générée pendant que Claude écrit la suite. La conversation est mise en cache entre deux questions.
+- Le mode rapide de Claude coûte environ deux fois plus cher par mot que le mode normal. S'il est refusé, Jarvis repasse tout seul en mode normal.
 - La voix ElevenLabs consomme des caractères : l'offre gratuite en donne environ 10 000 par mois, soit une centaine de réponses.
 - Comptez quelques centimes par jour en usage normal. Les recherches web sont facturées en plus par Anthropic.
 - Quand Jarvis lit vos SMS, leur contenu est envoyé à Claude pour qu'il vous les résume ou y réponde. Les SMS annoncés automatiquement sont envoyés à ElevenLabs pour être lus à voix haute, et gardés dans la conversation avec Claude pour que vous puissiez y répondre.

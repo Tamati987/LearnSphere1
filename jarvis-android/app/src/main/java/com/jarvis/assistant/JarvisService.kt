@@ -79,8 +79,17 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     // Certains téléphones refusent le générateur de bips : Jarvis s'en passe alors.
     private val beep = runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, 60) }.getOrNull()
     private var followUp = false
-    private var ttsReady = false
-    private var pendingSpeech: Pair<String, File?>? = null
+
+    // Lecture phrase par phrase : la voix de chaque phrase est générée dans l'ordre
+    // pendant que Claude écrit la suite, puis jouée dès qu'elle est prête.
+    private val synth = Executors.newSingleThreadExecutor()
+    private val playQueue = ArrayDeque<Pair<String, File?>>()
+    private var playing = false
+    private var replyDone = false
+    @Volatile private var speechGeneration = 0
+    private var ttsState = TTS_PENDING
+    private var utterance = 0
+    private var currentUtterance: String? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -122,27 +131,27 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         voice?.stop()
         beep?.release()
         worker.shutdownNow()
+        synth.shutdownNow()
         JarvisBus.state(JarvisBus.State.OFF)
         super.onDestroy()
     }
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            ttsReady = true
+            ttsState = TTS_READY
             tts.language = Locale.FRANCE
             tts.setPitch(0.9f)
             tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) {}
-                override fun onDone(utteranceId: String?) { main.post { afterSpeaking() } }
+                override fun onDone(utteranceId: String?) { main.post { onUtteranceDone(utteranceId) } }
                 @Deprecated("Deprecated in Java")
-                override fun onError(utteranceId: String?) { main.post { afterSpeaking() } }
+                override fun onError(utteranceId: String?) { main.post { onUtteranceDone(utteranceId) } }
             })
-            // Une phrase arrivée avant que la voix Android soit prête.
-            pendingSpeech?.let { (text, audio) -> pendingSpeech = null; speak(text, audio) }
         } else {
-            // Pas de voix Android : on affiche la phrase et on reprend l'écoute.
-            pendingSpeech?.let { (text, _) -> pendingSpeech = null; JarvisBus.line(false, text); resumeWakeWord() }
+            ttsState = TTS_FAILED
         }
+        // Des phrases attendaient peut-être que la voix Android soit prête.
+        main.post { playNext() }
     }
 
     // --- Mot d'activation -------------------------------------------------
@@ -167,12 +176,11 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
 
     private fun onWakeWord() {
         if (JarvisBus.state == JarvisBus.State.LISTENING || JarvisBus.state == JarvisBus.State.THINKING) return
-        tts.stop()
-        voice?.stop()
+        stopSpeech()
         pauseWakeWord()
-        beep?.startTone(ToneGenerator.TONE_PROP_ACK, 150)
+        beep?.startTone(ToneGenerator.TONE_PROP_ACK, 120)
         // Laisse le bip finir avant d'ouvrir le micro.
-        main.postDelayed({ listen() }, 250)
+        main.postDelayed({ listen() }, 150)
     }
 
     // --- Reconnaissance vocale -------------------------------------------
@@ -214,15 +222,13 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         pauseWakeWord()
         JarvisBus.line(true, text)
         JarvisBus.state(JarvisBus.State.THINKING)
+        val gen = startReply()
         worker.execute {
-            val answer = brain.ask(text)
-            // Voix ElevenLabs si une clé est renseignée, sinon voix Android.
-            val audio = voice?.let { v ->
-                runCatching { v.synthesize(answer) }
-                    .onFailure { JarvisBus.line(false, "Voix ElevenLabs indisponible (${it.message}), voix Android utilisée.") }
-                    .getOrNull()
-            }
-            main.post { speak(answer, audio) }
+            var queued = 0
+            // Chaque phrase part vers la voix dès que Claude l'a écrite.
+            val answer = brain.ask(text) { sentence -> queued++; queueSentence(gen, sentence) }
+            if (queued == 0) queueSentence(gen, answer)
+            finishReply(gen, answer)
         }
     }
 
@@ -238,12 +244,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
                     JarvisBus.line(false, spoken)
                     return@post
                 }
-                pauseWakeWord()
-                JarvisBus.state(JarvisBus.State.THINKING)
-                worker.execute {
-                    val audio = voice?.let { v -> runCatching { v.synthesize(spoken) }.getOrNull() }
-                    main.post { speak(spoken, audio) }
-                }
+                say(spoken)
             }
         }
     }
@@ -251,41 +252,111 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     /** Message de bienvenue après la séquence de démarrage. */
     private fun greet() {
         if (JarvisBus.state == JarvisBus.State.THINKING || JarvisBus.state == JarvisBus.State.LISTENING) return
-        pauseWakeWord()
         val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
         val hello = when (hour) {
             in 5..11 -> "Bonjour, Monsieur."
             in 12..17 -> "Bon après-midi, Monsieur."
             else -> "Bonsoir, Monsieur."
         }
-        val text = "$hello Initialisation terminée. Tous les systèmes sont opérationnels. Je suis à votre service."
+        say("$hello Initialisation terminée. Tous les systèmes sont opérationnels. Je suis à votre service.")
+    }
+
+    /** Dit un texte prêt à l'avance, découpé en phrases pour démarrer plus vite. */
+    private fun say(text: String) {
+        pauseWakeWord()
         JarvisBus.state(JarvisBus.State.THINKING)
-        worker.execute {
-            val audio = voice?.let { v -> runCatching { v.synthesize(text) }.getOrNull() }
-            main.post { speak(text, audio) }
+        val gen = startReply()
+        SentenceSplitter { queueSentence(gen, it) }.apply { add(text); flush() }
+        finishReply(gen, text)
+    }
+
+    // --- Lecture phrase par phrase ----------------------------------------
+
+    /** Coupe ce qui se dit et prépare une nouvelle réponse. Renvoie son numéro. */
+    private fun startReply(): Int {
+        stopSpeech()
+        return speechGeneration
+    }
+
+    private fun stopSpeech() {
+        speechGeneration++
+        playQueue.forEach { it.second?.delete() }
+        playQueue.clear()
+        playing = false
+        replyDone = false
+        currentUtterance = null
+        tts.stop()
+        voice?.stop()
+    }
+
+    /** Génère la voix d'une phrase (dans l'ordre d'arrivée) puis la met en file de lecture. */
+    private fun queueSentence(gen: Int, sentence: String) {
+        synth.execute {
+            if (gen != speechGeneration) return@execute
+            val audio = voice?.let { v ->
+                runCatching { v.synthesize(sentence) }
+                    .onFailure { JarvisBus.line(false, "Voix ElevenLabs indisponible (${it.message}), voix Android utilisée.") }
+                    .getOrNull()
+            }
+            main.post {
+                if (gen != speechGeneration) { audio?.delete(); return@post }
+                playQueue.addLast(sentence to audio)
+                playNext()
+            }
         }
     }
 
-    private fun speak(answer: String, audio: File?) {
-        if (audio == null && !ttsReady) { pendingSpeech = answer to audio; return }
-        JarvisBus.line(false, answer)
+    /** Signale la fin de la réponse, une fois toutes ses phrases passées en file. */
+    private fun finishReply(gen: Int, answer: String) {
+        synth.execute {
+            main.post {
+                if (gen != speechGeneration) return@post
+                JarvisBus.line(false, answer)
+                // Une question appelle une réponse : on rouvre le micro sans attendre « Hey Jarvis ».
+                followUp = answer.trimEnd().endsWith("?")
+                replyDone = true
+                playNext()
+            }
+        }
+    }
+
+    private fun playNext() {
+        if (playing) return
+        val next = playQueue.removeFirstOrNull()
+        if (next == null) {
+            if (replyDone) { replyDone = false; afterSpeaking() }
+            return
+        }
+        val (text, audio) = next
+        // Voix Android pas encore prête : on attend son initialisation.
+        if (audio == null && ttsState == TTS_PENDING) { playQueue.addFirst(next); return }
+        playing = true
         JarvisBus.state(JarvisBus.State.SPEAKING)
-        // Une question appelle une réponse : on rouvre le micro sans attendre « Hey Jarvis ».
-        followUp = answer.trimEnd().endsWith("?")
         val v = voice
         if (audio != null && v != null) {
             try {
-                v.play(audio) { afterSpeaking() }
+                v.play(audio) { onUtteranceDone() }
                 return
             } catch (e: Exception) {
-                JarvisBus.line(false, "Lecture de la voix impossible (${e.message}), voix Android utilisée.")
+                audio.delete()
             }
         }
-        tts.speak(answer, TextToSpeech.QUEUE_FLUSH, null, "jarvis")
+        if (ttsState == TTS_READY) {
+            currentUtterance = "jarvis-${utterance++}"
+            tts.speak(text, TextToSpeech.QUEUE_ADD, null, currentUtterance)
+        } else {
+            onUtteranceDone()
+        }
+    }
+
+    /** Fin d'une phrase ; une fin signalée pour une phrase déjà coupée est ignorée. */
+    private fun onUtteranceDone(utteranceId: String? = null) {
+        if (utteranceId != null && utteranceId != currentUtterance) return
+        playing = false
+        playNext()
     }
 
     private fun afterSpeaking() {
-        if (JarvisBus.state != JarvisBus.State.SPEAKING) return
         if (followUp) { followUp = false; listen() } else resumeWakeWord()
     }
 
@@ -319,6 +390,9 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         const val ACTION_TEXT = "com.jarvis.assistant.TEXT"
         const val ACTION_RESET = "com.jarvis.assistant.RESET"
         const val ACTION_GREET = "com.jarvis.assistant.GREET"
+        private const val TTS_PENDING = 0
+        private const val TTS_READY = 1
+        private const val TTS_FAILED = 2
         const val EXTRA_TEXT = "text"
 
         fun start(context: Context, action: String? = null, text: String? = null) {

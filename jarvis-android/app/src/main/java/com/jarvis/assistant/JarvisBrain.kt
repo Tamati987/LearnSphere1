@@ -3,11 +3,14 @@ package com.jarvis.assistant
 import com.anthropic.client.AnthropicClient
 import com.anthropic.client.okhttp.AnthropicOkHttpClient
 import com.anthropic.core.JsonValue
+import com.anthropic.helpers.MessageAccumulator
 import com.anthropic.errors.AnthropicServiceException
+import com.anthropic.errors.BadRequestException
 import com.anthropic.errors.RateLimitException
 import com.anthropic.errors.UnauthorizedException
 import com.anthropic.models.messages.CacheControlEphemeral
 import com.anthropic.models.messages.ContentBlockParam
+import com.anthropic.models.messages.Message
 import com.anthropic.models.messages.MessageCreateParams
 import com.anthropic.models.messages.MessageParam
 import com.anthropic.models.messages.OutputConfig
@@ -19,6 +22,45 @@ import com.anthropic.models.messages.WebSearchTool20260209
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+/** Découpe le texte qui arrive en flux en phrases complètes, prêtes à être dites. */
+class SentenceSplitter(private val onSentence: (String) -> Unit) {
+    private val buffer = StringBuilder()
+    var started = false
+        private set
+
+    fun add(text: String) {
+        started = true
+        buffer.append(text)
+        while (true) {
+            val end = sentenceEnd() ?: break
+            emit(buffer.substring(0, end))
+            buffer.delete(0, end)
+        }
+    }
+
+    fun flush() {
+        emit(buffer.toString())
+        buffer.setLength(0)
+    }
+
+    private fun emit(text: String) {
+        val sentence = text.trim()
+        if (sentence.isNotEmpty()) onSentence(sentence)
+    }
+
+    // Fin de phrase : . ! ? ou … suivis d'un espace, en évitant les nombres comme « 3.5 ».
+    private fun sentenceEnd(): Int? {
+        for (i in 0 until buffer.length - 1) {
+            val c = buffer[i]
+            if ((c == '.' || c == '!' || c == '?' || c == '…') && buffer[i + 1].isWhitespace()) {
+                // Évite de couper après une abréviation très courte (« M. », « etc. » restent rares à l'oral).
+                if (i >= 12) return i + 1
+            }
+        }
+        return null
+    }
+}
 
 /** Ce que Jarvis peut faire sur le téléphone. Implémenté par [PhoneActions]. */
 interface ToolExecutor {
@@ -38,10 +80,16 @@ class JarvisBrain(apiKey: String, private val executor: ToolExecutor) {
 
     private val history = mutableListOf<MessageParam>()
     private var lastExchange = 0L
+    // Mode rapide de Claude ; coupé pour la session si le compte n'y a pas accès.
+    @Volatile private var fastMode = true
 
-    /** Envoie ce que l'utilisateur a dit et renvoie la réponse à prononcer. */
+    /**
+     * Envoie ce que l'utilisateur a dit et renvoie la réponse complète.
+     * La réponse arrive en flux : chaque phrase terminée est passée à [onSentence]
+     * dès qu'elle est écrite, pour que Jarvis commence à parler sans attendre la fin.
+     */
     @Synchronized
-    fun ask(userText: String): String {
+    fun ask(userText: String, onSentence: (String) -> Unit = {}): String {
         // Nouvelle conversation après 10 minutes de silence : l'historique
         // reste en ajout seul pendant une conversation, jamais réécrit.
         val now = System.currentTimeMillis()
@@ -52,8 +100,12 @@ class JarvisBrain(apiKey: String, private val executor: ToolExecutor) {
         history += MessageParam.ofUser("[$stamp] $userText")
 
         try {
+            val spoken = StringBuilder()
             repeat(MAX_STEPS) {
-                val response = client.messages().create(buildParams())
+                val response = stream(SentenceSplitter { sentence ->
+                    spoken.append(sentence).append(' ')
+                    onSentence(sentence)
+                })
                 history += response.toParam()
 
                 when (response.stopReason().orElse(null)) {
@@ -78,10 +130,7 @@ class JarvisBrain(apiKey: String, private val executor: ToolExecutor) {
                     StopReason.PAUSE_TURN -> Unit
                     StopReason.REFUSAL -> return "Je crains de ne pas pouvoir vous aider sur ce point, Monsieur."
                     else -> {
-                        val text = response.content()
-                            .mapNotNull { it.text().orElse(null)?.text() }
-                            .joinToString(" ")
-                            .trim()
+                        val text = spoken.toString().trim()
                         return text.ifEmpty { "C'est fait, Monsieur." }
                     }
                 }
@@ -104,6 +153,33 @@ class JarvisBrain(apiKey: String, private val executor: ToolExecutor) {
 
     fun reset() = synchronized(this) { history.clear() }
 
+    /** Un appel à Claude en flux ; repasse en mode normal si le mode rapide est refusé. */
+    private fun stream(splitter: SentenceSplitter): Message {
+        try {
+            return streamOnce(splitter, fastMode)
+        } catch (e: Exception) {
+            val fastRefused = fastMode && !splitter.started &&
+                (e is RateLimitException || e is BadRequestException)
+            if (!fastRefused) throw e
+            // Mode rapide indisponible (compte, quota dédié) : on continue en mode normal.
+            if (e is BadRequestException) fastMode = false
+            return streamOnce(splitter, fast = false)
+        }
+    }
+
+    private fun streamOnce(splitter: SentenceSplitter, fast: Boolean): Message {
+        val accumulator = MessageAccumulator.create()
+        client.messages().createStreaming(buildParams(fast)).use { response ->
+            response.stream().forEach { event ->
+                accumulator.accumulate(event)
+                event.contentBlockDelta().flatMap { it.delta().text() }.ifPresent { splitter.add(it.text()) }
+                if (event.contentBlockStop().isPresent) splitter.flush()
+            }
+        }
+        splitter.flush()
+        return accumulator.message()
+    }
+
     /**
      * Garde la trace d'un événement que Jarvis a annoncé de lui-même (un SMS reçu),
      * pour que l'utilisateur puisse enchaîner : « Réponds-lui que j'arrive. »
@@ -118,7 +194,8 @@ class JarvisBrain(apiKey: String, private val executor: ToolExecutor) {
         history += MessageParam.ofAssistant(spoken)
     }
 
-    private fun buildParams(): MessageCreateParams {
+    private fun buildParams(fast: Boolean): MessageCreateParams {
+        val betas = mutableListOf("server-side-fallback-2026-07-01")
         val builder = MessageCreateParams.builder()
             .model(MODEL)
             .maxTokens(4096L)
@@ -132,11 +209,18 @@ class JarvisBrain(apiKey: String, private val executor: ToolExecutor) {
             )
             // Effort bas : réponses rapides, adaptées à la voix.
             .outputConfig(OutputConfig.builder().effort(OutputConfig.Effort.LOW).build())
+            // Met en cache la conversation déjà envoyée : la réponse démarre plus vite.
+            .cacheControl(CacheControlEphemeral.builder().build())
             // Si Claude Opus 5.5 refuse une demande, le serveur la repasse à un autre modèle.
-            .putAdditionalHeader("anthropic-beta", "server-side-fallback-2026-07-01")
             .putAdditionalBodyProperty("fallbacks", JsonValue.from("default"))
             .addTool(WebSearchTool20260209.builder().maxUses(3L).build())
             .messages(history)
+        if (fast) {
+            // Mode rapide : le même modèle écrit jusqu'à 2,5 fois plus vite.
+            builder.speed(MessageCreateParams.Speed.FAST)
+            betas += "fast-mode-2026-02-01"
+        }
+        builder.putAdditionalHeader("anthropic-beta", betas.joinToString(","))
         PHONE_TOOLS.forEach { builder.addTool(it) }
         return builder.build()
     }
