@@ -1,0 +1,121 @@
+package com.jarvis.assistant
+
+import android.app.Notification
+import android.app.RemoteInput
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.service.notification.NotificationListenerService
+import android.service.notification.StatusBarNotification
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import java.text.Normalizer
+
+/** Un message reçu dans WhatsApp ou Messenger, lu dans sa notification. */
+data class AppMessage(val app: String, val conversation: String, val sender: String, val text: String, val time: Long)
+
+/**
+ * Lit les notifications de WhatsApp et Messenger (avec l'accès aux notifications
+ * accordé par l'utilisateur) : garde les derniers messages, les fait annoncer par
+ * Jarvis et retient le bouton « Répondre » de chaque conversation.
+ */
+class MessageListener : NotificationListenerService() {
+
+    override fun onNotificationPosted(sbn: StatusBarNotification) {
+        val app = APPS[sbn.packageName] ?: return
+        val notification = sbn.notification
+        // Les notifications de résumé (« 5 messages dans 3 discussions ») ne contiennent pas de message.
+        if (notification.flags and Notification.FLAG_GROUP_SUMMARY != 0) return
+
+        val extras = notification.extras
+        val style = NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(notification)
+        val conversation = (style?.conversationTitle ?: extras.getCharSequence(Notification.EXTRA_TITLE))
+            ?.toString()?.trim().orEmpty()
+        if (conversation.isEmpty()) return
+
+        val incoming = style?.messages?.map {
+            AppMessage(app, conversation, it.person?.name?.toString() ?: conversation, it.text?.toString().orEmpty(), it.timestamp)
+        } ?: listOf(
+            AppMessage(
+                app, conversation, conversation,
+                extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty(), sbn.postTime,
+            )
+        )
+
+        replyAction(notification)?.let { replies[key(app, conversation)] = conversation to it }
+
+        // Une même notification est mise à jour à chaque message : on ne garde que les nouveaux.
+        val seen = lastSeen[key(app, conversation)] ?: 0L
+        val fresh = incoming.filter { it.time > seen && it.text.isNotBlank() }
+        if (fresh.isEmpty()) return
+        lastSeen[key(app, conversation)] = fresh.maxOf { it.time }
+        synchronized(recent) {
+            recent.addAll(fresh)
+            while (recent.size > MAX_KEPT) recent.removeAt(0)
+        }
+        // Au premier passage après le démarrage, on ne réannonce pas les anciens messages.
+        if (seen == 0L && System.currentTimeMillis() - fresh.last().time > 60_000) return
+        val announced = fresh.takeLast(3)
+        JarvisService.instance?.announceMessage(
+            app, announced.last().sender, conversation, announced.joinToString(" ") { it.text },
+        )
+    }
+
+    private fun replyAction(notification: Notification): Notification.Action? =
+        notification.actions?.firstOrNull { action ->
+            action.remoteInputs?.any { it.allowFreeFormInput } == true
+        }
+
+    companion object {
+        private val APPS = mapOf(
+            "com.whatsapp" to "WhatsApp",
+            "com.whatsapp.w4b" to "WhatsApp Business",
+            "com.facebook.orca" to "Messenger",
+            "com.facebook.mlite" to "Messenger Lite",
+        )
+        private const val MAX_KEPT = 100
+        private val recent = mutableListOf<AppMessage>()
+        private val lastSeen = mutableMapOf<String, Long>()
+        private val replies = mutableMapOf<String, Pair<String, Notification.Action>>()
+
+        private fun key(app: String, conversation: String) = "$app|${normalize(conversation)}"
+
+        fun isEnabled(context: Context) =
+            NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
+
+        /** Derniers messages reçus, du plus récent au plus ancien, filtrés par appli et par contact. */
+        fun messages(app: String?, contact: String?, limit: Int): List<AppMessage> {
+            val wantedApp = app?.let(::normalize)?.takeIf { it.isNotEmpty() }
+            val wantedContact = contact?.let(::normalize)?.takeIf { it.isNotEmpty() }
+            return synchronized(recent) { recent.toList() }.asReversed().filter { m ->
+                (wantedApp == null || normalize(m.app).contains(wantedApp)) &&
+                    (wantedContact == null || normalize(m.conversation).contains(wantedContact) ||
+                        normalize(m.sender).contains(wantedContact))
+            }.take(limit)
+        }
+
+        /**
+         * Répond dans la conversation via le bouton « Répondre » de sa notification.
+         * Renvoie le nom de la conversation, ou null si aucune notification avec réponse n'est disponible.
+         */
+        fun reply(context: Context, app: String?, contact: String, text: String): String? {
+            val wanted = normalize(contact)
+            val wantedApp = app?.let(::normalize)
+            val entry = replies.entries.lastOrNull { (k, _) ->
+                val (a, c) = k.split("|", limit = 2)
+                c.contains(wanted) && (wantedApp.isNullOrEmpty() || normalize(a).contains(wantedApp))
+            } ?: return null
+            val (name, action) = entry.value
+            val inputs = action.remoteInputs ?: return null
+            val results = Bundle().apply { inputs.forEach { putCharSequence(it.resultKey, text) } }
+            val intent = Intent()
+            RemoteInput.addResultsToIntent(inputs, intent, results)
+            action.actionIntent.send(context, 0, intent)
+            return name
+        }
+
+        private fun normalize(s: String) = Normalizer.normalize(s.lowercase(), Normalizer.Form.NFD)
+            .replace(Regex("\\p{M}"), "")
+            .replace(Regex("[^a-z0-9]"), "")
+    }
+}

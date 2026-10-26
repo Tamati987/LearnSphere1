@@ -67,6 +67,8 @@ class PhoneActions(private val context: Context) : ToolExecutor {
             input.str("titre"), input.str("date"), input.optStr("heure"),
             input.int("duree_minutes"), input.optStr("lieu"),
         )
+        "lire_messages_applis" -> readAppMessages(input.optStr("appli"), input.optStr("contact"), input.int("nombre"))
+        "repondre_message_appli" -> replyAppMessage(input.optStr("appli"), input.str("contact"), input.str("message"))
         "lire_sms" -> readSms(input.optStr("contact"), input.int("nombre"), input["non_lus"] == true)
         "etat_telephone" -> status()
         else -> "Échec : outil inconnu « $name »."
@@ -423,6 +425,27 @@ class PhoneActions(private val context: Context) : ToolExecutor {
             else -> "connecté"
         }
         return "Batterie à $level %${if (charging) ", en charge" else ""}. Réseau : $network."
+    }
+
+    private fun readAppMessages(app: String?, contact: String?, count: Int): String {
+        if (!MessageListener.isEnabled(context)) {
+            return "Échec : l'accès aux notifications n'est pas accordé ; l'utilisateur doit toucher « Autoriser la lecture de WhatsApp et Messenger » dans l'appli Jarvis."
+        }
+        val format = SimpleDateFormat("EEEE d MMMM 'à' HH:mm", Locale.FRANCE)
+        val messages = MessageListener.messages(app, contact, if (count in 1..30) count else 10)
+        if (messages.isEmpty()) {
+            return "Aucun message reçu correspondant depuis que Jarvis a l'accès aux notifications (l'historique plus ancien n'est pas accessible)."
+        }
+        return messages.joinToString("\n") { m ->
+            val where = if (m.conversation != m.sender) " dans « ${m.conversation} »" else ""
+            "${m.app}, de ${m.sender}$where, ${format.format(Date(m.time))} : ${m.text.take(600)}"
+        }
+    }
+
+    private fun replyAppMessage(app: String?, contact: String, text: String): String {
+        val name = runCatching { MessageListener.reply(context, app, contact, text) }.getOrNull()
+            ?: return "Échec : pas de notification récente de « $contact » avec un bouton Répondre ; il faut ouvrir l'appli pour répondre."
+        return "Réponse envoyée à $name."
     }
 
     private fun readSms(contact: String?, count: Int, unreadOnly: Boolean): String {

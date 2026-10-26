@@ -10,7 +10,8 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
   - appeler un contact ou un numéro ;
   - envoyer un SMS, après vous l'avoir relu et avoir eu votre « oui » ;
   - lire vos SMS, ceux d'un contact précis ou seulement les non lus ;
-  - annoncer à voix haute les nouveaux SMS dès qu'ils arrivent, puis proposer d'y répondre (désactivable dans l'écran des clés) ;
+  - lire les messages WhatsApp et Messenger reçus et y répondre, grâce à leurs notifications (seulement les messages arrivés depuis que Jarvis a l'accès ; l'historique plus ancien reste inaccessible) ;
+  - annoncer à voix haute les nouveaux SMS, messages WhatsApp et Messenger dès qu'ils arrivent, puis proposer d'y répondre (désactivable dans l'écran des clés) ;
   - vous réveiller ou vous rappeler un moment de la journée lui-même : à l'heure dite, l'écran s'allume même verrouillé, un carillon sonne et Jarvis dit sa phrase de sa voix, avec « Arrêter » ou « Encore 10 min ». Les réveils peuvent se répéter certains jours. Deux sont installés au premier lancement :
     - 6 h, du lundi au vendredi : « Bonjour, Monsieur. Il est six heures. C'est l'heure de vous préparer pour le travail. Je vous souhaite une excellente journée. » Puis le programme du jour lu dans l'agenda, par exemple « Au programme aujourd'hui : réunion à 9 heures et déjeuner avec Paul à 12 heures 30. »
     - 12 h, tous les jours : « Monsieur, il est midi. C'est l'heure du déjeuner. Je vous suggère de faire une pause, vous l'avez bien mérité. »
@@ -38,7 +39,8 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
 5. Ouvrez Jarvis, collez les clés, puis touchez **Enregistrer et démarrer**. Acceptez les autorisations : micro, appels, SMS (envoi, lecture et réception), contacts, agenda et notifications.
 6. Touchez **Autoriser Jarvis à ouvrir des applis**. Sans cette autorisation, Android l'empêche d'ouvrir Spotify, Maps ou l'Horloge quand son écran est fermé.
 7. Touchez **Autoriser l'écoute écran verrouillé** et acceptez : Android cesse alors de couper Jarvis quand l'écran est éteint. Jarvis garde aussi le processeur éveillé pendant qu'il écoute, ce qui consomme un peu plus de batterie. Sur certaines marques (Xiaomi, Oppo, Realme, Huawei…), autorisez aussi le démarrage automatique et l'activité en arrière-plan de Jarvis dans les réglages du téléphone.
-8. Pour la musique dans NewPipe : dans NewPipe, *Paramètres → Vidéo et audio → Action par défaut à l'ouverture du contenu*, choisissez **Lecture en arrière-plan**. Sinon NewPipe demande à chaque fois comment ouvrir le morceau et la musique ne démarre pas toute seule.
+8. Pour WhatsApp et Messenger : touchez **Autoriser la lecture de WhatsApp et Messenger**, puis activez Jarvis dans la liste. Si Android affiche « Paramètre restreint », allez dans *Paramètres → Applis → Jarvis*, menu **⋮** en haut à droite → **Autoriser les paramètres restreints**, puis recommencez.
+9. Pour la musique dans NewPipe : dans NewPipe, *Paramètres → Vidéo et audio → Action par défaut à l'ouverture du contenu*, choisissez **Lecture en arrière-plan**. Sinon NewPipe demande à chaque fois comment ouvrir le morceau et la musique ne démarre pas toute seule.
 
 Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au lieu de dire « Hey Jarvis ».
 
@@ -52,6 +54,8 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 - « Hey Jarvis… envoie un SMS à Maman : j'arrive dans dix minutes. »
 - « Hey Jarvis… lis mes derniers messages. »
 - « Hey Jarvis… est-ce que Maman m'a écrit ? »
+- « Hey Jarvis… lis mes messages WhatsApp. »
+- « Hey Jarvis… qu'est-ce que Paul m'a écrit sur Messenger ? »
 - « Hey Jarvis… qu'est-ce que j'ai de prévu demain ? »
 - « Hey Jarvis… ajoute un rendez-vous chez le médecin jeudi à 14 h 30. »
 - « Hey Jarvis… mets-moi de la bonne musique. »
@@ -70,6 +74,7 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 - La voix ElevenLabs consomme des caractères : l'offre gratuite en donne environ 10 000 par mois, soit une centaine de réponses.
 - Comptez quelques centimes par jour en usage normal. Les recherches web sont facturées en plus par Anthropic.
 - Quand Jarvis lit vos SMS, leur contenu est envoyé à Claude pour qu'il vous les résume ou y réponde. Les SMS annoncés automatiquement sont envoyés à ElevenLabs pour être lus à voix haute, et gardés dans la conversation avec Claude pour que vous puissiez y répondre.
+- Les messages WhatsApp et Messenger lus dans les notifications restent en mémoire sur le téléphone (les 100 derniers). Quand Jarvis les lit ou les annonce, leur contenu est envoyé à Claude et, pour la voix, à ElevenLabs.
 - Quand Jarvis lit votre agenda, les événements de la période demandée sont envoyés à Claude.
 - Les clés restent dans les préférences privées de l'appli, sur le téléphone.
 
@@ -84,6 +89,7 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 | `ElevenLabsVoice.kt` | Voix réaliste ElevenLabs, avec retour à la voix Android en cas d'échec |
 | `BootSequenceView.kt`, `BootSound.kt` | Animation et sons du démarrage |
 | `JarvisAlarm.kt`, `WakeUpActivity.kt` | Réveil de Jarvis : programmation, écran de réveil, carillon et voix |
+| `MessageListener.kt` | Lecture des notifications WhatsApp et Messenger, annonce et réponse |
 | `MainActivity.kt` | Écran des clés, journal de conversation, saisie au clavier |
 
 Compilation locale : `gradle assembleDebug` dans ce dossier (Android SDK 35, JDK 17, Gradle 8.11).

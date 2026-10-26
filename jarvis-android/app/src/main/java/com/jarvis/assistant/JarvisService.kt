@@ -64,6 +64,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     private lateinit var brain: JarvisBrain
     private lateinit var actions: PhoneActions
     private var smsReceiverRegistered = false
+    private var announceMessages = true
     private var wakeLock: android.os.PowerManager.WakeLock? = null
 
     /** Nouveaux SMS : Jarvis les annonce à voix haute. */
@@ -98,6 +99,8 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         super.onCreate()
         val prefs = Prefs(this)
         actions = PhoneActions(this)
+        announceMessages = prefs.announceSms
+        instance = this
         brain = JarvisBrain(prefs.anthropicKey, actions)
         if (prefs.announceSms &&
             checkSelfPermission(Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
@@ -129,6 +132,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     }
 
     override fun onDestroy() {
+        if (instance === this) instance = null
         wakeLock?.release()
         wakeWord?.release()
         if (smsReceiverRegistered) unregisterReceiver(smsReceiver)
@@ -251,14 +255,29 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
             val from = name ?: "le $address"
             val spoken = "Monsieur, nouveau message de $from : « ${body.take(400)} ». Souhaitez-vous répondre ?"
             brain.recordEvent("Nouveau SMS reçu de ${name ?: "numéro inconnu"} ($address) : $body", spoken)
-            main.post {
-                // Occupé à écouter ou à répondre : le message reste affiché sans interrompre.
-                if (JarvisBus.state != JarvisBus.State.WAITING) {
-                    JarvisBus.line(false, spoken)
-                    return@post
-                }
-                say(spoken)
+            announce(spoken)
+        }
+    }
+
+    /** Nouveau message WhatsApp ou Messenger, transmis par [MessageListener]. */
+    fun announceMessage(app: String, sender: String, conversation: String, body: String) {
+        if (!announceMessages) return
+        worker.execute {
+            val where = if (conversation != sender) " dans « $conversation »" else ""
+            val spoken = "Monsieur, nouveau message $app de $sender$where : « ${body.take(400)} ». Souhaitez-vous répondre ?"
+            brain.recordEvent("Nouveau message $app reçu de $sender$where : $body", spoken)
+            announce(spoken)
+        }
+    }
+
+    private fun announce(spoken: String) {
+        main.post {
+            // Occupé à écouter ou à répondre : le message reste affiché sans interrompre.
+            if (JarvisBus.state != JarvisBus.State.WAITING) {
+                JarvisBus.line(false, spoken)
+                return@post
             }
+            say(spoken)
         }
     }
 
@@ -403,6 +422,10 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         const val ACTION_TEXT = "com.jarvis.assistant.TEXT"
         const val ACTION_RESET = "com.jarvis.assistant.RESET"
         const val ACTION_GREET = "com.jarvis.assistant.GREET"
+
+        /** Service en cours, pour que [MessageListener] lui transmette les nouveaux messages. */
+        @Volatile var instance: JarvisService? = null
+            private set
         private const val TTS_PENDING = 0
         private const val TTS_READY = 1
         private const val TTS_FAILED = 2

@@ -53,7 +53,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
                 android:buttonTint="@color/core"
-                android:text="Annoncer à voix haute les nouveaux SMS"
+                android:text="Annoncer à voix haute les nouveaux messages (SMS, WhatsApp, Messenger)"
                 android:textColor="@color/fg"
                 android:textSize="16sp" />
 
@@ -88,6 +88,13 @@
             style="@style/Secondary"
             android:layout_marginTop="12dp"
             android:text="Autoriser Jarvis à ouvrir des applis"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/notifications"
+            style="@style/Secondary"
+            android:layout_marginTop="8dp"
+            android:text="Autoriser la lecture de WhatsApp et Messenger"
             android:visibility="gone" />
 
         <Button

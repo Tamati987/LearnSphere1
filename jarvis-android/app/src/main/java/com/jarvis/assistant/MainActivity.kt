@@ -73,6 +73,9 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
                 Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
             )
         }
+        findViewById<Button>(R.id.notifications).setOnClickListener {
+            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        }
         findViewById<Button>(R.id.battery).setOnClickListener {
             // Sans cette exemption, Android coupe l'écoute quand l'écran est éteint.
             @android.annotation.SuppressLint("BatteryLife")
@@ -167,6 +170,8 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
         onState(JarvisBus.state)
         findViewById<Button>(R.id.overlay).visibility =
             if (Settings.canDrawOverlays(this)) View.GONE else View.VISIBLE
+        findViewById<Button>(R.id.notifications).visibility =
+            if (MessageListener.isEnabled(this)) View.GONE else View.VISIBLE
         val power = getSystemService(android.os.PowerManager::class.java)
         findViewById<Button>(R.id.battery).visibility =
             if (power.isIgnoringBatteryOptimizations(packageName)) View.GONE else View.VISIBLE
