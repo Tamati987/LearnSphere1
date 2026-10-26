@@ -56,12 +56,13 @@ class ElevenLabsVoice(private val context: Context, private val apiKey: String) 
     }
 
     /** Lit le fichier puis appelle [onDone], sur le fil principal. */
-    fun play(file: File, onDone: () -> Unit) {
+    fun play(file: File, alarm: Boolean = false, onDone: () -> Unit) {
         stop()
         player = MediaPlayer().apply {
             setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                    // Le réveil passe par le volume d'alarme, audible même si le média est coupé.
+                    .setUsage(if (alarm) AudioAttributes.USAGE_ALARM else AudioAttributes.USAGE_ASSISTANT)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build()
             )

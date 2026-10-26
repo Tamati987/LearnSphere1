@@ -38,6 +38,8 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         "regler_volume" -> volume(input.int("pourcentage"))
         "jouer_musique" -> music(input.str("recherche"))
         "itineraire" -> navigate(input.str("destination"))
+        "reveil_jarvis" -> wakeUp(input.int("heure"), input.int("minute"), input.optStr("message"))
+        "annuler_reveil" -> if (JarvisAlarm.cancel(context)) "Réveil annulé." else "Aucun réveil de Jarvis n'était programmé."
         "lire_sms" -> readSms(input.optStr("contact"), input.int("nombre"), input["non_lus"] == true)
         "etat_telephone" -> status()
         else -> "Échec : outil inconnu « $name »."
@@ -67,6 +69,18 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         label?.let { intent.putExtra(AlarmClock.EXTRA_MESSAGE, it) }
         launch(intent)
         return "Alarme réglée à %02d:%02d.".format(hour, minute)
+    }
+
+    private fun wakeUp(hour: Int, minute: Int, message: String?): String {
+        val at = try {
+            JarvisAlarm.schedule(context, hour.coerceIn(0, 23), minute.coerceIn(0, 59), message)
+        } catch (e: IllegalStateException) {
+            // Android 12 : l'autorisation « Alarmes et rappels » se donne dans les réglages.
+            launch(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")))
+            return "Échec : ${e.message}. J'ai ouvert le réglage « Alarmes et rappels » pour que l'utilisateur l'active."
+        }
+        val day = if (at.get(java.util.Calendar.DAY_OF_YEAR) == java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR)) "aujourd'hui" else "demain"
+        return "Réveil de Jarvis programmé $day à %02d:%02d.".format(hour, minute)
     }
 
     private fun timer(seconds: Int, label: String?): String {

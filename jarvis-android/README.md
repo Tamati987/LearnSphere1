@@ -11,7 +11,8 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
   - envoyer un SMS, après vous l'avoir relu et avoir eu votre « oui » ;
   - lire vos SMS, ceux d'un contact précis ou seulement les non lus ;
   - annoncer à voix haute les nouveaux SMS dès qu'ils arrivent, puis proposer d'y répondre (désactivable dans l'écran des clés) ;
-  - régler une alarme ou un minuteur ;
+  - vous réveiller lui-même : à l'heure dite, l'écran s'allume même verrouillé, un carillon sonne et Jarvis vous annonce de sa voix que c'est l'heure, avec « Arrêter » ou « Encore 10 min » ;
+  - régler une alarme classique ou un minuteur ;
   - ouvrir une application ;
   - allumer ou éteindre la lampe torche ;
   - régler le volume ;
@@ -39,6 +40,7 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 
 - « Hey Jarvis… quel temps fera-t-il demain ? »
 - « Hey Jarvis… réveille-moi à 6 h 30. »
+- « Hey Jarvis… réveille-moi à 7 h et rappelle-moi le rendez-vous chez le dentiste. »
 - « Hey Jarvis… envoie un SMS à Maman : j'arrive dans dix minutes. »
 - « Hey Jarvis… lis mes derniers messages. »
 - « Hey Jarvis… est-ce que Maman m'a écrit ? »
@@ -66,6 +68,7 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 | `WakeWordDetector.kt`, `WakeWordListener.kt` | Détection de « Hey Jarvis » avec les modèles openWakeWord (ONNX) |
 | `ElevenLabsVoice.kt` | Voix réaliste ElevenLabs, avec retour à la voix Android en cas d'échec |
 | `BootSequenceView.kt`, `BootSound.kt` | Animation et sons du démarrage |
+| `JarvisAlarm.kt`, `WakeUpActivity.kt` | Réveil de Jarvis : programmation, écran de réveil, carillon et voix |
 | `MainActivity.kt` | Écran des clés, journal de conversation, saisie au clavier |
 
 Compilation locale : `gradle assembleDebug` dans ce dossier (Android SDK 35, JDK 17, Gradle 8.11).

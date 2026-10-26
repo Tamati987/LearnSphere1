@@ -286,7 +286,7 @@ class JarvisBrain(apiKey: String, private val executor: ToolExecutor) {
                 listOf("destinataire", "message"),
             ),
             tool(
-                "regler_alarme", "Crée une alarme dans l'application Horloge.",
+                "regler_alarme", "Crée une alarme classique dans l'application Horloge, seulement si l'utilisateur la demande explicitement.",
                 mapOf(
                     "heure" to prop("integer", "Heure de 0 à 23"),
                     "minute" to prop("integer", "Minute de 0 à 59"),
@@ -294,6 +294,17 @@ class JarvisBrain(apiKey: String, private val executor: ToolExecutor) {
                 ),
                 listOf("heure", "minute"),
             ),
+            tool(
+                "reveil_jarvis",
+                "Programme le réveil de Jarvis : à l'heure dite, l'écran s'allume et Jarvis annonce de sa voix que c'est l'heure. À préférer pour « réveille-moi ».",
+                mapOf(
+                    "heure" to prop("integer", "Heure de 0 à 23"),
+                    "minute" to prop("integer", "Minute de 0 à 59"),
+                    "message" to prop("string", "Phrase que Jarvis ajoutera au réveil, par exemple un rappel ; facultatif"),
+                ),
+                listOf("heure", "minute"),
+            ),
+            tool("annuler_reveil", "Annule le réveil de Jarvis programmé."),
             tool(
                 "minuteur", "Lance un minuteur.",
                 mapOf(
