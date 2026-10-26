@@ -2,11 +2,16 @@ package com.jarvis.assistant
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioTrack
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.View
+import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.EditText
@@ -24,6 +29,7 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
     private lateinit var setup: View
     private lateinit var console: View
     private lateinit var toggle: Button
+    private var bootTrack: AudioTrack? = null
 
     private val askPermissions =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
@@ -80,7 +86,61 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
             } else false
         }
 
-        if (prefs.isConfigured) { showConsole(); startJarvis() } else showSetup()
+        if (prefs.isConfigured) {
+            showConsole()
+            startJarvis()
+            // La séquence de démarrage ne joue qu'à l'ouverture, pas après une rotation.
+            if (savedInstanceState == null) playBootSequence()
+        } else {
+            showSetup()
+        }
+    }
+
+    override fun onDestroy() {
+        bootTrack?.release()
+        bootTrack = null
+        super.onDestroy()
+    }
+
+    /** Animation et sons de démarrage, puis message de bienvenue de Jarvis. */
+    private fun playBootSequence() {
+        val root = findViewById<ViewGroup>(android.R.id.content)
+        val boot = BootSequenceView(this) {
+            root.findViewWithTag<View>(BOOT_TAG)?.let(root::removeView)
+            bootTrack?.release()
+            bootTrack = null
+            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                JarvisService.start(this, JarvisService.ACTION_GREET)
+            }
+        }
+        boot.tag = BOOT_TAG
+        root.addView(boot, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        bootTrack = runCatching { bootSoundTrack() }.getOrNull()
+        bootTrack?.play()
+        boot.start()
+    }
+
+    private fun bootSoundTrack(): AudioTrack {
+        val pcm = BootSound.render()
+        val track = AudioTrack.Builder()
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+            .setAudioFormat(
+                AudioFormat.Builder()
+                    .setSampleRate(BootSound.SAMPLE_RATE)
+                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                    .build()
+            )
+            .setTransferMode(AudioTrack.MODE_STATIC)
+            .setBufferSizeInBytes(pcm.size * 2)
+            .build()
+        track.write(pcm, 0, pcm.size)
+        return track
     }
 
     override fun onResume() {
@@ -119,6 +179,10 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
             JarvisBus.State.SPEAKING -> "Réponse"
         }
         toggle.text = if (state == JarvisBus.State.OFF) "Activer" else "Pause"
+    }
+
+    companion object {
+        private const val BOOT_TAG = "boot"
     }
 
     override fun onLine(fromUser: Boolean, text: String) {

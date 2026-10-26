@@ -17,6 +17,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
   - démarrer un itinéraire GPS ;
   - donner l'état de la batterie et du réseau.
 - Parler avec une voix réaliste de majordome britannique si vous ajoutez une clé ElevenLabs : la voix originale « Jarvis » créée pour l'appli (elle doit se trouver dans le même compte ElevenLabs que la clé), sinon la voix « Daniel ». Sans clé, Jarvis utilise la voix de synthèse d'Android.
+- S'ouvrir avec une séquence de démarrage animée façon interface holographique, des sons synthétisés sur le téléphone et un message de bienvenue en français. Touchez l'écran pour la passer.
 - Rouvrir le micro tout seul quand il vous pose une question.
 - Se souvenir de la conversation pendant 10 minutes.
 
@@ -57,6 +58,7 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 | `JarvisService.kt` | Service au premier plan : mot d'activation, reconnaissance vocale, synthèse vocale |
 | `WakeWordDetector.kt`, `WakeWordListener.kt` | Détection de « Hey Jarvis » avec les modèles openWakeWord (ONNX) |
 | `ElevenLabsVoice.kt` | Voix réaliste ElevenLabs, avec retour à la voix Android en cas d'échec |
+| `BootSequenceView.kt`, `BootSound.kt` | Animation et sons du démarrage |
 | `MainActivity.kt` | Écran des clés, journal de conversation, saisie au clavier |
 
 Compilation locale : `gradle assembleDebug` dans ce dossier (Android SDK 35, JDK 17, Gradle 8.11).

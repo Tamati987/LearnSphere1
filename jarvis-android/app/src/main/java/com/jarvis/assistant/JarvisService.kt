@@ -60,6 +60,8 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     // Certains téléphones refusent le générateur de bips : Jarvis s'en passe alors.
     private val beep = runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, 60) }.getOrNull()
     private var followUp = false
+    private var ttsReady = false
+    private var pendingSpeech: Pair<String, File?>? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -78,6 +80,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
             ACTION_LISTEN -> main.post { onWakeWord() }
             ACTION_TEXT -> intent.getStringExtra(EXTRA_TEXT)?.let { handle(it) }
             ACTION_RESET -> brain.reset()
+            ACTION_GREET -> greet()
         }
         return START_STICKY
     }
@@ -95,6 +98,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
+            ttsReady = true
             tts.language = Locale.FRANCE
             tts.setPitch(0.9f)
             tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
@@ -103,6 +107,11 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
                 @Deprecated("Deprecated in Java")
                 override fun onError(utteranceId: String?) { main.post { afterSpeaking() } }
             })
+            // Une phrase arrivée avant que la voix Android soit prête.
+            pendingSpeech?.let { (text, audio) -> pendingSpeech = null; speak(text, audio) }
+        } else {
+            // Pas de voix Android : on affiche la phrase et on reprend l'écoute.
+            pendingSpeech?.let { (text, _) -> pendingSpeech = null; JarvisBus.line(false, text); resumeWakeWord() }
         }
     }
 
@@ -187,7 +196,26 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         }
     }
 
+    /** Message de bienvenue après la séquence de démarrage. */
+    private fun greet() {
+        if (JarvisBus.state == JarvisBus.State.THINKING || JarvisBus.state == JarvisBus.State.LISTENING) return
+        pauseWakeWord()
+        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        val hello = when (hour) {
+            in 5..11 -> "Bonjour, Monsieur."
+            in 12..17 -> "Bon après-midi, Monsieur."
+            else -> "Bonsoir, Monsieur."
+        }
+        val text = "$hello Initialisation terminée. Tous les systèmes sont opérationnels. Je suis à votre service."
+        JarvisBus.state(JarvisBus.State.THINKING)
+        worker.execute {
+            val audio = voice?.let { v -> runCatching { v.synthesize(text) }.getOrNull() }
+            main.post { speak(text, audio) }
+        }
+    }
+
     private fun speak(answer: String, audio: File?) {
+        if (audio == null && !ttsReady) { pendingSpeech = answer to audio; return }
         JarvisBus.line(false, answer)
         JarvisBus.state(JarvisBus.State.SPEAKING)
         // Une question appelle une réponse : on rouvre le micro sans attendre « Hey Jarvis ».
@@ -238,6 +266,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         const val ACTION_LISTEN = "com.jarvis.assistant.LISTEN"
         const val ACTION_TEXT = "com.jarvis.assistant.TEXT"
         const val ACTION_RESET = "com.jarvis.assistant.RESET"
+        const val ACTION_GREET = "com.jarvis.assistant.GREET"
         const val EXTRA_TEXT = "text"
 
         fun start(context: Context, action: String? = null, text: String? = null) {
