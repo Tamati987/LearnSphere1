@@ -2,6 +2,7 @@ package com.jarvis.assistant
 
 import android.Manifest
 import android.app.SearchManager
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -14,6 +15,7 @@ import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
 import android.provider.AlarmClock
+import android.provider.CalendarContract
 import android.provider.ContactsContract
 import android.provider.MediaStore
 import android.provider.Telephony
@@ -42,6 +44,11 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         "lister_reveils" -> JarvisAlarm.all(context).takeIf { it.isNotEmpty() }
             ?.joinToString("\n") { JarvisAlarm.describe(it) } ?: "Aucun réveil de Jarvis n'est programmé."
         "annuler_reveil" -> cancelWakeUp(input["tous"] == true, input["heure"]?.let { input.int("heure") }, input.int("minute"))
+        "lire_agenda" -> readCalendar(input.optStr("date"), input.int("jours"))
+        "ajouter_evenement" -> addEvent(
+            input.str("titre"), input.str("date"), input.optStr("heure"),
+            input.int("duree_minutes"), input.optStr("lieu"),
+        )
         "lire_sms" -> readSms(input.optStr("contact"), input.int("nombre"), input["non_lus"] == true)
         "etat_telephone" -> status()
         else -> "Échec : outil inconnu « $name »."
@@ -85,6 +92,116 @@ class PhoneActions(private val context: Context) : ToolExecutor {
             return "Échec : ${e.message}. J'ai ouvert le réglage « Alarmes et rappels » pour que l'utilisateur l'active."
         }
         return "Réveil de Jarvis programmé : ${JarvisAlarm.describe(alarm)}."
+    }
+
+    private fun readCalendar(date: String?, days: Int): String {
+        if (!granted(Manifest.permission.READ_CALENDAR)) return "Échec : permission d'accès à l'agenda non accordée dans l'appli."
+        val start = parseDate(date) ?: return "Échec : date « $date » illisible, format attendu AAAA-MM-JJ."
+        val end = (start.clone() as java.util.Calendar).apply { add(java.util.Calendar.DAY_OF_YEAR, if (days in 1..14) days else 1) }
+        val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also {
+            ContentUris.appendId(it, start.timeInMillis)
+            ContentUris.appendId(it, end.timeInMillis)
+        }.build()
+        val dayFormat = SimpleDateFormat("EEEE d MMMM", Locale.FRANCE)
+        val hourFormat = SimpleDateFormat("HH:mm", Locale.FRANCE)
+        // Les événements « toute la journée » sont stockés en heure UTC.
+        val utcDay = SimpleDateFormat("EEEE d MMMM", Locale.FRANCE).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+        val lines = mutableListOf<String>()
+        context.contentResolver.query(
+            uri,
+            arrayOf(
+                CalendarContract.Instances.TITLE, CalendarContract.Instances.BEGIN, CalendarContract.Instances.END,
+                CalendarContract.Instances.ALL_DAY, CalendarContract.Instances.EVENT_LOCATION,
+            ),
+            null, null, "${CalendarContract.Instances.BEGIN} ASC",
+        )?.use { c ->
+            while (c.moveToNext() && lines.size < 30) {
+                val title = c.getString(0)?.takeIf { it.isNotBlank() } ?: "(sans titre)"
+                val begin = c.getLong(1)
+                val finish = c.getLong(2)
+                val where = c.getString(4)?.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()
+                lines += if (c.getInt(3) == 1) {
+                    "${utcDay.format(Date(begin))}, toute la journée : $title$where"
+                } else {
+                    "${dayFormat.format(Date(begin))}, ${hourFormat.format(Date(begin))} à ${hourFormat.format(Date(finish))} : $title$where"
+                }
+            }
+        }
+        return if (lines.isEmpty()) "Aucun événement dans l'agenda sur cette période." else lines.joinToString("\n")
+    }
+
+    private fun addEvent(title: String, date: String, time: String?, duration: Int, location: String?): String {
+        if (!granted(Manifest.permission.WRITE_CALENDAR)) return "Échec : permission de modifier l'agenda non accordée dans l'appli."
+        val day = parseDate(date) ?: return "Échec : date « $date » illisible, format attendu AAAA-MM-JJ."
+        val calendarId = writableCalendar() ?: return "Échec : aucun agenda modifiable trouvé sur le téléphone."
+        val values = android.content.ContentValues().apply {
+            put(CalendarContract.Events.CALENDAR_ID, calendarId)
+            put(CalendarContract.Events.TITLE, title)
+            location?.let { put(CalendarContract.Events.EVENT_LOCATION, it) }
+        }
+        val parts = time?.split(":", "h")?.mapNotNull { it.trim().toIntOrNull() }
+        if (parts.isNullOrEmpty()) {
+            // Sans heure : événement sur toute la journée, en UTC comme le veut Android.
+            val utc = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                clear()
+                set(day.get(java.util.Calendar.YEAR), day.get(java.util.Calendar.MONTH), day.get(java.util.Calendar.DAY_OF_MONTH))
+            }
+            values.put(CalendarContract.Events.ALL_DAY, 1)
+            values.put(CalendarContract.Events.DTSTART, utc.timeInMillis)
+            values.put(CalendarContract.Events.DTEND, utc.timeInMillis + 24 * 3600_000L)
+            values.put(CalendarContract.Events.EVENT_TIMEZONE, "UTC")
+        } else {
+            day.set(java.util.Calendar.HOUR_OF_DAY, parts[0].coerceIn(0, 23))
+            day.set(java.util.Calendar.MINUTE, parts.getOrElse(1) { 0 }.coerceIn(0, 59))
+            val minutes = if (duration > 0) duration else 60
+            values.put(CalendarContract.Events.DTSTART, day.timeInMillis)
+            values.put(CalendarContract.Events.DTEND, day.timeInMillis + minutes * 60_000L)
+            values.put(CalendarContract.Events.EVENT_TIMEZONE, java.util.TimeZone.getDefault().id)
+        }
+        val eventUri = context.contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
+            ?: return "Échec : l'agenda a refusé l'événement."
+        // Rappel 30 minutes avant, comme un assistant attentionné.
+        runCatching {
+            context.contentResolver.insert(CalendarContract.Reminders.CONTENT_URI, android.content.ContentValues().apply {
+                put(CalendarContract.Reminders.EVENT_ID, ContentUris.parseId(eventUri))
+                put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT)
+                put(CalendarContract.Reminders.MINUTES, 30)
+            })
+        }
+        val dayText = SimpleDateFormat("EEEE d MMMM", Locale.FRANCE).format(day.time)
+        val at = if (parts.isNullOrEmpty()) "toute la journée" else "à %02d:%02d".format(day.get(java.util.Calendar.HOUR_OF_DAY), day.get(java.util.Calendar.MINUTE))
+        return "Événement « $title » ajouté le $dayText $at, avec un rappel 30 minutes avant."
+    }
+
+    /** Agenda où écrire : le principal s'il existe, sinon le premier agenda visible modifiable. */
+    private fun writableCalendar(): Long? {
+        context.contentResolver.query(
+            CalendarContract.Calendars.CONTENT_URI,
+            arrayOf(CalendarContract.Calendars._ID, CalendarContract.Calendars.IS_PRIMARY),
+            "${CalendarContract.Calendars.VISIBLE} = 1 AND ${CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL} >= ${CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR}",
+            null, null,
+        )?.use { c ->
+            var first: Long? = null
+            while (c.moveToNext()) {
+                if (first == null) first = c.getLong(0)
+                if (c.getInt(1) == 1) return c.getLong(0)
+            }
+            return first
+        }
+        return null
+    }
+
+    /** « AAAA-MM-JJ » (ou vide pour aujourd'hui) vers minuit de ce jour, heure locale. */
+    private fun parseDate(text: String?): java.util.Calendar? {
+        val cal = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
+        }
+        if (text.isNullOrBlank()) return cal
+        val parts = text.trim().split("-").mapNotNull { it.toIntOrNull() }
+        if (parts.size != 3) return null
+        cal.set(parts[0], parts[1] - 1, parts[2])
+        return cal
     }
 
     private fun cancelWakeUp(all: Boolean, hour: Int?, minute: Int): String {

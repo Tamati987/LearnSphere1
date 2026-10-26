@@ -14,6 +14,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
   - vous réveiller ou vous rappeler un moment de la journée lui-même : à l'heure dite, l'écran s'allume même verrouillé, un carillon sonne et Jarvis dit sa phrase de sa voix, avec « Arrêter » ou « Encore 10 min ». Les réveils peuvent se répéter certains jours. Deux sont installés au premier lancement :
     - 6 h, du lundi au vendredi : « Bonjour, Monsieur. Il est six heures. C'est l'heure de vous préparer pour le travail. Je vous souhaite une excellente journée. »
     - 12 h, tous les jours : « Monsieur, il est midi. C'est l'heure du déjeuner. Je vous suggère de faire une pause, vous l'avez bien mérité. »
+  - lire votre agenda (« qu'est-ce que j'ai demain ? ») et y ajouter des rendez-vous, avec un rappel 30 minutes avant ;
   - régler une alarme classique ou un minuteur ;
   - ouvrir une application ;
   - allumer ou éteindre la lampe torche ;
@@ -32,7 +33,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
 2. **Installer.** Copiez le fichier sur le téléphone et ouvrez-le. Android demande d'autoriser l'installation d'applis de source inconnue : acceptez pour cette fois.
 3. **Clé Anthropic** (obligatoire, payante à l'usage) : créez-la sur https://console.anthropic.com → *API Keys*, et ajoutez quelques euros de crédit.
 4. **Clé ElevenLabs** (facultative, pour la voix réaliste) : créez un compte gratuit sur https://elevenlabs.io, puis copiez une clé dans *Developers → API Keys*.
-5. Ouvrez Jarvis, collez les clés, puis touchez **Enregistrer et démarrer**. Acceptez les autorisations : micro, appels, SMS (envoi, lecture et réception), contacts et notifications.
+5. Ouvrez Jarvis, collez les clés, puis touchez **Enregistrer et démarrer**. Acceptez les autorisations : micro, appels, SMS (envoi, lecture et réception), contacts, agenda et notifications.
 6. Touchez **Autoriser Jarvis à ouvrir des applis**. Sans cette autorisation, Android l'empêche d'ouvrir Spotify, Maps ou l'Horloge quand son écran est fermé.
 7. Conseillé : dans *Paramètres → Applis → Jarvis → Batterie*, choisissez **Non restreinte** pour qu'Android ne coupe pas l'écoute.
 
@@ -48,6 +49,8 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 - « Hey Jarvis… envoie un SMS à Maman : j'arrive dans dix minutes. »
 - « Hey Jarvis… lis mes derniers messages. »
 - « Hey Jarvis… est-ce que Maman m'a écrit ? »
+- « Hey Jarvis… qu'est-ce que j'ai de prévu demain ? »
+- « Hey Jarvis… ajoute un rendez-vous chez le médecin jeudi à 14 h 30. »
 - « Hey Jarvis… ouvre WhatsApp. »
 - « Hey Jarvis… emmène-moi à l'aéroport. »
 
@@ -60,6 +63,7 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 - La voix ElevenLabs consomme des caractères : l'offre gratuite en donne environ 10 000 par mois, soit une centaine de réponses.
 - Comptez quelques centimes par jour en usage normal. Les recherches web sont facturées en plus par Anthropic.
 - Quand Jarvis lit vos SMS, leur contenu est envoyé à Claude pour qu'il vous les résume ou y réponde. Les SMS annoncés automatiquement sont envoyés à ElevenLabs pour être lus à voix haute, et gardés dans la conversation avec Claude pour que vous puissiez y répondre.
+- Quand Jarvis lit votre agenda, les événements de la période demandée sont envoyés à Claude.
 - Les clés restent dans les préférences privées de l'appli, sur le téléphone.
 
 ## Code
@@ -67,7 +71,7 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 | Fichier | Rôle |
 |---|---|
 | `JarvisBrain.kt` | Conversation avec Claude : prompt de Jarvis, outils du téléphone, recherche web |
-| `PhoneActions.kt` | Exécution des outils : appels, SMS, alarmes, applis, lampe, volume, musique, GPS |
+| `PhoneActions.kt` | Exécution des outils : appels, SMS, agenda, alarmes, applis, lampe, volume, musique, GPS |
 | `JarvisService.kt` | Service au premier plan : mot d'activation, reconnaissance vocale, synthèse vocale |
 | `WakeWordDetector.kt`, `WakeWordListener.kt` | Détection de « Hey Jarvis » avec les modèles openWakeWord (ONNX) |
 | `ElevenLabsVoice.kt` | Voix réaliste ElevenLabs, avec retour à la voix Android en cas d'échec |
