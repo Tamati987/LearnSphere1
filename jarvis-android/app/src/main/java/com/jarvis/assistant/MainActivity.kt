@@ -43,10 +43,13 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
         toggle = findViewById(R.id.toggle)
 
         val anthropic = findViewById<EditText>(R.id.anthropic_key)
+        val elevenLabs = findViewById<EditText>(R.id.elevenlabs_key)
         anthropic.setText(prefs.anthropicKey)
+        elevenLabs.setText(prefs.elevenLabsKey)
 
         findViewById<Button>(R.id.save).setOnClickListener {
             prefs.anthropicKey = anthropic.text.toString()
+            prefs.elevenLabsKey = elevenLabs.text.toString()
             if (prefs.isConfigured) {
                 stopService(Intent(this, JarvisService::class.java))
                 showConsole()

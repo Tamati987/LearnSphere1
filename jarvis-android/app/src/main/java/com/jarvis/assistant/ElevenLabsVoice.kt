@@ -1,0 +1,77 @@
+package com.jarvis.assistant
+
+import android.content.Context
+import android.media.AudioAttributes
+import android.media.MediaPlayer
+import org.json.JSONObject
+import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
+
+/** Voix réaliste ElevenLabs : un majordome britannique posé, qui parle français. */
+class ElevenLabsVoice(private val context: Context, private val apiKey: String) {
+
+    private var player: MediaPlayer? = null
+
+    /** Génère l'audio de [text]. Appel réseau : à faire hors du fil principal. */
+    fun synthesize(text: String): File {
+        val connection = URL("https://api.elevenlabs.io/v1/text-to-speech/$VOICE_ID?output_format=mp3_44100_128")
+            .openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "POST"
+            connection.connectTimeout = 10_000
+            connection.readTimeout = 30_000
+            connection.doOutput = true
+            connection.setRequestProperty("xi-api-key", apiKey)
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.setRequestProperty("Accept", "audio/mpeg")
+            val body = JSONObject()
+                .put("text", text)
+                .put("model_id", MODEL)
+                .put("language_code", "fr")
+                .put("voice_settings", JSONObject().put("stability", 0.55).put("similarity_boost", 0.8))
+            connection.outputStream.use { it.write(body.toString().toByteArray()) }
+
+            val code = connection.responseCode
+            if (code !in 200..299) {
+                val error = connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                throw IllegalStateException("ElevenLabs a répondu $code ${error.take(200)}")
+            }
+            val file = File(context.cacheDir, "jarvis-voice.mp3")
+            connection.inputStream.use { input -> file.outputStream().use { input.copyTo(it) } }
+            return file
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    /** Lit le fichier puis appelle [onDone], sur le fil principal. */
+    fun play(file: File, onDone: () -> Unit) {
+        stop()
+        player = MediaPlayer().apply {
+            setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+            )
+            setDataSource(file.absolutePath)
+            setOnCompletionListener { stop(); onDone() }
+            setOnErrorListener { _, _, _ -> stop(); onDone(); true }
+            prepare()
+            start()
+        }
+    }
+
+    fun stop() {
+        player?.let { runCatching { it.stop() }; it.release() }
+        player = null
+    }
+
+    companion object {
+        // « Daniel », voix ElevenLabs par défaut : britannique, posée, formelle.
+        const val VOICE_ID = "onwK4e9ZLuTAKqWW03F9"
+        // Modèle multilingue rapide, adapté aux réponses vocales.
+        const val MODEL = "eleven_flash_v2_5"
+    }
+}

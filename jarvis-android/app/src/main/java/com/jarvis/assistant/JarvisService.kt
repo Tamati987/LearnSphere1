@@ -21,6 +21,7 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import java.io.File
 import java.util.Locale
 import java.util.concurrent.Executors
 
@@ -55,6 +56,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     private var recognizer: SpeechRecognizer? = null
     private lateinit var tts: TextToSpeech
     private lateinit var brain: JarvisBrain
+    private var voice: ElevenLabsVoice? = null
     // Certains téléphones refusent le générateur de bips : Jarvis s'en passe alors.
     private val beep = runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, 60) }.getOrNull()
     private var followUp = false
@@ -65,6 +67,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         super.onCreate()
         val prefs = Prefs(this)
         brain = JarvisBrain(prefs.anthropicKey, PhoneActions(this))
+        voice = prefs.elevenLabsKey.takeIf { it.isNotBlank() }?.let { ElevenLabsVoice(this, it) }
         tts = TextToSpeech(this, this)
         startInForeground()
         startWakeWord()
@@ -83,6 +86,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         wakeWord?.release()
         recognizer?.destroy()
         tts.shutdown()
+        voice?.stop()
         beep?.release()
         worker.shutdownNow()
         JarvisBus.state(JarvisBus.State.OFF)
@@ -125,6 +129,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     private fun onWakeWord() {
         if (JarvisBus.state == JarvisBus.State.LISTENING || JarvisBus.state == JarvisBus.State.THINKING) return
         tts.stop()
+        voice?.stop()
         pauseWakeWord()
         beep?.startTone(ToneGenerator.TONE_PROP_ACK, 150)
         // Laisse le bip finir avant d'ouvrir le micro.
@@ -172,15 +177,30 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         JarvisBus.state(JarvisBus.State.THINKING)
         worker.execute {
             val answer = brain.ask(text)
-            main.post { speak(answer) }
+            // Voix ElevenLabs si une clé est renseignée, sinon voix Android.
+            val audio = voice?.let { v ->
+                runCatching { v.synthesize(answer) }
+                    .onFailure { JarvisBus.line(false, "Voix ElevenLabs indisponible (${it.message}), voix Android utilisée.") }
+                    .getOrNull()
+            }
+            main.post { speak(answer, audio) }
         }
     }
 
-    private fun speak(answer: String) {
+    private fun speak(answer: String, audio: File?) {
         JarvisBus.line(false, answer)
         JarvisBus.state(JarvisBus.State.SPEAKING)
-        // Une question appelle une réponse : on rouvre le micro sans attendre « Jarvis ».
+        // Une question appelle une réponse : on rouvre le micro sans attendre « Hey Jarvis ».
         followUp = answer.trimEnd().endsWith("?")
+        val v = voice
+        if (audio != null && v != null) {
+            try {
+                v.play(audio) { afterSpeaking() }
+                return
+            } catch (e: Exception) {
+                JarvisBus.line(false, "Lecture de la voix impossible (${e.message}), voix Android utilisée.")
+            }
+        }
         tts.speak(answer, TextToSpeech.QUEUE_FLUSH, null, "jarvis")
     }
 

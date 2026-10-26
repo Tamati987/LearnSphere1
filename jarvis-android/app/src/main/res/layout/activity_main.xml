@@ -5,7 +5,7 @@
     android:background="@color/bg"
     android:fitsSystemWindows="true">
 
-    <!-- Réglages : la clé d'accès -->
+    <!-- Réglages : les clés d'accès -->
     <ScrollView
         android:id="@+id/setup"
         android:layout_width="match_parent"
@@ -35,6 +35,16 @@
                 android:id="@+id/anthropic_key"
                 style="@style/Field"
                 android:hint="sk-ant-…"
+                android:inputType="textPassword" />
+
+            <TextView
+                style="@style/Label"
+                android:text="Clé ElevenLabs (facultatif, voix réaliste)" />
+
+            <EditText
+                android:id="@+id/elevenlabs_key"
+                style="@style/Field"
+                android:hint="Clé API ElevenLabs"
                 android:inputType="textPassword" />
 
             <Button
@@ -117,7 +127,7 @@
                 android:layout_width="0dp"
                 android:layout_marginStart="8dp"
                 android:layout_weight="1"
-                android:text="Clé" />
+                android:text="Clés" />
         </LinearLayout>
     </LinearLayout>
 </FrameLayout>

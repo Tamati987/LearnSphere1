@@ -9,7 +9,7 @@
     <color name="on_core">#03202B</color>
 
     <string name="app_name">Jarvis</string>
-    <string name="setup_intro">Pour fonctionner, Jarvis a besoin d\'une clé API Anthropic (console.anthropic.com/settings/keys). Elle reste sur ce téléphone. Ensuite, dites « Hey Jarvis » pour lui parler.</string>
+    <string name="setup_intro">Pour fonctionner, Jarvis a besoin d\'une clé API Anthropic (console.anthropic.com/settings/keys). Pour une voix réaliste de majordome britannique, ajoutez une clé ElevenLabs (elevenlabs.io). Les clés restent sur ce téléphone. Ensuite, dites « Hey Jarvis » pour lui parler.</string>
 
     <style name="Theme.Jarvis" parent="Theme.MaterialComponents.NoActionBar">
         <item name="colorPrimary">@color/core</item>
