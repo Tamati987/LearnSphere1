@@ -40,7 +40,7 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         "regler_volume" -> volume(input.int("pourcentage"))
         "jouer_musique" -> music(input.str("recherche"))
         "itineraire" -> navigate(input.str("destination"))
-        "reveil_jarvis" -> wakeUp(input.int("heure"), input.int("minute"), input["jours"], input.optStr("phrase"))
+        "reveil_jarvis" -> wakeUp(input.int("heure"), input.int("minute"), input["jours"], input.optStr("phrase"), input["agenda"] == true)
         "lister_reveils" -> JarvisAlarm.all(context).takeIf { it.isNotEmpty() }
             ?.joinToString("\n") { JarvisAlarm.describe(it) } ?: "Aucun réveil de Jarvis n'est programmé."
         "annuler_reveil" -> cancelWakeUp(input["tous"] == true, input["heure"]?.let { input.int("heure") }, input.int("minute"))
@@ -80,18 +80,55 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         return "Alarme réglée à %02d:%02d.".format(hour, minute)
     }
 
-    private fun wakeUp(hour: Int, minute: Int, days: Any?, phrase: String?): String {
+    private fun wakeUp(hour: Int, minute: Int, days: Any?, phrase: String?, agenda: Boolean): String {
         val daySet = (days as? List<*>).orEmpty()
             .mapNotNull { JarvisAlarm.DAY_NAMES[it.toString().lowercase().trim()] }
             .toSet()
         val alarm = try {
-            JarvisAlarm.add(context, hour.coerceIn(0, 23), minute.coerceIn(0, 59), daySet, phrase)
+            JarvisAlarm.add(context, hour.coerceIn(0, 23), minute.coerceIn(0, 59), daySet, phrase, agenda)
         } catch (e: IllegalStateException) {
             // Android 12 : l'autorisation « Alarmes et rappels » se donne dans les réglages.
             launch(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")))
             return "Échec : ${e.message}. J'ai ouvert le réglage « Alarmes et rappels » pour que l'utilisateur l'active."
         }
         return "Réveil de Jarvis programmé : ${JarvisAlarm.describe(alarm)}."
+    }
+
+    /**
+     * Programme du reste de la journée, en phrases à dire au réveil, sans passer par Claude.
+     * Null si l'agenda n'est pas accessible.
+     */
+    fun todaySummary(): String? {
+        if (!granted(Manifest.permission.READ_CALENDAR)) return null
+        val now = System.currentTimeMillis()
+        val endOfDay = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 23); set(java.util.Calendar.MINUTE, 59); set(java.util.Calendar.SECOND, 59)
+        }.timeInMillis
+        val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also {
+            ContentUris.appendId(it, now)
+            ContentUris.appendId(it, endOfDay)
+        }.build()
+        val items = mutableListOf<String>()
+        context.contentResolver.query(
+            uri,
+            arrayOf(CalendarContract.Instances.TITLE, CalendarContract.Instances.BEGIN, CalendarContract.Instances.ALL_DAY),
+            null, null, "${CalendarContract.Instances.BEGIN} ASC",
+        )?.use { c ->
+            val cal = java.util.Calendar.getInstance()
+            while (c.moveToNext() && items.size < 6) {
+                val title = c.getString(0)?.takeIf { it.isNotBlank() } ?: continue
+                if (c.getInt(2) == 1) { items += title; continue }
+                cal.timeInMillis = c.getLong(1)
+                val h = cal.get(java.util.Calendar.HOUR_OF_DAY)
+                val m = cal.get(java.util.Calendar.MINUTE)
+                items += if (m == 0) "$title à $h heures" else "$title à $h heures $m"
+            }
+        }
+        return when (items.size) {
+            0 -> "Votre agenda est libre aujourd'hui."
+            1 -> "Au programme aujourd'hui : ${items[0]}."
+            else -> "Au programme aujourd'hui : ${items.dropLast(1).joinToString(", ")} et ${items.last()}."
+        }
     }
 
     private fun readCalendar(date: String?, days: Int): String {

@@ -309,6 +309,7 @@ class JarvisBrain(apiKey: String, private val executor: ToolExecutor) {
                             "description" to "Jours où le réveil se répète ; vide ou absent pour une seule fois",
                         )
                     ),
+                    "agenda" to prop("boolean", "true pour que Jarvis annonce aussi le programme du jour lu dans l'agenda"),
                     "phrase" to prop(
                         "string",
                         "Phrase complète que Jarvis dira, dans son style, en appelant l'utilisateur Monsieur ; " +

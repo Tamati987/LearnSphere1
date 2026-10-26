@@ -10,8 +10,14 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Calendar
 
-/** Un réveil de Jarvis : une heure, des jours de la semaine (aucun = une seule fois) et la phrase à dire. */
-data class Alarm(val id: Int, val hour: Int, val minute: Int, val days: Set<Int>, val text: String)
+/**
+ * Un réveil de Jarvis : une heure, des jours de la semaine (aucun = une seule fois), la phrase
+ * à dire et, si [agenda], le programme de la journée lu dans l'agenda du téléphone.
+ */
+data class Alarm(
+    val id: Int, val hour: Int, val minute: Int, val days: Set<Int>, val text: String,
+    val agenda: Boolean = false,
+)
 
 /**
  * Réveils de Jarvis : à l'heure dite, [WakeUpActivity] s'ouvre (même téléphone
@@ -35,23 +41,29 @@ object JarvisAlarm {
     /** Réveils de départ, installés une fois au premier lancement. */
     fun installDefaults(context: Context) {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (!prefs.getBoolean("defaults_v2", false) && prefs.getBoolean("defaults_v1", false)) {
+            // Mise à jour : le réveil de 6 h déjà installé annonce désormais le programme du jour.
+            save(context, all(context).map { if (it.hour == 6 && it.minute == 0) it.copy(agenda = true) else it })
+            prefs.edit().putBoolean("defaults_v2", true).apply()
+        }
         if (prefs.getBoolean("defaults_v1", false)) return
         add(
             context, 6, 0, WEEKDAYS,
             "Bonjour, Monsieur. Il est six heures. C'est l'heure de vous préparer pour le travail. Je vous souhaite une excellente journée.",
+            agenda = true,
         )
         add(
             context, 12, 0, DAY_NAMES.values.toSet(),
             "Monsieur, il est midi. C'est l'heure du déjeuner. Je vous suggère de faire une pause, vous l'avez bien mérité.",
         )
-        prefs.edit().putBoolean("defaults_v1", true).apply()
+        prefs.edit().putBoolean("defaults_v1", true).putBoolean("defaults_v2", true).apply()
     }
 
     /** Ajoute ou remplace le réveil de [hour]:[minute] et le programme. */
-    fun add(context: Context, hour: Int, minute: Int, days: Set<Int>, text: String?): Alarm {
+    fun add(context: Context, hour: Int, minute: Int, days: Set<Int>, text: String?, agenda: Boolean = false): Alarm {
         val alarms = all(context).filterNot { it.hour == hour && it.minute == minute && it.id != SNOOZE_ID }
         val id = (alarms.filter { it.id != SNOOZE_ID }.maxOfOrNull { it.id } ?: 0) + 1
-        val alarm = Alarm(id, hour, minute, days, text ?: defaultText(hour, minute))
+        val alarm = Alarm(id, hour, minute, days, text ?: defaultText(hour, minute), agenda)
         save(context, alarms + alarm)
         schedule(context, alarm)
         return alarm
@@ -74,7 +86,7 @@ object JarvisAlarm {
         return (0 until array.length()).map { i ->
             val o = array.getJSONObject(i)
             val days = o.getJSONArray("days").let { d -> (0 until d.length()).map { d.getInt(it) }.toSet() }
-            Alarm(o.getInt("id"), o.getInt("hour"), o.getInt("minute"), days, o.getString("text"))
+            Alarm(o.getInt("id"), o.getInt("hour"), o.getInt("minute"), days, o.getString("text"), o.optBoolean("agenda"))
         }
     }
 
@@ -104,7 +116,8 @@ object JarvisAlarm {
             alarm.days == WEEKDAYS -> "du lundi au vendredi"
             else -> DAY_NAMES.filterValues { it in alarm.days }.keys.joinToString(", ")
         }
-        return "%02d:%02d, %s : « %s »".format(alarm.hour, alarm.minute, days, alarm.text)
+        val agenda = if (alarm.agenda) ", puis le programme du jour" else ""
+        return "%02d:%02d, %s : « %s »%s".format(alarm.hour, alarm.minute, days, alarm.text, agenda)
     }
 
     fun nextTrigger(alarm: Alarm, from: Calendar = Calendar.getInstance()): Calendar {
@@ -143,7 +156,7 @@ object JarvisAlarm {
         alarms.sortedWith(compareBy({ it.hour }, { it.minute })).forEach { a ->
             array.put(
                 JSONObject().put("id", a.id).put("hour", a.hour).put("minute", a.minute)
-                    .put("days", JSONArray(a.days.sorted())).put("text", a.text)
+                    .put("days", JSONArray(a.days.sorted())).put("text", a.text).put("agenda", a.agenda)
             )
         }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("alarms", array.toString()).apply()

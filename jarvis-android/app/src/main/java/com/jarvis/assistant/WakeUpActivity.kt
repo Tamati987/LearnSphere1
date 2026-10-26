@@ -42,7 +42,10 @@ class WakeUpActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private var ttsReady = false
     private var chime: AudioTrack? = null
     private var stopped = false
-    private lateinit var wakeText: String
+    @Volatile private var wakeText = ""
+    @Volatile private var voiceReady = false
+    private var waitedForVoice = 0
+    private var messageView: TextView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,8 +68,18 @@ class WakeUpActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         voice = Prefs(this).elevenLabsKey.takeIf { it.isNotBlank() }?.let { ElevenLabsVoice(this, it) }
         tts = TextToSpeech(this, this)
-        // La voix se génère pendant que le carillon sonne.
-        voice?.let { v -> worker.execute { voiceFile = runCatching { v.synthesize(wakeText) }.getOrNull() } }
+        // Le programme du jour (lu dans l'agenda) puis la voix se préparent pendant que le carillon sonne.
+        val withAgenda = alarm?.agenda == true
+        worker.execute {
+            if (withAgenda) {
+                runCatching { PhoneActions(this).todaySummary() }.getOrNull()?.let { summary ->
+                    wakeText = "$wakeText $summary"
+                    main.post { messageView?.text = wakeText }
+                }
+            }
+            voice?.let { v -> voiceFile = runCatching { v.synthesize(wakeText) }.getOrNull() }
+            voiceReady = true
+        }
         vibrate()
         cycle()
         // Sécurité : le réveil s'arrête seul au bout de 10 minutes.
@@ -100,6 +113,12 @@ class WakeUpActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     private fun speak() {
         if (stopped) return
+        // Attend un peu la voix de Jarvis (jusqu'à 8 s) plutôt que de prendre la voix Android.
+        if (voice != null && !voiceReady && waitedForVoice < 16) {
+            waitedForVoice++
+            main.postDelayed({ speak() }, 500)
+            return
+        }
         val v = voice
         val file = voiceFile
         if (v != null && file != null) {
@@ -221,6 +240,7 @@ class WakeUpActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             setShadowLayer(24f, 0f, 0f, getColor(R.color.core))
         })
         addView(TextView(context).apply {
+            messageView = this
             text = wakeText
             setTextColor(Color.WHITE)
             textSize = 18f

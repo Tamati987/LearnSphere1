@@ -12,7 +12,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
   - lire vos SMS, ceux d'un contact précis ou seulement les non lus ;
   - annoncer à voix haute les nouveaux SMS dès qu'ils arrivent, puis proposer d'y répondre (désactivable dans l'écran des clés) ;
   - vous réveiller ou vous rappeler un moment de la journée lui-même : à l'heure dite, l'écran s'allume même verrouillé, un carillon sonne et Jarvis dit sa phrase de sa voix, avec « Arrêter » ou « Encore 10 min ». Les réveils peuvent se répéter certains jours. Deux sont installés au premier lancement :
-    - 6 h, du lundi au vendredi : « Bonjour, Monsieur. Il est six heures. C'est l'heure de vous préparer pour le travail. Je vous souhaite une excellente journée. »
+    - 6 h, du lundi au vendredi : « Bonjour, Monsieur. Il est six heures. C'est l'heure de vous préparer pour le travail. Je vous souhaite une excellente journée. » Puis le programme du jour lu dans l'agenda, par exemple « Au programme aujourd'hui : réunion à 9 heures et déjeuner avec Paul à 12 heures 30. »
     - 12 h, tous les jours : « Monsieur, il est midi. C'est l'heure du déjeuner. Je vous suggère de faire une pause, vous l'avez bien mérité. »
   - lire votre agenda (« qu'est-ce que j'ai demain ? ») et y ajouter des rendez-vous, avec un rappel 30 minutes avant ;
   - régler une alarme classique ou un minuteur ;
