@@ -105,14 +105,20 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
     /** Animation et sons de démarrage, puis message de bienvenue de Jarvis. */
     private fun playBootSequence() {
         val root = findViewById<ViewGroup>(android.R.id.content)
-        val boot = BootSequenceView(this) {
-            root.findViewWithTag<View>(BOOT_TAG)?.let(root::removeView)
-            bootTrack?.release()
-            bootTrack = null
-            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                JarvisService.start(this, JarvisService.ACTION_GREET)
-            }
-        }
+        val boot = BootSequenceView(
+            this,
+            onGreet = {
+                // La voix de Jarvis souhaite la bienvenue pendant l'apparition des cercles.
+                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    JarvisService.start(this, JarvisService.ACTION_GREET)
+                }
+            },
+            onFinished = {
+                root.findViewWithTag<View>(BOOT_TAG)?.let(root::removeView)
+                bootTrack?.release()
+                bootTrack = null
+            },
+        )
         boot.tag = BOOT_TAG
         root.addView(boot, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         bootTrack = runCatching { bootSoundTrack() }.getOrNull()
