@@ -1,8 +1,5 @@
 package com.jarvis.assistant
 
-import ai.picovoice.porcupine.Porcupine
-import ai.picovoice.porcupine.PorcupineException
-import ai.picovoice.porcupine.PorcupineManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -47,14 +44,14 @@ object JarvisBus {
 }
 
 /**
- * Service au premier plan : écoute le mot « Jarvis », transcrit la demande,
+ * Service au premier plan : écoute « Hey Jarvis », transcrit la demande,
  * la confie à Claude puis lit la réponse à voix haute.
  */
 class JarvisService : Service(), TextToSpeech.OnInitListener {
 
     private val main = Handler(Looper.getMainLooper())
     private val worker = Executors.newSingleThreadExecutor()
-    private var porcupine: PorcupineManager? = null
+    private var wakeWord: WakeWordListener? = null
     private var recognizer: SpeechRecognizer? = null
     private lateinit var tts: TextToSpeech
     private lateinit var brain: JarvisBrain
@@ -70,7 +67,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         brain = JarvisBrain(prefs.anthropicKey, PhoneActions(this))
         tts = TextToSpeech(this, this)
         startInForeground()
-        startWakeWord(prefs.picovoiceKey)
+        startWakeWord()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -83,7 +80,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     }
 
     override fun onDestroy() {
-        porcupine?.let { runCatching { it.stop() }; it.delete() }
+        wakeWord?.release()
         recognizer?.destroy()
         tts.shutdown()
         beep?.release()
@@ -107,28 +104,21 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
 
     // --- Mot d'activation -------------------------------------------------
 
-    private fun startWakeWord(accessKey: String) {
+    private fun startWakeWord() {
         try {
-            porcupine = PorcupineManager.Builder()
-                .setAccessKey(accessKey)
-                .setKeyword(Porcupine.BuiltInKeyword.JARVIS)
-                .setSensitivity(0.6f)
-                .setErrorCallback { e -> JarvisBus.line(false, "Erreur du mot d'activation : ${e.message}") }
-                .build(applicationContext) { main.post { onWakeWord() } }
-            resumeWakeWord()
-        } catch (e: PorcupineException) {
-            // Sans clé Picovoice valide, Jarvis reste utilisable avec le bouton micro.
-            porcupine = null
-            JarvisBus.line(false, "Mot « Jarvis » indisponible : ${e.message}. Utilisez le bouton micro.")
-            JarvisBus.state(JarvisBus.State.WAITING)
+            wakeWord = WakeWordListener(this) { main.post { onWakeWord() } }
+        } catch (e: Exception) {
+            // Sans détecteur, Jarvis reste utilisable avec le bouton Parler.
+            JarvisBus.line(false, "« Hey Jarvis » indisponible : ${e.message}. Utilisez le bouton Parler.")
         }
+        resumeWakeWord()
     }
 
-    private fun pauseWakeWord() { runCatching { porcupine?.stop() } }
+    private fun pauseWakeWord() { wakeWord?.stop() }
 
     private fun resumeWakeWord() {
         followUp = false
-        runCatching { porcupine?.start() }
+        wakeWord?.start()
         JarvisBus.state(JarvisBus.State.WAITING)
     }
 
@@ -215,7 +205,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         val notification: Notification = NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Jarvis est à l'écoute")
-            .setContentText("Dites « Jarvis » ou touchez Parler.")
+            .setContentText("Dites « Hey Jarvis » ou touchez Parler.")
             .setContentIntent(open)
             .addAction(0, "Parler", talk)
             .setOngoing(true)

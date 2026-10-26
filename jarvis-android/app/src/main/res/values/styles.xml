@@ -9,7 +9,7 @@
     <color name="on_core">#03202B</color>
 
     <string name="app_name">Jarvis</string>
-    <string name="setup_intro">Pour fonctionner, Jarvis a besoin d\'une clé API Anthropic (console.anthropic.com) et, pour le mot d\'activation « Jarvis », d\'une clé gratuite Picovoice (console.picovoice.ai). Les clés restent sur ce téléphone.</string>
+    <string name="setup_intro">Pour fonctionner, Jarvis a besoin d\'une clé API Anthropic (console.anthropic.com/settings/keys). Elle reste sur ce téléphone. Ensuite, dites « Hey Jarvis » pour lui parler.</string>
 
     <style name="Theme.Jarvis" parent="Theme.MaterialComponents.NoActionBar">
         <item name="colorPrimary">@color/core</item>

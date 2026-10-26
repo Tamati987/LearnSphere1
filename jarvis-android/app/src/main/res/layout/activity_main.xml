@@ -5,7 +5,7 @@
     android:background="@color/bg"
     android:fitsSystemWindows="true">
 
-    <!-- Réglages : les deux clés d'accès -->
+    <!-- Réglages : la clé d'accès -->
     <ScrollView
         android:id="@+id/setup"
         android:layout_width="match_parent"
@@ -35,16 +35,6 @@
                 android:id="@+id/anthropic_key"
                 style="@style/Field"
                 android:hint="sk-ant-…"
-                android:inputType="textPassword" />
-
-            <TextView
-                style="@style/Label"
-                android:text="Clé Picovoice (pour dire « Jarvis »)" />
-
-            <EditText
-                android:id="@+id/picovoice_key"
-                style="@style/Field"
-                android:hint="AccessKey Picovoice"
                 android:inputType="textPassword" />
 
             <Button
@@ -127,7 +117,7 @@
                 android:layout_width="0dp"
                 android:layout_marginStart="8dp"
                 android:layout_weight="1"
-                android:text="Clés" />
+                android:text="Clé" />
         </LinearLayout>
     </LinearLayout>
 </FrameLayout>

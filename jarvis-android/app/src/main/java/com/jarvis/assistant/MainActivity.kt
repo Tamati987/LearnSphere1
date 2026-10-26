@@ -43,13 +43,10 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
         toggle = findViewById(R.id.toggle)
 
         val anthropic = findViewById<EditText>(R.id.anthropic_key)
-        val picovoice = findViewById<EditText>(R.id.picovoice_key)
         anthropic.setText(prefs.anthropicKey)
-        picovoice.setText(prefs.picovoiceKey)
 
         findViewById<Button>(R.id.save).setOnClickListener {
             prefs.anthropicKey = anthropic.text.toString()
-            prefs.picovoiceKey = picovoice.text.toString()
             if (prefs.isConfigured) {
                 stopService(Intent(this, JarvisService::class.java))
                 showConsole()
@@ -113,7 +110,7 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
     override fun onState(state: JarvisBus.State) {
         status.text = when (state) {
             JarvisBus.State.OFF -> "Hors ligne"
-            JarvisBus.State.WAITING -> "En attente · dites « Jarvis »"
+            JarvisBus.State.WAITING -> "En attente · dites « Hey Jarvis »"
             JarvisBus.State.LISTENING -> "Je vous écoute…"
             JarvisBus.State.THINKING -> "Analyse en cours…"
             JarvisBus.State.SPEAKING -> "Réponse"
