@@ -19,7 +19,8 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
   - ouvrir une application ;
   - allumer ou éteindre la lampe torche ;
   - régler le volume ;
-  - lancer de la musique ;
+  - mettre de la musique dans NewPipe : Jarvis trouve le morceau, l'artiste ou une playlist sur le web, puis l'ouvre dans NewPipe ; il peut aussi y lancer une recherche ;
+  - mettre en pause, reprendre, passer au morceau suivant ou précédent ;
   - démarrer un itinéraire GPS ;
   - donner l'état de la batterie et du réseau.
 - Parler avec une voix réaliste de majordome britannique si vous ajoutez une clé ElevenLabs : la voix originale « Jarvis » créée pour l'appli (elle doit se trouver dans le même compte ElevenLabs que la clé), sinon la voix « Daniel ». Sans clé, Jarvis utilise la voix de synthèse d'Android.
@@ -36,6 +37,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
 5. Ouvrez Jarvis, collez les clés, puis touchez **Enregistrer et démarrer**. Acceptez les autorisations : micro, appels, SMS (envoi, lecture et réception), contacts, agenda et notifications.
 6. Touchez **Autoriser Jarvis à ouvrir des applis**. Sans cette autorisation, Android l'empêche d'ouvrir Spotify, Maps ou l'Horloge quand son écran est fermé.
 7. Conseillé : dans *Paramètres → Applis → Jarvis → Batterie*, choisissez **Non restreinte** pour qu'Android ne coupe pas l'écoute.
+8. Pour la musique dans NewPipe : dans NewPipe, *Paramètres → Vidéo et audio → Action par défaut à l'ouverture du contenu*, choisissez **Lecture en arrière-plan**. Sinon NewPipe demande à chaque fois comment ouvrir le morceau.
 
 Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au lieu de dire « Hey Jarvis ».
 
@@ -51,6 +53,9 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 - « Hey Jarvis… est-ce que Maman m'a écrit ? »
 - « Hey Jarvis… qu'est-ce que j'ai de prévu demain ? »
 - « Hey Jarvis… ajoute un rendez-vous chez le médecin jeudi à 14 h 30. »
+- « Hey Jarvis… mets du Stromae. »
+- « Hey Jarvis… mets une playlist de jazz pour travailler. »
+- « Hey Jarvis… morceau suivant. »
 - « Hey Jarvis… ouvre WhatsApp. »
 - « Hey Jarvis… emmène-moi à l'aéroport. »
 
@@ -71,7 +76,7 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 | Fichier | Rôle |
 |---|---|
 | `JarvisBrain.kt` | Conversation avec Claude : prompt de Jarvis, outils du téléphone, recherche web |
-| `PhoneActions.kt` | Exécution des outils : appels, SMS, agenda, alarmes, applis, lampe, volume, musique, GPS |
+| `PhoneActions.kt` | Exécution des outils : appels, SMS, agenda, alarmes, applis, lampe, volume, musique et NewPipe, GPS |
 | `JarvisService.kt` | Service au premier plan : mot d'activation, reconnaissance vocale, synthèse vocale |
 | `WakeWordDetector.kt`, `WakeWordListener.kt` | Détection de « Hey Jarvis » avec les modèles openWakeWord (ONNX) |
 | `ElevenLabsVoice.kt` | Voix réaliste ElevenLabs, avec retour à la voix Android en cas d'échec |

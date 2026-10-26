@@ -39,6 +39,9 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         "lampe_torche" -> torch(input["allumer"] == true)
         "regler_volume" -> volume(input.int("pourcentage"))
         "jouer_musique" -> music(input.str("recherche"))
+        "newpipe_lire" -> newPipePlay(input.str("lien"))
+        "newpipe_rechercher" -> newPipeSearch(input.str("recherche"))
+        "controle_musique" -> mediaControl(input.str("action"))
         "itineraire" -> navigate(input.str("destination"))
         "reveil_jarvis" -> wakeUp(input.int("heure"), input.int("minute"), input["jours"], input.optStr("phrase"), input["agenda"] == true)
         "lister_reveils" -> JarvisAlarm.all(context).takeIf { it.isNotEmpty() }
@@ -295,6 +298,42 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         else "Échec : aucune application musicale ne gère la recherche vocale."
     }
 
+    private fun newPipePlay(link: String): String {
+        val uri = Uri.parse(link.trim())
+        val host = uri.host.orEmpty().removePrefix("www.").removePrefix("m.")
+        if (uri.scheme !in setOf("http", "https") || host !in NEWPIPE_HOSTS) {
+            return "Échec : NewPipe n'ouvre que des liens YouTube, YouTube Music ou SoundCloud, pas « $link »."
+        }
+        val intent = Intent(Intent.ACTION_VIEW, uri).setPackage(NEWPIPE)
+        return if (launch(intent)) "Lien ouvert dans NewPipe : $link"
+        else "Échec : NewPipe n'est pas installé sur ce téléphone."
+    }
+
+    private fun newPipeSearch(query: String): String {
+        // NewPipe lance une recherche quand on lui partage un texte qui n'est pas un lien.
+        val intent = Intent(Intent.ACTION_SEND)
+            .setType("text/plain")
+            .putExtra(Intent.EXTRA_TEXT, query)
+            .setPackage(NEWPIPE)
+        return if (launch(intent)) "Recherche « $query » ouverte dans NewPipe."
+        else "Échec : NewPipe n'est pas installé sur ce téléphone."
+    }
+
+    /** Pause, lecture, suivant, précédent : agit sur le lecteur en cours (NewPipe ou autre). */
+    private fun mediaControl(action: String): String {
+        val code = when (normalize(action)) {
+            "pause", "stop" -> android.view.KeyEvent.KEYCODE_MEDIA_PAUSE
+            "lecture", "play", "reprendre" -> android.view.KeyEvent.KEYCODE_MEDIA_PLAY
+            "suivant", "next" -> android.view.KeyEvent.KEYCODE_MEDIA_NEXT
+            "precedent", "previous" -> android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS
+            else -> return "Échec : action « $action » inconnue (pause, lecture, suivant ou précédent)."
+        }
+        val am = context.getSystemService(AudioManager::class.java)
+        am.dispatchMediaKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, code))
+        am.dispatchMediaKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, code))
+        return "Commande « $action » envoyée au lecteur."
+    }
+
     private fun navigate(destination: String): String {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=" + Uri.encode(destination)))
         if (!launch(intent)) {
@@ -364,6 +403,11 @@ class PhoneActions(private val context: Context) : ToolExecutor {
     }
 
     private val names = mutableMapOf<String, String>()
+
+    companion object {
+        private const val NEWPIPE = "org.schabi.newpipe"
+        private val NEWPIPE_HOSTS = setOf("youtube.com", "music.youtube.com", "youtu.be", "soundcloud.com", "on.soundcloud.com")
+    }
 
     /** Cherche un numéro : tel quel s'il s'agit déjà d'un numéro, sinon dans les contacts. */
     private fun resolveNumber(who: String): Pair<String, String>? {
