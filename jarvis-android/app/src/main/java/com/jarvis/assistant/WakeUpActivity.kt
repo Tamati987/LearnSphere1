@@ -47,15 +47,19 @@ class WakeUpActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         showOverLockScreen()
-        JarvisAlarm.consumed(this)
+        val alarmId = intent.getIntExtra(JarvisAlarm.EXTRA_ID, -1)
+        val alarm = JarvisAlarm.get(this, alarmId)
+        // Reprogramme tout de suite la prochaine fois (ou efface un réveil unique).
+        runCatching { JarvisAlarm.fired(this, alarmId) }
 
         val now = Calendar.getInstance()
         val hour = now.get(Calendar.HOUR_OF_DAY)
         val minute = now.get(Calendar.MINUTE)
-        val hello = if (hour in 5..17) "Bonjour, Monsieur." else "Bonsoir, Monsieur."
-        val time = if (minute == 0) "$hour heures" else "$hour heures $minute"
-        val extra = JarvisAlarm.message(this)?.let { " $it" }.orEmpty()
-        wakeText = "$hello Il est $time. C'est l'heure de vous réveiller.$extra"
+        wakeText = alarm?.text ?: run {
+            val hello = if (hour in 5..17) "Bonjour, Monsieur." else "Bonsoir, Monsieur."
+            val time = if (minute == 0) "$hour heures" else "$hour heures $minute"
+            "$hello Il est $time. C'est l'heure."
+        }
 
         setContentView(layout(String.format(Locale.FRANCE, "%02d:%02d", hour, minute)))
 
@@ -238,9 +242,7 @@ class WakeUpActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             setTextColor(getColor(R.color.core))
             setBackgroundColor(getColor(R.color.panel))
             setOnClickListener {
-                runCatching {
-                    JarvisAlarm.scheduleAt(context, System.currentTimeMillis() + 10 * 60_000L, JarvisAlarm.message(context))
-                }
+                runCatching { JarvisAlarm.snooze(context, wakeText) }
                 stopAlarm()
             }
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, (56 * resources.displayMetrics.density).toInt()).apply {

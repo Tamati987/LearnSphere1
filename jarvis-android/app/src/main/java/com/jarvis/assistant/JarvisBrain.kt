@@ -296,15 +296,35 @@ class JarvisBrain(apiKey: String, private val executor: ToolExecutor) {
             ),
             tool(
                 "reveil_jarvis",
-                "Programme le réveil de Jarvis : à l'heure dite, l'écran s'allume et Jarvis annonce de sa voix que c'est l'heure. À préférer pour « réveille-moi ».",
+                "Programme un réveil de Jarvis : à l'heure dite, l'écran s'allume et Jarvis dit la phrase de sa voix. " +
+                    "À préférer pour « réveille-moi » ou un rappel à heure fixe. Remplace un réveil existant à la même heure.",
                 mapOf(
                     "heure" to prop("integer", "Heure de 0 à 23"),
                     "minute" to prop("integer", "Minute de 0 à 59"),
-                    "message" to prop("string", "Phrase que Jarvis ajoutera au réveil, par exemple un rappel ; facultatif"),
+                    "jours" to JsonValue.from(
+                        mapOf(
+                            "type" to "array",
+                            "items" to mapOf("type" to "string", "enum" to JarvisAlarm.DAY_NAMES.keys.toList()),
+                            "description" to "Jours où le réveil se répète ; vide ou absent pour une seule fois",
+                        )
+                    ),
+                    "phrase" to prop(
+                        "string",
+                        "Phrase complète que Jarvis dira, dans son style, en appelant l'utilisateur Monsieur ; " +
+                            "facultatif, sinon une phrase de réveil avec l'heure",
+                    ),
                 ),
                 listOf("heure", "minute"),
             ),
-            tool("annuler_reveil", "Annule le réveil de Jarvis programmé."),
+            tool("lister_reveils", "Liste les réveils de Jarvis programmés, avec leurs jours et leur phrase."),
+            tool(
+                "annuler_reveil", "Annule un réveil de Jarvis, ou tous.",
+                mapOf(
+                    "heure" to prop("integer", "Heure du réveil à annuler"),
+                    "minute" to prop("integer", "Minute du réveil à annuler"),
+                    "tous" to prop("boolean", "true pour annuler tous les réveils"),
+                ),
+            ),
             tool(
                 "minuteur", "Lance un minuteur.",
                 mapOf(

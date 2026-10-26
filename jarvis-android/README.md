@@ -11,7 +11,9 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
   - envoyer un SMS, après vous l'avoir relu et avoir eu votre « oui » ;
   - lire vos SMS, ceux d'un contact précis ou seulement les non lus ;
   - annoncer à voix haute les nouveaux SMS dès qu'ils arrivent, puis proposer d'y répondre (désactivable dans l'écran des clés) ;
-  - vous réveiller lui-même : à l'heure dite, l'écran s'allume même verrouillé, un carillon sonne et Jarvis vous annonce de sa voix que c'est l'heure, avec « Arrêter » ou « Encore 10 min » ;
+  - vous réveiller ou vous rappeler un moment de la journée lui-même : à l'heure dite, l'écran s'allume même verrouillé, un carillon sonne et Jarvis dit sa phrase de sa voix, avec « Arrêter » ou « Encore 10 min ». Les réveils peuvent se répéter certains jours. Deux sont installés au premier lancement :
+    - 6 h, du lundi au vendredi : « Bonjour, Monsieur. Il est six heures. C'est l'heure de vous préparer pour le travail. Je vous souhaite une excellente journée. »
+    - 12 h, tous les jours : « Monsieur, il est midi. C'est l'heure du déjeuner. Je vous suggère de faire une pause, vous l'avez bien mérité. »
   - régler une alarme classique ou un minuteur ;
   - ouvrir une application ;
   - allumer ou éteindre la lampe torche ;
@@ -41,6 +43,8 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 - « Hey Jarvis… quel temps fera-t-il demain ? »
 - « Hey Jarvis… réveille-moi à 6 h 30. »
 - « Hey Jarvis… réveille-moi à 7 h et rappelle-moi le rendez-vous chez le dentiste. »
+- « Hey Jarvis… quels sont mes réveils ? »
+- « Hey Jarvis… mets aussi le réveil de 6 h le samedi. »
 - « Hey Jarvis… envoie un SMS à Maman : j'arrive dans dix minutes. »
 - « Hey Jarvis… lis mes derniers messages. »
 - « Hey Jarvis… est-ce que Maman m'a écrit ? »

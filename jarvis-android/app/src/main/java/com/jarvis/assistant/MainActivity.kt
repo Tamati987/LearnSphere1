@@ -89,6 +89,8 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
             } else false
         }
 
+        // Réveils de départ (6 h travail, midi déjeuner), installés une seule fois.
+        runCatching { JarvisAlarm.installDefaults(this) }
         if (prefs.isConfigured) {
             showConsole()
             startJarvis()
