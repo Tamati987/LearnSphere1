@@ -14,5 +14,9 @@ class Prefs(context: Context) {
         get() = prefs.getString("elevenlabs_key", "").orEmpty()
         set(value) = prefs.edit().putString("elevenlabs_key", value.trim()).apply()
 
+    var announceSms: Boolean
+        get() = prefs.getBoolean("announce_sms", true)
+        set(value) = prefs.edit().putBoolean("announce_sms", value).apply()
+
     val isConfigured get() = anthropicKey.isNotBlank()
 }

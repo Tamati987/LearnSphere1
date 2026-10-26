@@ -5,8 +5,12 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.Manifest
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.media.AudioManager
 import android.media.ToneGenerator
@@ -14,6 +18,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.provider.Telephony
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -21,6 +26,7 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import androidx.core.content.ContextCompat
 import java.io.File
 import java.util.Locale
 import java.util.concurrent.Executors
@@ -56,6 +62,19 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     private var recognizer: SpeechRecognizer? = null
     private lateinit var tts: TextToSpeech
     private lateinit var brain: JarvisBrain
+    private lateinit var actions: PhoneActions
+    private var smsReceiverRegistered = false
+
+    /** Nouveaux SMS : Jarvis les annonce à voix haute. */
+    private val smsReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val parts = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return
+            // Un long SMS arrive en plusieurs morceaux : on les recolle par expéditeur.
+            parts.groupBy { it.originatingAddress.orEmpty() }.forEach { (address, pieces) ->
+                announceSms(address, pieces.joinToString("") { it.messageBody.orEmpty() })
+            }
+        }
+    }
     private var voice: ElevenLabsVoice? = null
     // Certains téléphones refusent le générateur de bips : Jarvis s'en passe alors.
     private val beep = runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, 60) }.getOrNull()
@@ -68,7 +87,17 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     override fun onCreate() {
         super.onCreate()
         val prefs = Prefs(this)
-        brain = JarvisBrain(prefs.anthropicKey, PhoneActions(this))
+        actions = PhoneActions(this)
+        brain = JarvisBrain(prefs.anthropicKey, actions)
+        if (prefs.announceSms &&
+            checkSelfPermission(Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
+        ) {
+            ContextCompat.registerReceiver(
+                this, smsReceiver, IntentFilter(Telephony.Sms.Intents.SMS_RECEIVED_ACTION),
+                ContextCompat.RECEIVER_EXPORTED,
+            )
+            smsReceiverRegistered = true
+        }
         voice = prefs.elevenLabsKey.takeIf { it.isNotBlank() }?.let { ElevenLabsVoice(this, it) }
         tts = TextToSpeech(this, this)
         startInForeground()
@@ -87,6 +116,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
 
     override fun onDestroy() {
         wakeWord?.release()
+        if (smsReceiverRegistered) unregisterReceiver(smsReceiver)
         recognizer?.destroy()
         tts.shutdown()
         voice?.stop()
@@ -193,6 +223,28 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
                     .getOrNull()
             }
             main.post { speak(answer, audio) }
+        }
+    }
+
+    private fun announceSms(address: String, body: String) {
+        worker.execute {
+            val name = actions.contactName(address)
+            val from = name ?: "le $address"
+            val spoken = "Monsieur, nouveau message de $from : « ${body.take(400)} ». Souhaitez-vous répondre ?"
+            brain.recordEvent("Nouveau SMS reçu de ${name ?: "numéro inconnu"} ($address) : $body", spoken)
+            main.post {
+                // Occupé à écouter ou à répondre : le message reste affiché sans interrompre.
+                if (JarvisBus.state != JarvisBus.State.WAITING) {
+                    JarvisBus.line(false, spoken)
+                    return@post
+                }
+                pauseWakeWord()
+                JarvisBus.state(JarvisBus.State.THINKING)
+                worker.execute {
+                    val audio = voice?.let { v -> runCatching { v.synthesize(spoken) }.getOrNull() }
+                    main.post { speak(spoken, audio) }
+                }
+            }
         }
     }
 

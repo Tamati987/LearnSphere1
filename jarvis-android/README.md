@@ -9,6 +9,8 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
 - Agir sur le téléphone :
   - appeler un contact ou un numéro ;
   - envoyer un SMS, après vous l'avoir relu et avoir eu votre « oui » ;
+  - lire vos SMS, ceux d'un contact précis ou seulement les non lus ;
+  - annoncer à voix haute les nouveaux SMS dès qu'ils arrivent, puis proposer d'y répondre (désactivable dans l'écran des clés) ;
   - régler une alarme ou un minuteur ;
   - ouvrir une application ;
   - allumer ou éteindre la lampe torche ;
@@ -27,7 +29,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
 2. **Installer.** Copiez le fichier sur le téléphone et ouvrez-le. Android demande d'autoriser l'installation d'applis de source inconnue : acceptez pour cette fois.
 3. **Clé Anthropic** (obligatoire, payante à l'usage) : créez-la sur https://console.anthropic.com → *API Keys*, et ajoutez quelques euros de crédit.
 4. **Clé ElevenLabs** (facultative, pour la voix réaliste) : créez un compte gratuit sur https://elevenlabs.io, puis copiez une clé dans *Developers → API Keys*.
-5. Ouvrez Jarvis, collez les clés, puis touchez **Enregistrer et démarrer**. Acceptez les autorisations : micro, appels, SMS, contacts et notifications.
+5. Ouvrez Jarvis, collez les clés, puis touchez **Enregistrer et démarrer**. Acceptez les autorisations : micro, appels, SMS (envoi, lecture et réception), contacts et notifications.
 6. Touchez **Autoriser Jarvis à ouvrir des applis**. Sans cette autorisation, Android l'empêche d'ouvrir Spotify, Maps ou l'Horloge quand son écran est fermé.
 7. Conseillé : dans *Paramètres → Applis → Jarvis → Batterie*, choisissez **Non restreinte** pour qu'Android ne coupe pas l'écoute.
 
@@ -38,6 +40,8 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 - « Hey Jarvis… quel temps fera-t-il demain ? »
 - « Hey Jarvis… réveille-moi à 6 h 30. »
 - « Hey Jarvis… envoie un SMS à Maman : j'arrive dans dix minutes. »
+- « Hey Jarvis… lis mes derniers messages. »
+- « Hey Jarvis… est-ce que Maman m'a écrit ? »
 - « Hey Jarvis… ouvre WhatsApp. »
 - « Hey Jarvis… emmène-moi à l'aéroport. »
 
@@ -47,6 +51,7 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 - Ce que vous dites ensuite est transcrit par la reconnaissance vocale Google, puis envoyé à Claude (modèle `claude-opus-5-5`, effort bas pour aller vite).
 - La voix ElevenLabs consomme des caractères : l'offre gratuite en donne environ 10 000 par mois, soit une centaine de réponses.
 - Comptez quelques centimes par jour en usage normal. Les recherches web sont facturées en plus par Anthropic.
+- Quand Jarvis lit vos SMS, leur contenu est envoyé à Claude pour qu'il vous les résume ou y réponde. Les SMS annoncés automatiquement sont envoyés à ElevenLabs pour être lus à voix haute, et gardés dans la conversation avec Claude pour que vous puissiez y répondre.
 - Les clés restent dans les préférences privées de l'appli, sur le téléphone.
 
 ## Code

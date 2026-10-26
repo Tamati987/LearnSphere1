@@ -16,9 +16,13 @@ import android.os.Build
 import android.provider.AlarmClock
 import android.provider.ContactsContract
 import android.provider.MediaStore
+import android.provider.Telephony
 import android.telephony.SmsManager
 import androidx.core.content.ContextCompat
 import java.text.Normalizer
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.math.roundToInt
 
 /** Exécute sur le téléphone les outils que Claude demande. */
@@ -34,6 +38,7 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         "regler_volume" -> volume(input.int("pourcentage"))
         "jouer_musique" -> music(input.str("recherche"))
         "itineraire" -> navigate(input.str("destination"))
+        "lire_sms" -> readSms(input.optStr("contact"), input.int("nombre"), input["non_lus"] == true)
         "etat_telephone" -> status()
         else -> "Échec : outil inconnu « $name »."
     }
@@ -134,6 +139,53 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         }
         return "Batterie à $level %${if (charging) ", en charge" else ""}. Réseau : $network."
     }
+
+    private fun readSms(contact: String?, count: Int, unreadOnly: Boolean): String {
+        if (!granted(Manifest.permission.READ_SMS)) return "Échec : permission de lecture des SMS non accordée dans l'appli."
+        val wanted = contact?.let(::normalize)?.takeIf { it.isNotEmpty() }
+        val wantedDigits = contact.orEmpty().filter { it.isDigit() }.takeIf { it.length >= 4 }
+        val limit = if (count in 1..20) count else 5
+        val format = SimpleDateFormat("EEEE d MMMM 'à' HH:mm", Locale.FRANCE)
+        val found = mutableListOf<String>()
+        context.contentResolver.query(
+            Telephony.Sms.Inbox.CONTENT_URI,
+            arrayOf(Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE),
+            if (unreadOnly) "${Telephony.Sms.READ} = 0" else null,
+            null,
+            Telephony.Sms.DEFAULT_SORT_ORDER,
+        )?.use { c ->
+            var scanned = 0
+            while (c.moveToNext() && found.size < limit && scanned++ < 500) {
+                val address = c.getString(0) ?: continue
+                val name = contactName(address)
+                if (wanted != null) {
+                    val n = name?.let(::normalize).orEmpty()
+                    val byName = n.isNotEmpty() && (n.contains(wanted) || wanted.contains(n))
+                    val byNumber = wantedDigits != null && address.filter { it.isDigit() }.endsWith(wantedDigits)
+                    if (!byName && !byNumber) continue
+                }
+                val body = c.getString(1).orEmpty().take(600)
+                found += "De ${name ?: address}, ${format.format(Date(c.getLong(2)))} : $body"
+            }
+        }
+        if (found.isEmpty()) return if (contact != null) "Aucun SMS trouvé de « $contact »." else "Aucun SMS trouvé."
+        return found.joinToString("\n")
+    }
+
+    /** Nom du contact pour un numéro, ou null s'il n'est pas dans le répertoire. */
+    fun contactName(number: String): String? {
+        if (!granted(Manifest.permission.READ_CONTACTS)) return null
+        names[number]?.let { return it.ifEmpty { null } }
+        val uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number))
+        val name = runCatching {
+            context.contentResolver.query(uri, arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME), null, null, null)
+                ?.use { if (it.moveToFirst()) it.getString(0) else null }
+        }.getOrNull()
+        names[number] = name.orEmpty()
+        return name
+    }
+
+    private val names = mutableMapOf<String, String>()
 
     /** Cherche un numéro : tel quel s'il s'agit déjà d'un numéro, sinon dans les contacts. */
     private fun resolveNumber(who: String): Pair<String, String>? {

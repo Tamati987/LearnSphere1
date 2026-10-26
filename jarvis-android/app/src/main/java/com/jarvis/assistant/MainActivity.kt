@@ -52,10 +52,13 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
         val elevenLabs = findViewById<EditText>(R.id.elevenlabs_key)
         anthropic.setText(prefs.anthropicKey)
         elevenLabs.setText(prefs.elevenLabsKey)
+        val announceSms = findViewById<android.widget.CheckBox>(R.id.announce_sms)
+        announceSms.isChecked = prefs.announceSms
 
         findViewById<Button>(R.id.save).setOnClickListener {
             prefs.anthropicKey = anthropic.text.toString()
             prefs.elevenLabsKey = elevenLabs.text.toString()
+            prefs.announceSms = announceSms.isChecked
             if (prefs.isConfigured) {
                 stopService(Intent(this, JarvisService::class.java))
                 showConsole()
@@ -167,6 +170,8 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
             Manifest.permission.RECORD_AUDIO,
             Manifest.permission.CALL_PHONE,
             Manifest.permission.SEND_SMS,
+            Manifest.permission.READ_SMS,
+            Manifest.permission.RECEIVE_SMS,
             Manifest.permission.READ_CONTACTS,
         )
         if (Build.VERSION.SDK_INT >= 33) wanted += Manifest.permission.POST_NOTIFICATIONS

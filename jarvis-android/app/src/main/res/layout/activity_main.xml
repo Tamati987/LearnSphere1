@@ -47,6 +47,16 @@
                 android:hint="Clé API ElevenLabs"
                 android:inputType="textPassword" />
 
+            <CheckBox
+                android:id="@+id/announce_sms"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:buttonTint="@color/core"
+                android:text="Annoncer à voix haute les nouveaux SMS"
+                android:textColor="@color/fg"
+                android:textSize="16sp" />
+
             <Button
                 android:id="@+id/save"
                 style="@style/Primary"
