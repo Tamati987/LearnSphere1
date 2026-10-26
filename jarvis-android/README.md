@@ -16,7 +16,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
   - lancer de la musique ;
   - démarrer un itinéraire GPS ;
   - donner l'état de la batterie et du réseau.
-- Parler avec une voix réaliste de majordome britannique (voix « Daniel » d'ElevenLabs) si vous ajoutez une clé ElevenLabs, sinon avec la voix de synthèse d'Android.
+- Parler avec une voix réaliste de majordome britannique si vous ajoutez une clé ElevenLabs : la voix originale « Jarvis » créée pour l'appli (elle doit se trouver dans le même compte ElevenLabs que la clé), sinon la voix « Daniel ». Sans clé, Jarvis utilise la voix de synthèse d'Android.
 - Rouvrir le micro tout seul quand il vous pose une question.
 - Se souvenir de la conversation pendant 10 minutes.
 

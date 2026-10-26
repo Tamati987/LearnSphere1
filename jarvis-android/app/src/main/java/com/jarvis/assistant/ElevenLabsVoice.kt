@@ -14,8 +14,12 @@ class ElevenLabsVoice(private val context: Context, private val apiKey: String) 
     private var player: MediaPlayer? = null
 
     /** Génère l'audio de [text]. Appel réseau : à faire hors du fil principal. */
-    fun synthesize(text: String): File {
-        val connection = URL("https://api.elevenlabs.io/v1/text-to-speech/$VOICE_ID?output_format=mp3_44100_128")
+    fun synthesize(text: String): File =
+        // La voix Jarvis n'existe que dans le compte qui l'a créée : sinon, Daniel prend le relais.
+        runCatching { synthesize(text, VOICE_ID) }.getOrElse { synthesize(text, FALLBACK_VOICE_ID) }
+
+    private fun synthesize(text: String, voiceId: String): File {
+        val connection = URL("https://api.elevenlabs.io/v1/text-to-speech/$voiceId?output_format=mp3_44100_128")
             .openConnection() as HttpURLConnection
         try {
             connection.requestMethod = "POST"
@@ -69,8 +73,10 @@ class ElevenLabsVoice(private val context: Context, private val apiKey: String) 
     }
 
     companion object {
+        // « Jarvis (voix originale) », créée pour l'appli : homme britannique, grave, calme.
+        const val VOICE_ID = "53CXgEMfXvQXipNADfUR"
         // « Daniel », voix ElevenLabs par défaut : britannique, posée, formelle.
-        const val VOICE_ID = "onwK4e9ZLuTAKqWW03F9"
+        const val FALLBACK_VOICE_ID = "onwK4e9ZLuTAKqWW03F9"
         // Modèle multilingue rapide, adapté aux réponses vocales.
         const val MODEL = "eleven_flash_v2_5"
     }
