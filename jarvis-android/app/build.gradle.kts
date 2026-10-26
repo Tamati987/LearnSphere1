@@ -11,11 +11,22 @@ android {
         applicationId = "com.jarvis.assistant"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
 
         ndk {
             abiFilters += setOf("arm64-v8a", "armeabi-v7a")
+        }
+    }
+
+    // Même clé de signature à chaque compilation : l'appli s'installe par-dessus
+    // l'ancienne version et garde ses réglages (clés API comprises).
+    signingConfigs {
+        getByName("debug") {
+            storeFile = rootProject.file("jarvis-debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
         }
     }
 
