@@ -118,7 +118,7 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
             JarvisBus.State.THINKING -> "Analyse en cours…"
             JarvisBus.State.SPEAKING -> "Réponse"
         }
-        toggle.text = if (state == JarvisBus.State.OFF) "Activer" else "Désactiver"
+        toggle.text = if (state == JarvisBus.State.OFF) "Activer" else "Pause"
     }
 
     override fun onLine(fromUser: Boolean, text: String) {
