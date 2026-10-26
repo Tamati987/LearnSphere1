@@ -205,7 +205,14 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
                     val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
                     if (text.isNullOrBlank()) resumeWakeWord() else handle(text)
                 }
-                override fun onError(error: Int) = resumeWakeWord()
+                override fun onError(error: Int) {
+                    // Rien entendu : on se remet simplement à l'écoute. Sinon on l'écrit dans le
+                    // journal, pour comprendre un blocage (par exemple écran verrouillé).
+                    if (error != SpeechRecognizer.ERROR_NO_MATCH && error != SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
+                        JarvisBus.line(false, "Reconnaissance vocale impossible (code $error).")
+                    }
+                    resumeWakeWord()
+                }
                 override fun onReadyForSpeech(params: Bundle?) {}
                 override fun onBeginningOfSpeech() {}
                 override fun onRmsChanged(rmsdB: Float) {}
