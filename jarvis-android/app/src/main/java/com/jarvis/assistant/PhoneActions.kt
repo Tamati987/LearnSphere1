@@ -39,6 +39,7 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         "lampe_torche" -> torch(input["allumer"] == true)
         "regler_volume" -> volume(input.int("pourcentage"))
         "jouer_musique" -> music(input.str("recherche"))
+        "musique_newpipe" -> playMusic(input.str("recherche"), input["playlist"] != false)
         "newpipe_lire" -> newPipePlay(input.str("lien"))
         "newpipe_rechercher" -> newPipeSearch(input.str("recherche"))
         "controle_musique" -> mediaControl(input.str("action"))
@@ -309,6 +310,59 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         else "Échec : NewPipe n'est pas installé sur ce téléphone."
     }
 
+    /**
+     * Cherche sur YouTube et lance aussitôt le premier résultat dans NewPipe.
+     * [playlist] : une playlist (la musique continue), sinon un seul morceau.
+     */
+    private fun playMusic(query: String, playlist: Boolean): String {
+        val found = runCatching {
+            (if (playlist) youtubeSearch(query, playlist = true) else null) ?: youtubeSearch(query, playlist = false)
+        }.getOrNull()
+        if (found == null) {
+            // Recherche impossible (réseau, page YouTube changée) : on ouvre au moins la recherche dans NewPipe.
+            val fallback = newPipeSearch(query)
+            return if (fallback.startsWith("Échec")) fallback
+            else "Je n'ai pas pu lancer directement la musique ; la recherche « $query » est ouverte dans NewPipe."
+        }
+        val (link, title) = found
+        val opened = newPipePlay(link)
+        if (opened.startsWith("Échec")) return opened
+        return "Lecture lancée dans NewPipe : ${title ?: query}."
+    }
+
+    /** Premier résultat de la recherche YouTube : (lien, titre). */
+    private fun youtubeSearch(query: String, playlist: Boolean): Pair<String, String?>? {
+        // Filtres de la page de recherche YouTube : vidéos seules ou playlists seules.
+        val filter = if (playlist) "EgIQAw%3D%3D" else "EgIQAQ%3D%3D"
+        val url = "https://www.youtube.com/results?search_query=" +
+            java.net.URLEncoder.encode(query, "UTF-8") + "&sp=" + filter
+        val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+        val html = try {
+            connection.connectTimeout = 8_000
+            connection.readTimeout = 10_000
+            connection.setRequestProperty(
+                "User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+            )
+            connection.setRequestProperty("Accept-Language", "fr-FR,fr;q=0.9")
+            // Évite la page de consentement aux cookies en Europe.
+            connection.setRequestProperty("Cookie", "SOCS=CAI; CONSENT=YES+1")
+            connection.inputStream.bufferedReader().use { it.readText() }
+        } finally {
+            connection.disconnect()
+        }
+        val match = if (playlist) {
+            PLAYLIST_ID.find(html) ?: LOCKUP_PLAYLIST_ID.find(html)
+        } else {
+            VIDEO_ID.find(html)
+        } ?: return null
+        val id = match.groupValues[1]
+        val title = TITLE.find(html, match.range.last)?.groupValues?.get(1)
+            ?.replace("\\u0026", "&")?.replace("\\\"", "\"")
+        val link = if (playlist) "https://www.youtube.com/playlist?list=$id" else "https://www.youtube.com/watch?v=$id"
+        return link to title
+    }
+
     private fun newPipeSearch(query: String): String {
         // NewPipe lance une recherche quand on lui partage un texte qui n'est pas un lien.
         val intent = Intent(Intent.ACTION_SEND)
@@ -407,6 +461,10 @@ class PhoneActions(private val context: Context) : ToolExecutor {
     companion object {
         private const val NEWPIPE = "org.schabi.newpipe"
         private val NEWPIPE_HOSTS = setOf("youtube.com", "music.youtube.com", "youtu.be", "soundcloud.com", "on.soundcloud.com")
+        private val VIDEO_ID = Regex("\"videoRenderer\":\\{\"videoId\":\"([A-Za-z0-9_-]{11})\"")
+        private val PLAYLIST_ID = Regex("\"playlistRenderer\":\\{\"playlistId\":\"([A-Za-z0-9_-]+)\"")
+        private val LOCKUP_PLAYLIST_ID = Regex("\"contentId\":\"((?:PL|RD|OLAK5uy_)[A-Za-z0-9_-]+)\"")
+        private val TITLE = Regex("\"(?:text|content)\":\"([^\"]{2,120})\"")
     }
 
     /** Cherche un numéro : tel quel s'il s'agit déjà d'un numéro, sinon dans les contacts. */

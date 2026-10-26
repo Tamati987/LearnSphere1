@@ -19,7 +19,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
   - ouvrir une application ;
   - allumer ou éteindre la lampe torche ;
   - régler le volume ;
-  - mettre de la musique dans NewPipe : Jarvis trouve le morceau, l'artiste ou une playlist sur le web, puis l'ouvre dans NewPipe ; il peut aussi y lancer une recherche ;
+  - mettre de la musique dans NewPipe en une seule étape : Jarvis cherche sur YouTube (de préférence une playlist, pour que la musique continue) et lance aussitôt le premier résultat dans NewPipe. Pour une demande vague, il choisit lui-même. Il peut aussi ouvrir la recherche dans NewPipe ;
   - mettre en pause, reprendre, passer au morceau suivant ou précédent ;
   - démarrer un itinéraire GPS ;
   - donner l'état de la batterie et du réseau.
@@ -37,7 +37,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
 5. Ouvrez Jarvis, collez les clés, puis touchez **Enregistrer et démarrer**. Acceptez les autorisations : micro, appels, SMS (envoi, lecture et réception), contacts, agenda et notifications.
 6. Touchez **Autoriser Jarvis à ouvrir des applis**. Sans cette autorisation, Android l'empêche d'ouvrir Spotify, Maps ou l'Horloge quand son écran est fermé.
 7. Conseillé : dans *Paramètres → Applis → Jarvis → Batterie*, choisissez **Non restreinte** pour qu'Android ne coupe pas l'écoute.
-8. Pour la musique dans NewPipe : dans NewPipe, *Paramètres → Vidéo et audio → Action par défaut à l'ouverture du contenu*, choisissez **Lecture en arrière-plan**. Sinon NewPipe demande à chaque fois comment ouvrir le morceau.
+8. Pour la musique dans NewPipe : dans NewPipe, *Paramètres → Vidéo et audio → Action par défaut à l'ouverture du contenu*, choisissez **Lecture en arrière-plan**. Sinon NewPipe demande à chaque fois comment ouvrir le morceau et la musique ne démarre pas toute seule.
 
 Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au lieu de dire « Hey Jarvis ».
 
@@ -53,6 +53,7 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 - « Hey Jarvis… est-ce que Maman m'a écrit ? »
 - « Hey Jarvis… qu'est-ce que j'ai de prévu demain ? »
 - « Hey Jarvis… ajoute un rendez-vous chez le médecin jeudi à 14 h 30. »
+- « Hey Jarvis… mets-moi de la bonne musique. »
 - « Hey Jarvis… mets du Stromae. »
 - « Hey Jarvis… mets une playlist de jazz pour travailler. »
 - « Hey Jarvis… morceau suivant. »
