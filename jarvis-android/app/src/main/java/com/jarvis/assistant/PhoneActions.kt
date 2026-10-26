@@ -12,6 +12,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.BatteryManager
+import android.os.Build
 import android.provider.AlarmClock
 import android.provider.ContactsContract
 import android.provider.MediaStore
@@ -47,7 +48,8 @@ class PhoneActions(private val context: Context) : ToolExecutor {
     private fun sms(who: String, text: String): String {
         if (!granted(Manifest.permission.SEND_SMS)) return "Échec : permission SMS non accordée dans l'appli."
         val (label, number) = resolveNumber(who) ?: return "Échec : aucun contact ou numéro trouvé pour « $who »."
-        val manager = context.getSystemService(SmsManager::class.java)
+        val manager = if (Build.VERSION.SDK_INT >= 31) context.getSystemService(SmsManager::class.java)
+        else @Suppress("DEPRECATION") SmsManager.getDefault()
         manager.sendMultipartTextMessage(number, null, manager.divideMessage(text), null, null)
         return "SMS envoyé à $label ($number)."
     }

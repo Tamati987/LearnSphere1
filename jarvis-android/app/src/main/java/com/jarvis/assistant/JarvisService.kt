@@ -58,7 +58,8 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     private var recognizer: SpeechRecognizer? = null
     private lateinit var tts: TextToSpeech
     private lateinit var brain: JarvisBrain
-    private val beep = ToneGenerator(AudioManager.STREAM_MUSIC, 60)
+    // Certains téléphones refusent le générateur de bips : Jarvis s'en passe alors.
+    private val beep = runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, 60) }.getOrNull()
     private var followUp = false
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -85,7 +86,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         porcupine?.let { runCatching { it.stop() }; it.delete() }
         recognizer?.destroy()
         tts.shutdown()
-        beep.release()
+        beep?.release()
         worker.shutdownNow()
         JarvisBus.state(JarvisBus.State.OFF)
         super.onDestroy()
@@ -135,7 +136,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         if (JarvisBus.state == JarvisBus.State.LISTENING || JarvisBus.state == JarvisBus.State.THINKING) return
         tts.stop()
         pauseWakeWord()
-        beep.startTone(ToneGenerator.TONE_PROP_ACK, 150)
+        beep?.startTone(ToneGenerator.TONE_PROP_ACK, 150)
         // Laisse le bip finir avant d'ouvrir le micro.
         main.postDelayed({ listen() }, 250)
     }
