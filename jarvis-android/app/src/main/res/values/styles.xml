@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#050B10</color>
+    <color name="panel">#0B1720</color>
+    <color name="line">#16303D</color>
+    <color name="fg">#D7EEF5</color>
+    <color name="dim">#7D9AA6</color>
+    <color name="core">#4FD8FF</color>
+    <color name="on_core">#03202B</color>
+
+    <string name="app_name">Jarvis</string>
+    <string name="setup_intro">Pour fonctionner, Jarvis a besoin d\'une clé API Anthropic (console.anthropic.com) et, pour le mot d\'activation « Jarvis », d\'une clé gratuite Picovoice (console.picovoice.ai). Les clés restent sur ce téléphone.</string>
+
+    <style name="Theme.Jarvis" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="colorPrimary">@color/core</item>
+        <item name="colorOnPrimary">@color/on_core</item>
+        <item name="colorSecondary">@color/core</item>
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:statusBarColor">@color/bg</item>
+        <item name="android:navigationBarColor">@color/bg</item>
+    </style>
+
+    <style name="Title">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">@color/core</item>
+        <item name="android:textSize">26sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">0.3</item>
+        <item name="android:fontFamily">sans-serif-condensed</item>
+    </style>
+
+    <style name="Label">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">20dp</item>
+        <item name="android:textColor">@color/dim</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:fontFamily">monospace</item>
+    </style>
+
+    <style name="Body">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">@color/fg</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:lineSpacingMultiplier">1.25</item>
+    </style>
+
+    <style name="Field">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">6dp</item>
+        <item name="android:background">@drawable/field</item>
+        <item name="android:padding">14dp</item>
+        <item name="android:textColor">@color/fg</item>
+        <item name="android:textColorHint">@color/dim</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <style name="Primary" parent="Widget.MaterialComponents.Button">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">56dp</item>
+        <item name="backgroundTint">@color/core</item>
+        <item name="android:textColor">@color/on_core</item>
+        <item name="cornerRadius">14dp</item>
+    </style>
+
+    <style name="Secondary" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">56dp</item>
+        <item name="android:textColor">@color/core</item>
+        <item name="strokeColor">@color/line</item>
+        <item name="cornerRadius">14dp</item>
+    </style>
+</resources>

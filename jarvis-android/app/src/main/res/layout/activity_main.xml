@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:fitsSystemWindows="true">
+
+    <!-- Réglages : les deux clés d'accès -->
+    <ScrollView
+        android:id="@+id/setup"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <TextView
+                style="@style/Title"
+                android:text="JARVIS" />
+
+            <TextView
+                style="@style/Body"
+                android:layout_marginTop="8dp"
+                android:text="@string/setup_intro" />
+
+            <TextView
+                style="@style/Label"
+                android:text="Clé API Anthropic (obligatoire)" />
+
+            <EditText
+                android:id="@+id/anthropic_key"
+                style="@style/Field"
+                android:hint="sk-ant-…"
+                android:inputType="textPassword" />
+
+            <TextView
+                style="@style/Label"
+                android:text="Clé Picovoice (pour dire « Jarvis »)" />
+
+            <EditText
+                android:id="@+id/picovoice_key"
+                style="@style/Field"
+                android:hint="AccessKey Picovoice"
+                android:inputType="textPassword" />
+
+            <Button
+                android:id="@+id/save"
+                style="@style/Primary"
+                android:layout_marginTop="24dp"
+                android:text="Enregistrer et démarrer" />
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Console : état, journal de conversation, commandes -->
+    <LinearLayout
+        android:id="@+id/console"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            style="@style/Title"
+            android:text="JARVIS" />
+
+        <TextView
+            android:id="@+id/status"
+            style="@style/Label"
+            android:layout_marginTop="4dp"
+            android:text="Hors ligne" />
+
+        <Button
+            android:id="@+id/overlay"
+            style="@style/Secondary"
+            android:layout_marginTop="12dp"
+            android:text="Autoriser Jarvis à ouvrir des applis"
+            android:visibility="gone" />
+
+        <ScrollView
+            android:id="@+id/scroll"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="12dp"
+            android:layout_weight="1">
+
+            <TextView
+                android:id="@+id/log"
+                style="@style/Body"
+                android:textIsSelectable="true" />
+        </ScrollView>
+
+        <EditText
+            android:id="@+id/input"
+            style="@style/Field"
+            android:hint="Écrire à Jarvis…"
+            android:imeOptions="actionSend"
+            android:inputType="textCapSentences" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/talk"
+                style="@style/Primary"
+                android:layout_width="0dp"
+                android:layout_weight="2"
+                android:text="Parler" />
+
+            <Button
+                android:id="@+id/toggle"
+                style="@style/Secondary"
+                android:layout_width="0dp"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="Activer" />
+
+            <Button
+                android:id="@+id/settings"
+                style="@style/Secondary"
+                android:layout_width="0dp"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="Clés" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>
