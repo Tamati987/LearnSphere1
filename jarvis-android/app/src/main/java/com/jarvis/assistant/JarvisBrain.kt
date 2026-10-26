@@ -421,6 +421,11 @@ class JarvisBrain(apiKey: String, private val executor: ToolExecutor) {
                 ),
                 listOf("titre", "date"),
             ),
+            tool(
+                "deverrouiller",
+                "Allume l'écran et affiche le déverrouillage du téléphone (empreinte, visage ou code tapé par l'utilisateur). " +
+                    "Jarvis ne connaît pas et ne tape jamais le code.",
+            ),
             tool("etat_telephone", "Donne le niveau de batterie, la charge et la connexion réseau."),
         )
     }

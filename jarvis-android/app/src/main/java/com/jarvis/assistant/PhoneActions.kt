@@ -30,7 +30,21 @@ import kotlin.math.roundToInt
 /** Exécute sur le téléphone les outils que Claude demande. */
 class PhoneActions(private val context: Context) : ToolExecutor {
 
-    override fun execute(name: String, input: Map<String, Any?>): String = when (name) {
+    // Une appli a dû attendre le déverrouillage pendant l'action en cours.
+    private var waitingForUnlock = false
+
+    override fun execute(name: String, input: Map<String, Any?>): String {
+        waitingForUnlock = false
+        val result = run(name, input)
+        return if (waitingForUnlock && !result.startsWith("Échec")) {
+            "$result Le téléphone est verrouillé : le déverrouillage est affiché, l'action se fera dès que l'utilisateur aura déverrouillé."
+        } else {
+            result
+        }
+    }
+
+    private fun run(name: String, input: Map<String, Any?>): String = when (name) {
+        "deverrouiller" -> unlock()
         "appeler" -> call(input.str("destinataire"))
         "envoyer_sms" -> sms(input.str("destinataire"), input.str("message"))
         "regler_alarme" -> alarm(input.int("heure"), input.int("minute"), input.optStr("libelle"))
@@ -495,10 +509,25 @@ class PhoneActions(private val context: Context) : ToolExecutor {
 
     /** Lance une activité depuis le service. Renvoie false si aucune appli ne la gère. */
     private fun launch(intent: Intent): Boolean = try {
-        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        true
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        // Téléphone verrouillé : on affiche d'abord le déverrouillage (empreinte, visage ou code),
+        // l'appli s'ouvrira ensuite. Un appel, lui, peut partir écran verrouillé.
+        if (intent.action != Intent.ACTION_CALL && UnlockActivity.isLocked(context)) {
+            UnlockActivity.request(context, intent)
+            waitingForUnlock = true
+            true
+        } else {
+            context.startActivity(intent)
+            true
+        }
     } catch (e: Exception) {
         false
+    }
+
+    private fun unlock(): String {
+        if (!UnlockActivity.isLocked(context)) return "Le téléphone est déjà déverrouillé."
+        UnlockActivity.request(context)
+        return "Écran de déverrouillage affiché : l'utilisateur doit poser son doigt, montrer son visage ou taper son code."
     }
 
     private fun granted(permission: String) =

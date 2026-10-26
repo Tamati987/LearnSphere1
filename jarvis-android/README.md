@@ -22,6 +22,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
   - mettre de la musique dans NewPipe en une seule étape : Jarvis cherche sur YouTube (de préférence une playlist, pour que la musique continue) et lance aussitôt le premier résultat dans NewPipe. Pour une demande vague, il choisit lui-même. Il peut aussi ouvrir la recherche dans NewPipe ;
   - mettre en pause, reprendre, passer au morceau suivant ou précédent ;
   - démarrer un itinéraire GPS ;
+  - afficher le déverrouillage quand le téléphone est verrouillé (« Jarvis, déverrouille ») : vous déverrouillez avec votre empreinte, votre visage ou votre code, puis Jarvis termine l'action (ouvrir NewPipe, Maps…). Jarvis ne connaît ni ne tape jamais votre code ;
   - donner l'état de la batterie et du réseau.
 - Parler avec une voix réaliste de majordome britannique si vous ajoutez une clé ElevenLabs : la voix originale « Jarvis » créée pour l'appli (elle doit se trouver dans le même compte ElevenLabs que la clé), sinon la voix « Daniel ». Sans clé, Jarvis utilise la voix de synthèse d'Android.
 - S'ouvrir avec une séquence de démarrage animée façon interface holographique, des sons synthétisés sur le téléphone et un message de bienvenue en français. Touchez l'écran pour la passer.
