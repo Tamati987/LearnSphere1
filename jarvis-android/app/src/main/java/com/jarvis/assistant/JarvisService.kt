@@ -292,11 +292,13 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     private val heard = StringBuilder()
     private var partial = ""
     private var retries = 0
+    private var restarts = 0
     private var continuations = 0
 
     private fun listen() {
         heard.setLength(0)
         retries = 0
+        restarts = 0
         continuations = 0
         startRecognizer(continuation = false)
     }
@@ -313,8 +315,11 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         }
         JarvisBus.state(JarvisBus.State.LISTENING)
         partial = ""
-        recognizer?.destroy()
-        recognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
+        // Une seule reconnaissance, réutilisée : en recréer une aussitôt après l'avoir détruite
+        // fait échouer la connexion au service Google (code 11).
+        val engine = recognizer ?: SpeechRecognizer.createSpeechRecognizer(this).also { recognizer = it }
+        engine.cancel()
+        engine.apply {
             setRecognitionListener(object : RecognitionListener {
                 override fun onResults(results: Bundle?) {
                     main.removeCallbacks(endContinuation)
@@ -323,7 +328,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
                     if (text.isNotBlank()) heard.append(' ').append(text.trim())
                     if (text.isNotBlank() && looksUnfinished(text) && continuations < MAX_CONTINUATIONS) {
                         continuations++
-                        startRecognizer(continuation = true)
+                        main.postDelayed({ startRecognizer(continuation = true) }, RESTART_DELAY_MS)
                     } else {
                         finishListening()
                     }
@@ -331,12 +336,21 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
                 override fun onError(error: Int) {
                     main.removeCallbacks(endContinuation)
                     val silent = error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
+                    // Service Google déconnecté (11), occupé (8) ou client en erreur (5) : on repart d'une
+                    // reconnaissance neuve, après une courte pause.
+                    val broken = error == 11 || error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY ||
+                        error == SpeechRecognizer.ERROR_CLIENT
+                    if (broken) {
+                        recognizer?.destroy()
+                        recognizer = null
+                    }
                     when {
                         // Coupé en pleine phrase : on garde ce qui a déjà été compris.
                         partial.isNotBlank() -> { heard.append(' ').append(partial.trim()); finishListening() }
                         heard.isNotBlank() -> finishListening()
                         // Rien entendu tout de suite après « Hey Jarvis » : on laisse une seconde chance.
-                        silent && retries < 1 -> { retries++; startRecognizer(continuation = false) }
+                        silent && retries < 1 -> { retries++; main.postDelayed({ startRecognizer(continuation = false) }, RESTART_DELAY_MS) }
+                        broken && restarts < 2 -> { restarts++; main.postDelayed({ startRecognizer(continuation) }, 600) }
                         else -> {
                             // Sinon on l'écrit dans le journal, pour comprendre un blocage (écran verrouillé…).
                             if (!silent) JarvisBus.line(false, "Reconnaissance vocale impossible (code $error).")
@@ -678,6 +692,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         private const val CHANNEL = "jarvis"
         private const val MAX_CONTINUATIONS = 2
         private const val CONTINUATION_WAIT_MS = 3500L
+        private const val RESTART_DELAY_MS = 250L
         private val UNFINISHED_WORDS = setOf(
             "et", "ou", "de", "du", "des", "d", "le", "la", "les", "l", "un", "une", "à", "au", "aux",
             "pour", "que", "qu", "qui", "avec", "sur", "dans", "en", "chez", "par", "mais", "donc", "puis",
