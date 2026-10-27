@@ -193,7 +193,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         actions = PhoneActions(this)
         announceMessages = prefs.announceSms
         instance = this
-        brain = JarvisBrain(prefs.anthropicKey, actions)
+        brain = JarvisBrain(prefs.anthropicKey, actions, JarvisMemory(this))
         registerReceivers()
         // Les réveils ont pu être effacés si le téléphone a fermé Jarvis de force : on les reprogramme.
         JarvisAlarm.scheduleAll(this)

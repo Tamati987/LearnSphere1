@@ -31,7 +31,12 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
 - Parler avec une voix réaliste de majordome britannique si vous ajoutez une clé ElevenLabs : la voix originale « Jarvis » créée pour l'appli (elle doit se trouver dans le même compte ElevenLabs que la clé), sinon la voix « Daniel ». Sans clé, Jarvis utilise la voix de synthèse d'Android.
 - S'ouvrir avec une séquence de démarrage animée façon interface holographique, des sons synthétisés sur le téléphone et un message de bienvenue en français. Touchez l'écran pour la passer.
 - Rouvrir le micro tout seul quand il vous pose une question.
-- Se souvenir de la conversation pendant 10 minutes.
+- Se souvenir de vous d'une conversation à l'autre, avec une mémoire gardée sur le téléphone :
+  - il retient de lui-même ce qui est durable (vos proches, votre travail, vos goûts, vos habitudes), ou ce que vous lui demandez de retenir (« Jarvis, retiens que ma fille s'appelle Léa ») ;
+  - il évolue : quand vous le corrigez (« parle moins », « ne m'appelle pas Monsieur »), il en fait une consigne qu'il applique ensuite ;
+  - à la fin de chaque conversation (10 minutes sans échange), il la résume et garde ce résumé pour s'en souvenir plus tard ;
+  - « Jarvis, qu'est-ce que tu sais de moi ? », « oublie ma fille », « oublie tout » ;
+  - chaque souvenir ajouté s'affiche dans le journal.
 
 ## Installation
 
@@ -86,12 +91,14 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 - Les messages WhatsApp et Messenger lus dans les notifications restent en mémoire sur le téléphone (les 100 derniers). Quand Jarvis les lit ou les annonce, leur contenu est envoyé à Claude et, pour la voix, à ElevenLabs.
 - Quand Jarvis lit votre agenda, les événements de la période demandée sont envoyés à Claude.
 - Les clés restent dans les préférences privées de l'appli, sur le téléphone.
+- La mémoire de Jarvis (souvenirs, consignes, résumés des conversations) est un fichier privé de l'appli, sur le téléphone. Elle est envoyée à Claude au début de chaque conversation pour qu'il s'en serve, et à la fin de chaque conversation, celle-ci est envoyée à Claude pour être résumée. Elle survit aux mises à jour ; elle est effacée si vous désinstallez l'appli.
 
 ## Code
 
 | Fichier | Rôle |
 |---|---|
 | `JarvisBrain.kt` | Conversation avec Claude : prompt de Jarvis, outils du téléphone, recherche web |
+| `JarvisMemory.kt` | Mémoire à long terme : souvenirs, consignes apprises, résumés des conversations |
 | `PhoneActions.kt` | Exécution des outils : appels, SMS, agenda, alarmes, applis, lampe, volume, musique et NewPipe, GPS |
 | `JarvisService.kt` | Service au premier plan : mot d'activation, reconnaissance vocale, synthèse vocale |
 | `WakeWordDetector.kt`, `WakeWordListener.kt` | Détection de « Hey Jarvis » avec les modèles openWakeWord (ONNX) |
