@@ -269,6 +269,8 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     private fun pauseWakeWord() { wakeWord?.stop() }
 
     private fun resumeWakeWord() {
+        main.removeCallbacks(endContinuation)
+        heard.setLength(0)
         followUp = false
         awaitingCallAnswer = false
         wakeWord?.start()
@@ -286,42 +288,103 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
 
     // --- Reconnaissance vocale -------------------------------------------
 
+    // Ce qui a déjà été entendu quand l'utilisateur fait une pause au milieu de sa phrase.
+    private val heard = StringBuilder()
+    private var partial = ""
+    private var retries = 0
+    private var continuations = 0
+
     private fun listen() {
+        heard.setLength(0)
+        retries = 0
+        continuations = 0
+        startRecognizer(continuation = false)
+    }
+
+    /**
+     * Lance la reconnaissance vocale. Google coupe le micro dès une courte pause : si la phrase
+     * semble inachevée (« mets-moi de la… »), Jarvis réécoute la suite au lieu de répondre.
+     */
+    private fun startRecognizer(continuation: Boolean) {
         if (!SpeechRecognizer.isRecognitionAvailable(this)) {
             JarvisBus.line(false, "La reconnaissance vocale n'est pas disponible. Installez l'appli Google.")
             resumeWakeWord()
             return
         }
         JarvisBus.state(JarvisBus.State.LISTENING)
+        partial = ""
         recognizer?.destroy()
         recognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
             setRecognitionListener(object : RecognitionListener {
                 override fun onResults(results: Bundle?) {
+                    main.removeCallbacks(endContinuation)
                     val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
-                    if (text.isNullOrBlank()) resumeWakeWord() else handle(text)
+                        ?.takeIf { it.isNotBlank() } ?: partial
+                    if (text.isNotBlank()) heard.append(' ').append(text.trim())
+                    if (text.isNotBlank() && looksUnfinished(text) && continuations < MAX_CONTINUATIONS) {
+                        continuations++
+                        startRecognizer(continuation = true)
+                    } else {
+                        finishListening()
+                    }
                 }
                 override fun onError(error: Int) {
-                    // Rien entendu : on se remet simplement à l'écoute. Sinon on l'écrit dans le
-                    // journal, pour comprendre un blocage (par exemple écran verrouillé).
-                    if (error != SpeechRecognizer.ERROR_NO_MATCH && error != SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
-                        JarvisBus.line(false, "Reconnaissance vocale impossible (code $error).")
+                    main.removeCallbacks(endContinuation)
+                    val silent = error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
+                    when {
+                        // Coupé en pleine phrase : on garde ce qui a déjà été compris.
+                        partial.isNotBlank() -> { heard.append(' ').append(partial.trim()); finishListening() }
+                        heard.isNotBlank() -> finishListening()
+                        // Rien entendu tout de suite après « Hey Jarvis » : on laisse une seconde chance.
+                        silent && retries < 1 -> { retries++; startRecognizer(continuation = false) }
+                        else -> {
+                            // Sinon on l'écrit dans le journal, pour comprendre un blocage (écran verrouillé…).
+                            if (!silent) JarvisBus.line(false, "Reconnaissance vocale impossible (code $error).")
+                            resumeWakeWord()
+                        }
                     }
-                    resumeWakeWord()
                 }
                 override fun onReadyForSpeech(params: Bundle?) {}
-                override fun onBeginningOfSpeech() {}
+                override fun onBeginningOfSpeech() { main.removeCallbacks(endContinuation) }
                 override fun onRmsChanged(rmsdB: Float) {}
                 override fun onBufferReceived(buffer: ByteArray?) {}
                 override fun onEndOfSpeech() {}
-                override fun onPartialResults(partialResults: Bundle?) {}
+                override fun onPartialResults(partialResults: Bundle?) {
+                    partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
+                        ?.takeIf { it.isNotBlank() }?.let { partial = it }
+                }
                 override fun onEvent(eventType: Int, params: Bundle?) {}
             })
             startListening(
                 Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
                     .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                     .putExtra(RecognizerIntent.EXTRA_LANGUAGE, "fr-FR")
+                    .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                    // Silence toléré avant de couper (respecté par certaines versions de Google seulement).
+                    .putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2000L)
+                    .putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 2000L)
             )
         }
+        // Pour la suite d'une phrase : si rien ne vient en quelques secondes, on répond avec ce qu'on a.
+        if (continuation) main.postDelayed(endContinuation, CONTINUATION_WAIT_MS)
+    }
+
+    private val endContinuation = Runnable {
+        recognizer?.cancel()
+        finishListening()
+    }
+
+    private fun finishListening() {
+        val text = heard.toString().trim()
+        heard.setLength(0)
+        partial = ""
+        if (text.isEmpty()) resumeWakeWord() else handle(text)
+    }
+
+    /** La phrase s'arrête sur un mot qui appelle une suite (« de », « et », « mets »…). */
+    private fun looksUnfinished(text: String): Boolean {
+        val last = text.trim().lowercase(Locale.FRANCE).split(Regex("[\\s'’-]+")).lastOrNull().orEmpty()
+        return last in UNFINISHED_WORDS
     }
 
     // --- Réflexion et réponse --------------------------------------------
@@ -613,6 +676,15 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
 
     companion object {
         private const val CHANNEL = "jarvis"
+        private const val MAX_CONTINUATIONS = 2
+        private const val CONTINUATION_WAIT_MS = 3500L
+        private val UNFINISHED_WORDS = setOf(
+            "et", "ou", "de", "du", "des", "d", "le", "la", "les", "l", "un", "une", "à", "au", "aux",
+            "pour", "que", "qu", "qui", "avec", "sur", "dans", "en", "chez", "par", "mais", "donc", "puis",
+            "alors", "mets", "met", "mettre", "mon", "ma", "mes", "ton", "ta", "tes", "son", "sa", "ses",
+            "ce", "cette", "ces", "quand", "si", "comme", "euh", "c", "j", "je", "me", "m", "envoie",
+            "notre", "votre",
+        )
         const val ACTION_LISTEN = "com.jarvis.assistant.LISTEN"
         const val ACTION_TEXT = "com.jarvis.assistant.TEXT"
         const val ACTION_RESET = "com.jarvis.assistant.RESET"
