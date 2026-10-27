@@ -22,6 +22,12 @@ data class AppMessage(val app: String, val conversation: String, val sender: Str
 class MessageListener : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
+        if (isIncomingCall(sbn)) {
+            val caller = sbn.notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()
+                ?.takeIf { it.isNotBlank() } ?: "Quelqu'un"
+            JarvisService.instance?.onIncomingCallNotification(caller)
+            return
+        }
         val app = APPS[sbn.packageName] ?: return
         val notification = sbn.notification
         // Les notifications de résumé (« 5 messages dans 3 discussions ») ne contiennent pas de message.
@@ -64,6 +70,23 @@ class MessageListener : NotificationListenerService() {
             return
         }
         service.announceMessage(app, announced.last().sender, conversation, announced.joinToString(" ") { it.text })
+    }
+
+    override fun onNotificationRemoved(sbn: StatusBarNotification) {
+        if (isIncomingCall(sbn)) JarvisService.instance?.onCallNotificationRemoved()
+    }
+
+    /** Notification d'appel qui sonne : catégorie « appel », avec un bouton pour décrocher. */
+    private fun isIncomingCall(sbn: StatusBarNotification): Boolean {
+        val n = sbn.notification
+        if (n.category != Notification.CATEGORY_CALL) return false
+        if (android.os.Build.VERSION.SDK_INT >= 31) {
+            val type = n.extras.getInt(Notification.EXTRA_CALL_TYPE, -1)
+            if (type != -1) return type == Notification.CallStyle.CALL_TYPE_INCOMING
+        }
+        // Sans CallStyle : un appel entrant propose au moins deux boutons (décrocher, refuser).
+        return (n.actions?.size ?: 0) >= 2 && n.flags and Notification.FLAG_ONGOING_EVENT != 0 &&
+            n.fullScreenIntent != null
     }
 
     override fun onListenerConnected() {

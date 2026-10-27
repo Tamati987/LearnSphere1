@@ -168,6 +168,10 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
         super.onResume()
         JarvisBus.listener = this
         onState(JarvisBus.state)
+        // Réaffiche tout le journal, y compris ce qui s'est passé appli fermée, avec un diagnostic en tête.
+        log.text = ""
+        log.append("DIAGNOSTIC  " + diagnostic())
+        JarvisBus.lines().forEach { (fromUser, text) -> onLine(fromUser, text) }
         findViewById<Button>(R.id.overlay).visibility =
             if (Settings.canDrawOverlays(this)) View.GONE else View.VISIBLE
         val listening = MessageListener.isEnabled(this)
@@ -224,6 +228,25 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
 
     companion object {
         private const val BOOT_TAG = "boot"
+    }
+
+    /** État de ce dont les annonces ont besoin, pour repérer d'un coup d'œil ce qui bloque. */
+    private fun diagnostic(): String {
+        fun ok(b: Boolean) = if (b) "✓" else "✗"
+        fun perm(p: String) = checkSelfPermission(p) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        val ringer = getSystemService(android.media.AudioManager::class.java).ringerMode ==
+            android.media.AudioManager.RINGER_MODE_NORMAL
+        val power = getSystemService(android.os.PowerManager::class.java).isIgnoringBatteryOptimizations(packageName)
+        return listOf(
+            "service ${ok(JarvisService.instance != null)}",
+            "accès notifications ${ok(MessageListener.isEnabled(this))}",
+            "téléphone ${ok(perm(Manifest.permission.READ_PHONE_STATE))}",
+            "journal d'appels ${ok(perm(Manifest.permission.READ_CALL_LOG))}",
+            "SMS ${ok(perm(Manifest.permission.RECEIVE_SMS))}",
+            "annonces ${ok(prefs.announceSms)}",
+            "sonnerie ${ok(ringer)}",
+            "batterie sans restriction ${ok(power)}",
+        ).joinToString(" · ")
     }
 
     override fun onLine(fromUser: Boolean, text: String) {

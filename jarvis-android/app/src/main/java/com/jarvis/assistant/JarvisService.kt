@@ -46,8 +46,22 @@ object JarvisBus {
 
     private val main = Handler(Looper.getMainLooper())
 
+    /** Historique du journal, gardé même quand l'écran de Jarvis est fermé. */
+    private val history = ArrayDeque<Pair<Boolean, String>>()
+
     fun state(s: State) { state = s; main.post { listener?.onState(s) } }
-    fun line(fromUser: Boolean, text: String) = main.post { listener?.onLine(fromUser, text) }
+
+    fun line(fromUser: Boolean, text: String) {
+        val stamped = java.text.SimpleDateFormat("HH:mm", java.util.Locale.FRANCE).format(java.util.Date()) + "  " + text
+        main.post {
+            history.addLast(fromUser to stamped)
+            while (history.size > 150) history.removeFirst()
+            listener?.onLine(fromUser, stamped)
+        }
+    }
+
+    /** Lignes du journal, de la plus ancienne à la plus récente (à lire sur le fil principal). */
+    fun lines(): List<Pair<Boolean, String>> = history.toList()
 }
 
 /**
@@ -94,6 +108,36 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         }
     }
 
+    /**
+     * Appel entrant vu par sa notification (par [MessageListener]) : seconde détection,
+     * qui marche même sans les autorisations Téléphone.
+     */
+    fun onIncomingCallNotification(caller: String) {
+        main.post {
+            if (callAnnounced) return@post
+            ringing = true
+            callAnnounced = true
+            val audio = getSystemService(AudioManager::class.java)
+            if (audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) {
+                JarvisBus.line(false, "Appel de $caller, mais le téléphone est en silencieux ou en vibreur : pas d'annonce.")
+                return@post
+            }
+            JarvisBus.line(false, "$caller vous appelle.")
+            awaitingCallAnswer = true
+            say("Monsieur, $caller vous appelle. Voulez-vous répondre ?")
+        }
+    }
+
+    /** L'appel vu par sa notification est terminé ou décroché. */
+    fun onCallNotificationRemoved() {
+        main.post {
+            if (!ringing) return@post
+            ringing = false
+            callAnnounced = false
+            if (awaitingCallAnswer) { awaitingCallAnswer = false; recognizer?.cancel(); stopSpeech(); resumeWakeWord() }
+        }
+    }
+
     /** Appel entrant : Jarvis annonce qui appelle et propose de décrocher. */
     private val callReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -108,6 +152,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
                 return
             }
             ringing = true
+            JarvisBus.line(false, "Appel entrant détecté.")
             @Suppress("DEPRECATION")
             val number = intent.getStringExtra(android.telephony.TelephonyManager.EXTRA_INCOMING_NUMBER)
             // Android envoie l'événement deux fois, avec puis sans le numéro : on attend un peu le numéro.
