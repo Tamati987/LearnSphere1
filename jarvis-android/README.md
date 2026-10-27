@@ -8,6 +8,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
 - Répondre à toutes vos questions avec Claude, et chercher sur le web l'actualité, la météo ou les faits récents.
 - Agir sur le téléphone :
   - appeler un contact ou un numéro ;
+  - annoncer qui vous appelle (« Monsieur, Paul vous appelle. Voulez-vous répondre ? ») et décrocher ou refuser l'appel à la voix (« oui », « non ») ; rien n'est annoncé si le téléphone est en silencieux ou en vibreur ;
   - envoyer un SMS, après vous l'avoir relu et avoir eu votre « oui » ;
   - lire vos SMS, ceux d'un contact précis ou seulement les non lus ;
   - lire les messages WhatsApp et Messenger reçus et y répondre, grâce à leurs notifications (seulement les messages arrivés depuis que Jarvis a l'accès ; l'historique plus ancien reste inaccessible) ;
@@ -36,7 +37,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
 2. **Installer.** Copiez le fichier sur le téléphone et ouvrez-le. Android demande d'autoriser l'installation d'applis de source inconnue : acceptez pour cette fois.
 3. **Clé Anthropic** (obligatoire, payante à l'usage) : créez-la sur https://console.anthropic.com → *API Keys*, et ajoutez quelques euros de crédit.
 4. **Clé ElevenLabs** (facultative, pour la voix réaliste) : créez un compte gratuit sur https://elevenlabs.io, puis copiez une clé dans *Developers → API Keys*.
-5. Ouvrez Jarvis, collez les clés, puis touchez **Enregistrer et démarrer**. Acceptez les autorisations : micro, appels, SMS (envoi, lecture et réception), contacts, agenda et notifications.
+5. Ouvrez Jarvis, collez les clés, puis touchez **Enregistrer et démarrer**. Acceptez les autorisations : micro, appels (passer, voir qui appelle, décrocher), SMS (envoi, lecture et réception), contacts, agenda et notifications.
 6. Touchez **Autoriser Jarvis à ouvrir des applis**. Sans cette autorisation, Android l'empêche d'ouvrir Spotify, Maps ou l'Horloge quand son écran est fermé.
 7. Touchez **Autoriser l'écoute écran verrouillé** et acceptez : Android cesse alors de couper Jarvis quand l'écran est éteint. Jarvis garde aussi le processeur éveillé pendant qu'il écoute, ce qui consomme un peu plus de batterie. Sur certaines marques (Xiaomi, Oppo, Realme, Huawei…), autorisez aussi le démarrage automatique et l'activité en arrière-plan de Jarvis dans les réglages du téléphone.
 8. Pour WhatsApp et Messenger : touchez **Autoriser la lecture de WhatsApp et Messenger**, puis activez Jarvis dans la liste. Si Android affiche « Paramètre restreint », allez dans *Paramètres → Applis → Jarvis*, menu **⋮** en haut à droite → **Autoriser les paramètres restreints**, puis recommencez.

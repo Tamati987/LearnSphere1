@@ -53,7 +53,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
                 android:buttonTint="@color/core"
-                android:text="Annoncer à voix haute les nouveaux messages (SMS, WhatsApp, Messenger)"
+                android:text="Annoncer à voix haute les appels et les nouveaux messages (SMS, WhatsApp, Messenger)"
                 android:textColor="@color/fg"
                 android:textSize="16sp" />
 

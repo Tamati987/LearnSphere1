@@ -65,6 +65,36 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     private lateinit var actions: PhoneActions
     private var smsReceiverRegistered = false
     private var announceMessages = true
+    private var callReceiverRegistered = false
+    // Appel entrant en cours d'annonce : la prochaine réponse (« oui », « non ») le concerne.
+    private var ringing = false
+    private var callAnnounced = false
+    private var awaitingCallAnswer = false
+
+    /** Appel entrant : Jarvis annonce qui appelle et propose de décrocher. */
+    private val callReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val state = intent.getStringExtra(android.telephony.TelephonyManager.EXTRA_STATE)
+            if (state != android.telephony.TelephonyManager.EXTRA_STATE_RINGING) {
+                // Décroché ou terminé : on oublie l'appel et on se tait.
+                if (ringing) {
+                    ringing = false
+                    callAnnounced = false
+                    if (awaitingCallAnswer) { awaitingCallAnswer = false; recognizer?.cancel(); stopSpeech(); resumeWakeWord() }
+                }
+                return
+            }
+            ringing = true
+            @Suppress("DEPRECATION")
+            val number = intent.getStringExtra(android.telephony.TelephonyManager.EXTRA_INCOMING_NUMBER)
+            // Android envoie l'événement deux fois, avec puis sans le numéro : on attend un peu le numéro.
+            if (number == null) {
+                main.postDelayed({ if (ringing && !callAnnounced) announceCall(null) }, 800)
+            } else if (!callAnnounced) {
+                announceCall(number)
+            }
+        }
+    }
     private var wakeLock: android.os.PowerManager.WakeLock? = null
 
     /** Nouveaux SMS : Jarvis les annonce à voix haute. */
@@ -111,6 +141,15 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
             )
             smsReceiverRegistered = true
         }
+        if (prefs.announceSms &&
+            checkSelfPermission(Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
+        ) {
+            ContextCompat.registerReceiver(
+                this, callReceiver, IntentFilter(android.telephony.TelephonyManager.ACTION_PHONE_STATE_CHANGED),
+                ContextCompat.RECEIVER_EXPORTED,
+            )
+            callReceiverRegistered = true
+        }
         voice = prefs.elevenLabsKey.takeIf { it.isNotBlank() }?.let { ElevenLabsVoice(this, it) }
         tts = TextToSpeech(this, this)
         startInForeground()
@@ -136,6 +175,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         wakeLock?.release()
         wakeWord?.release()
         if (smsReceiverRegistered) unregisterReceiver(smsReceiver)
+        if (callReceiverRegistered) unregisterReceiver(callReceiver)
         recognizer?.destroy()
         tts.shutdown()
         voice?.stop()
@@ -180,6 +220,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
 
     private fun resumeWakeWord() {
         followUp = false
+        awaitingCallAnswer = false
         wakeWord?.start()
         JarvisBus.state(JarvisBus.State.WAITING)
     }
@@ -235,7 +276,54 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
 
     // --- Réflexion et réponse --------------------------------------------
 
+    private fun announceCall(number: String?) {
+        callAnnounced = true
+        // Téléphone en silencieux ou vibreur : on respecte le choix et on n'annonce pas.
+        val audio = getSystemService(AudioManager::class.java)
+        if (audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
+        worker.execute {
+            val who = when {
+                number.isNullOrBlank() -> "Un numéro masqué"
+                else -> actions.contactName(number) ?: "Le ${number.chunked(2).joinToString(" ")}"
+            }
+            main.post {
+                if (!ringing) return@post
+                JarvisBus.line(false, "$who vous appelle.")
+                awaitingCallAnswer = true
+                say("Monsieur, $who vous appelle. Voulez-vous répondre ?")
+            }
+        }
+    }
+
+    /** Réponse à « Voulez-vous répondre ? » pendant que ça sonne, traitée tout de suite, sans Claude. */
+    @Suppress("DEPRECATION", "MissingPermission")
+    private fun handleCallAnswer(text: String) {
+        awaitingCallAnswer = false
+        JarvisBus.line(true, text)
+        val t = text.lowercase()
+        val telecom = getSystemService(android.telecom.TelecomManager::class.java)
+        val allowed = checkSelfPermission(Manifest.permission.ANSWER_PHONE_CALLS) == PackageManager.PERMISSION_GRANTED
+        val reply = when {
+            !ringing -> "L'appel est terminé, Monsieur."
+            listOf("non", "refuse", "raccroche", "rejette", "plus tard").any { it in t } -> {
+                if (allowed && android.os.Build.VERSION.SDK_INT >= 28) {
+                    telecom.endCall()
+                    "Appel refusé."
+                } else "Je ne peux pas refuser l'appel sans l'autorisation de gérer les appels."
+            }
+            listOf("oui", "décroche", "decroche", "réponds", "reponds", "accepte", "vas-y").any { it in t } -> {
+                if (allowed) {
+                    telecom.acceptRingingCall()
+                    return resumeWakeWord()
+                } else "Je ne peux pas décrocher sans l'autorisation de gérer les appels."
+            }
+            else -> return resumeWakeWord()
+        }
+        say(reply)
+    }
+
     private fun handle(text: String) {
+        if (awaitingCallAnswer) return handleCallAnswer(text)
         pauseWakeWord()
         JarvisBus.line(true, text)
         JarvisBus.state(JarvisBus.State.THINKING)
