@@ -71,6 +71,29 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     private var callAnnounced = false
     private var awaitingCallAnswer = false
 
+    /** Branche l'écoute des SMS et des appels dès que leurs autorisations sont accordées. */
+    private fun registerReceivers() {
+        if (!announceMessages) return
+        if (!smsReceiverRegistered &&
+            checkSelfPermission(Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
+        ) {
+            ContextCompat.registerReceiver(
+                this, smsReceiver, IntentFilter(Telephony.Sms.Intents.SMS_RECEIVED_ACTION),
+                ContextCompat.RECEIVER_EXPORTED,
+            )
+            smsReceiverRegistered = true
+        }
+        if (!callReceiverRegistered &&
+            checkSelfPermission(Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
+        ) {
+            ContextCompat.registerReceiver(
+                this, callReceiver, IntentFilter(android.telephony.TelephonyManager.ACTION_PHONE_STATE_CHANGED),
+                ContextCompat.RECEIVER_EXPORTED,
+            )
+            callReceiverRegistered = true
+        }
+    }
+
     /** Appel entrant : Jarvis annonce qui appelle et propose de décrocher. */
     private val callReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -132,24 +155,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         announceMessages = prefs.announceSms
         instance = this
         brain = JarvisBrain(prefs.anthropicKey, actions)
-        if (prefs.announceSms &&
-            checkSelfPermission(Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
-        ) {
-            ContextCompat.registerReceiver(
-                this, smsReceiver, IntentFilter(Telephony.Sms.Intents.SMS_RECEIVED_ACTION),
-                ContextCompat.RECEIVER_EXPORTED,
-            )
-            smsReceiverRegistered = true
-        }
-        if (prefs.announceSms &&
-            checkSelfPermission(Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
-        ) {
-            ContextCompat.registerReceiver(
-                this, callReceiver, IntentFilter(android.telephony.TelephonyManager.ACTION_PHONE_STATE_CHANGED),
-                ContextCompat.RECEIVER_EXPORTED,
-            )
-            callReceiverRegistered = true
-        }
+        registerReceivers()
         voice = prefs.elevenLabsKey.takeIf { it.isNotBlank() }?.let { ElevenLabsVoice(this, it) }
         tts = TextToSpeech(this, this)
         startInForeground()
@@ -161,6 +167,9 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Les autorisations ont pu être accordées après le démarrage du service (par exemple
+        // juste après une mise à jour) : on rebranche ce qui manquait.
+        registerReceivers()
         when (intent?.action) {
             ACTION_LISTEN -> main.post { onWakeWord() }
             ACTION_TEXT -> intent.getStringExtra(EXTRA_TEXT)?.let { handle(it) }
@@ -280,7 +289,10 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         callAnnounced = true
         // Téléphone en silencieux ou vibreur : on respecte le choix et on n'annonce pas.
         val audio = getSystemService(AudioManager::class.java)
-        if (audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
+        if (audio.ringerMode != AudioManager.RINGER_MODE_NORMAL) {
+            JarvisBus.line(false, "Appel entrant, mais le téléphone est en silencieux ou en vibreur : pas d'annonce.")
+            return
+        }
         worker.execute {
             val who = when {
                 number.isNullOrBlank() -> "Un numéro masqué"
@@ -349,7 +361,10 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
 
     /** Nouveau message WhatsApp ou Messenger, transmis par [MessageListener]. */
     fun announceMessage(app: String, sender: String, conversation: String, body: String) {
-        if (!announceMessages) return
+        if (!announceMessages) {
+            JarvisBus.line(false, "Message $app de $sender reçu (annonces désactivées dans les clés).")
+            return
+        }
         worker.execute {
             val where = if (conversation != sender) " dans « $conversation »" else ""
             val spoken = "Monsieur, nouveau message $app de $sender$where : « ${body.take(400)} ». Souhaitez-vous répondre ?"

@@ -170,8 +170,16 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
         onState(JarvisBus.state)
         findViewById<Button>(R.id.overlay).visibility =
             if (Settings.canDrawOverlays(this)) View.GONE else View.VISIBLE
-        findViewById<Button>(R.id.notifications).visibility =
-            if (MessageListener.isEnabled(this)) View.GONE else View.VISIBLE
+        val listening = MessageListener.isEnabled(this)
+        findViewById<Button>(R.id.notifications).visibility = if (listening) View.GONE else View.VISIBLE
+        // Après une mise à jour, Android peut oublier de reconnecter l'accès aux notifications.
+        if (listening) {
+            runCatching {
+                android.service.notification.NotificationListenerService.requestRebind(
+                    android.content.ComponentName(this, MessageListener::class.java)
+                )
+            }
+        }
         val power = getSystemService(android.os.PowerManager::class.java)
         findViewById<Button>(R.id.battery).visibility =
             if (power.isIgnoringBatteryOptimizations(packageName)) View.GONE else View.VISIBLE

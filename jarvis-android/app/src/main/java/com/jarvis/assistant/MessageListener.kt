@@ -34,7 +34,9 @@ class MessageListener : NotificationListenerService() {
         if (conversation.isEmpty()) return
 
         val incoming = style?.messages?.map {
-            AppMessage(app, conversation, it.person?.name?.toString() ?: conversation, it.text?.toString().orEmpty(), it.timestamp)
+            AppMessage(app, conversation, it.person?.name?.toString() ?: conversation, it.text?.toString().orEmpty(),
+                // Certaines applis (Messenger) n'indiquent pas l'heure du message : on prend celle de la notification.
+                if (it.timestamp > 0) it.timestamp else sbn.postTime)
         } ?: listOf(
             AppMessage(
                 app, conversation, conversation,
@@ -56,9 +58,16 @@ class MessageListener : NotificationListenerService() {
         // Au premier passage après le démarrage, on ne réannonce pas les anciens messages.
         if (seen == 0L && System.currentTimeMillis() - fresh.last().time > 60_000) return
         val announced = fresh.takeLast(3)
-        JarvisService.instance?.announceMessage(
-            app, announced.last().sender, conversation, announced.joinToString(" ") { it.text },
-        )
+        val service = JarvisService.instance
+        if (service == null) {
+            JarvisBus.line(false, "Message $app de ${announced.last().sender} reçu, mais Jarvis est désactivé : pas d'annonce.")
+            return
+        }
+        service.announceMessage(app, announced.last().sender, conversation, announced.joinToString(" ") { it.text })
+    }
+
+    override fun onListenerConnected() {
+        JarvisBus.line(false, "Accès aux notifications actif : WhatsApp et Messenger seront annoncés.")
     }
 
     private fun replyAction(notification: Notification): Notification.Action? =
