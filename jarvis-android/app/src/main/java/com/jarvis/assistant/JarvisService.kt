@@ -125,7 +125,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
             JarvisBus.line(false, "$caller vous appelle.")
             awaitingCallAnswer = true
             quietRinger()
-            say("Monsieur, $caller vous appelle. Voulez-vous répondre ?")
+            say(urgent = true, text = "Monsieur, $caller vous appelle. Voulez-vous répondre ?")
         }
     }
 
@@ -182,6 +182,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     @Volatile private var speechGeneration = 0
     private var ttsState = TTS_PENDING
     private var utterance = 0
+    @Volatile private var urgentGeneration = -1
     private var currentUtterance: String? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -381,7 +382,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
                 JarvisBus.line(false, "$who vous appelle.")
                 awaitingCallAnswer = true
                 quietRinger()
-                say("Monsieur, $who vous appelle. Voulez-vous répondre ?")
+                say("Monsieur, $who vous appelle. Voulez-vous répondre ?", urgent = true)
             }
         }
     }
@@ -478,10 +479,15 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     }
 
     /** Dit un texte prêt à l'avance, découpé en phrases pour démarrer plus vite. */
-    private fun say(text: String) {
+    /**
+     * [urgent] : annonce d'appel. Voix générée en mode express et jouée sur le canal
+     * d'alarme, qui reste audible pendant que le téléphone sonne.
+     */
+    private fun say(text: String, urgent: Boolean = false) {
         pauseWakeWord()
         JarvisBus.state(JarvisBus.State.THINKING)
         val gen = startReply()
+        urgentGeneration = if (urgent) gen else -1
         SentenceSplitter { queueSentence(gen, it) }.apply { add(text); flush() }
         finishReply(gen, text)
     }
@@ -510,7 +516,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         synth.execute {
             if (gen != speechGeneration) return@execute
             val audio = voice?.let { v ->
-                runCatching { v.synthesize(sentence) }
+                runCatching { v.synthesize(sentence, fast = gen == urgentGeneration) }
                     .onFailure { JarvisBus.line(false, "Voix ElevenLabs indisponible (${it.message}), voix Android utilisée.") }
                     .getOrNull()
             }
@@ -548,10 +554,11 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         if (audio == null && ttsState == TTS_PENDING) { playQueue.addFirst(next); return }
         playing = true
         JarvisBus.state(JarvisBus.State.SPEAKING)
+        val urgent = speechGeneration == urgentGeneration
         val v = voice
         if (audio != null && v != null) {
             try {
-                v.play(audio) { onUtteranceDone() }
+                v.play(audio, alarm = urgent) { onUtteranceDone() }
                 return
             } catch (e: Exception) {
                 audio.delete()
@@ -559,7 +566,9 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         }
         if (ttsState == TTS_READY) {
             currentUtterance = "jarvis-${utterance++}"
-            tts.speak(text, TextToSpeech.QUEUE_ADD, null, currentUtterance)
+            val params = Bundle()
+            if (urgent) params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_ALARM)
+            tts.speak(text, TextToSpeech.QUEUE_ADD, params, currentUtterance)
         } else {
             onUtteranceDone()
         }

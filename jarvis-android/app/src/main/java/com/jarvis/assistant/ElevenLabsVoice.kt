@@ -14,9 +14,10 @@ class ElevenLabsVoice(private val context: Context, private val apiKey: String) 
     private var player: MediaPlayer? = null
 
     /** Génère l'audio de [text]. Appel réseau : à faire hors du fil principal. */
-    fun synthesize(text: String): File =
+    fun synthesize(text: String, fast: Boolean = false): File =
         // La voix Jarvis n'existe que dans le compte qui l'a créée : sinon, Daniel prend le relais.
-        runCatching { synthesize(text, VOICE_ID, MODEL) }.getOrElse { error ->
+        // [fast] : modèle express, pour une annonce qui ne peut pas attendre (appel entrant).
+        runCatching { synthesize(text, VOICE_ID, if (fast) FALLBACK_MODEL else MODEL) }.getOrElse { error ->
             JarvisBus.line(false, "Voix Jarvis indisponible (${error.message}). Voix Daniel utilisée.")
             synthesize(text, FALLBACK_VOICE_ID, FALLBACK_MODEL)
         }
