@@ -31,13 +31,19 @@ class MessageListener : NotificationListenerService() {
         val app = APPS[sbn.packageName] ?: return
         val notification = sbn.notification
         // Les notifications de résumé (« 5 messages dans 3 discussions ») ne contiennent pas de message.
-        if (notification.flags and Notification.FLAG_GROUP_SUMMARY != 0) return
+        if (notification.flags and Notification.FLAG_GROUP_SUMMARY != 0) {
+            JarvisBus.line(false, "Notification $app ignorée : résumé de plusieurs discussions.")
+            return
+        }
 
         val extras = notification.extras
         val style = NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(notification)
         val conversation = (style?.conversationTitle ?: extras.getCharSequence(Notification.EXTRA_TITLE))
             ?.toString()?.trim().orEmpty()
-        if (conversation.isEmpty()) return
+        if (conversation.isEmpty()) {
+            JarvisBus.line(false, "Notification $app ignorée : pas d'expéditeur.")
+            return
+        }
 
         val incoming = style?.messages?.map {
             AppMessage(app, conversation, it.person?.name?.toString() ?: conversation, it.text?.toString().orEmpty(),
@@ -55,14 +61,20 @@ class MessageListener : NotificationListenerService() {
         // Une même notification est mise à jour à chaque message : on ne garde que les nouveaux.
         val seen = lastSeen[key(app, conversation)] ?: 0L
         val fresh = incoming.filter { it.time > seen && it.text.isNotBlank() }
-        if (fresh.isEmpty()) return
+        if (fresh.isEmpty()) {
+            JarvisBus.line(false, "Notification $app de $conversation : aucun nouveau message.")
+            return
+        }
         lastSeen[key(app, conversation)] = fresh.maxOf { it.time }
         synchronized(recent) {
             recent.addAll(fresh)
             while (recent.size > MAX_KEPT) recent.removeAt(0)
         }
         // Au premier passage après le démarrage, on ne réannonce pas les anciens messages.
-        if (seen == 0L && System.currentTimeMillis() - fresh.last().time > 60_000) return
+        if (seen == 0L && System.currentTimeMillis() - fresh.last().time > 60_000) {
+            JarvisBus.line(false, "Message $app de $conversation trop ancien : pas d'annonce.")
+            return
+        }
         val announced = fresh.takeLast(3)
         val service = JarvisService.instance
         if (service == null) {

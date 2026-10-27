@@ -124,18 +124,14 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
             }
             JarvisBus.line(false, "$caller vous appelle.")
             awaitingCallAnswer = true
+            quietRinger()
             say("Monsieur, $caller vous appelle. Voulez-vous répondre ?")
         }
     }
 
     /** L'appel vu par sa notification est terminé ou décroché. */
     fun onCallNotificationRemoved() {
-        main.post {
-            if (!ringing) return@post
-            ringing = false
-            callAnnounced = false
-            if (awaitingCallAnswer) { awaitingCallAnswer = false; recognizer?.cancel(); stopSpeech(); resumeWakeWord() }
-        }
+        main.post { if (ringing && !ringingNow()) callEnded() }
     }
 
     /** Appel entrant : Jarvis annonce qui appelle et propose de décrocher. */
@@ -143,21 +139,18 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         override fun onReceive(context: Context, intent: Intent) {
             val state = intent.getStringExtra(android.telephony.TelephonyManager.EXTRA_STATE)
             if (state != android.telephony.TelephonyManager.EXTRA_STATE_RINGING) {
-                // Décroché ou terminé : on oublie l'appel et on se tait.
-                if (ringing) {
-                    ringing = false
-                    callAnnounced = false
-                    if (awaitingCallAnswer) { awaitingCallAnswer = false; recognizer?.cancel(); stopSpeech(); resumeWakeWord() }
-                }
+                // Avec deux cartes SIM, la seconde signale « rien en cours » pendant que la
+                // première sonne : on vérifie l'état réel avant de conclure que l'appel est fini.
+                if (ringing && !ringingNow()) callEnded()
                 return
             }
+            if (!ringing) JarvisBus.line(false, "Appel entrant détecté.")
             ringing = true
-            JarvisBus.line(false, "Appel entrant détecté.")
             @Suppress("DEPRECATION")
             val number = intent.getStringExtra(android.telephony.TelephonyManager.EXTRA_INCOMING_NUMBER)
             // Android envoie l'événement deux fois, avec puis sans le numéro : on attend un peu le numéro.
             if (number == null) {
-                main.postDelayed({ if (ringing && !callAnnounced) announceCall(null) }, 800)
+                main.postDelayed({ if (ringingNow() && !callAnnounced) announceCall(null) }, 800)
             } else if (!callAnnounced) {
                 announceCall(number)
             }
@@ -330,6 +323,43 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
 
     // --- Réflexion et réponse --------------------------------------------
 
+    /** Le téléphone sonne-t-il vraiment, toutes cartes SIM confondues ? */
+    private fun ringingNow(): Boolean {
+        if (getSystemService(AudioManager::class.java).mode == AudioManager.MODE_RINGTONE) return true
+        if (checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) return false
+        @Suppress("DEPRECATION")
+        return runCatching {
+            getSystemService(android.telephony.TelephonyManager::class.java).callState ==
+                android.telephony.TelephonyManager.CALL_STATE_RINGING
+        }.getOrDefault(false)
+    }
+
+    private var savedRingVolume = -1
+
+    /** Baisse la sonnerie au minimum pendant l'annonce, pour qu'on entende Jarvis. */
+    private fun quietRinger() {
+        val audio = getSystemService(AudioManager::class.java)
+        runCatching {
+            if (savedRingVolume < 0) savedRingVolume = audio.getStreamVolume(AudioManager.STREAM_RING)
+            // 1 et pas 0 : à 0, Android passerait le téléphone en vibreur.
+            audio.setStreamVolume(AudioManager.STREAM_RING, 1, 0)
+        }
+    }
+
+    private fun restoreRinger() {
+        if (savedRingVolume < 0) return
+        runCatching { getSystemService(AudioManager::class.java).setStreamVolume(AudioManager.STREAM_RING, savedRingVolume, 0) }
+        savedRingVolume = -1
+    }
+
+    /** Appel décroché, refusé ou terminé : on oublie l'appel, on se tait et on remet la sonnerie. */
+    private fun callEnded() {
+        ringing = false
+        callAnnounced = false
+        restoreRinger()
+        if (awaitingCallAnswer) { awaitingCallAnswer = false; recognizer?.cancel(); stopSpeech(); resumeWakeWord() }
+    }
+
     private fun announceCall(number: String?) {
         callAnnounced = true
         // Téléphone en silencieux ou vibreur : on respecte le choix et on n'annonce pas.
@@ -344,9 +374,13 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
                 else -> actions.contactName(number) ?: "Le ${number.chunked(2).joinToString(" ")}"
             }
             main.post {
-                if (!ringing) return@post
+                if (!ringingNow()) {
+                    JarvisBus.line(false, "Appel de $who terminé avant l'annonce.")
+                    return@post
+                }
                 JarvisBus.line(false, "$who vous appelle.")
                 awaitingCallAnswer = true
+                quietRinger()
                 say("Monsieur, $who vous appelle. Voulez-vous répondre ?")
             }
         }
@@ -356,6 +390,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     @Suppress("DEPRECATION", "MissingPermission")
     private fun handleCallAnswer(text: String) {
         awaitingCallAnswer = false
+        restoreRinger()
         JarvisBus.line(true, text)
         val t = text.lowercase()
         val telecom = getSystemService(android.telecom.TelecomManager::class.java)
@@ -406,6 +441,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
 
     /** Nouveau message WhatsApp ou Messenger, transmis par [MessageListener]. */
     fun announceMessage(app: String, sender: String, conversation: String, body: String) {
+        JarvisBus.line(false, "Message $app de $sender reçu.")
         if (!announceMessages) {
             JarvisBus.line(false, "Message $app de $sender reçu (annonces désactivées dans les clés).")
             return
