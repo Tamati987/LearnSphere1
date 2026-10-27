@@ -614,7 +614,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
                 if (gen != speechGeneration) return@post
                 JarvisBus.line(false, answer)
                 // Une question appelle une réponse : on rouvre le micro sans attendre « Hey Jarvis ».
-                followUp = answer.trimEnd().endsWith("?")
+                followUp = asksQuestion(answer)
                 replyDone = true
                 playNext()
             }
@@ -661,8 +661,23 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     }
 
     private fun afterSpeaking() {
-        if (followUp) { followUp = false; listen() } else resumeWakeWord()
+        if (!followUp) return resumeWakeWord()
+        followUp = false
+        // Bip pour signaler que le micro se rouvre, puis une courte pause : le micro
+        // n'entend pas la fin de la voix de Jarvis.
+        JarvisBus.state(JarvisBus.State.LISTENING)
+        beep?.startTone(ToneGenerator.TONE_PROP_ACK, 120)
+        main.postDelayed({ listen() }, 350)
     }
+
+    /**
+     * Jarvis attend-il une réponse ? Une question dans l'une des deux dernières phrases
+     * (« Voulez-vous que je l'appelle ? Je peux aussi lui écrire. »), même suivie d'un guillemet.
+     */
+    private fun asksQuestion(answer: String): Boolean =
+        answer.trim().split(Regex("(?<=[.!?…])\\s+")).filter { it.isNotBlank() }.takeLast(2).any {
+            it.trimEnd(' ', '\u00A0', '\u202F', '»', '"', ')', '.').endsWith("?")
+        }
 
     // --- Notification ----------------------------------------------------
 
