@@ -101,7 +101,12 @@ class MessageListener : NotificationListenerService() {
             n.fullScreenIntent != null
     }
 
+    override fun onListenerDisconnected() {
+        if (connected === this) connected = null
+    }
+
     override fun onListenerConnected() {
+        connected = this
         JarvisBus.line(false, "Accès aux notifications actif : WhatsApp et Messenger seront annoncés.")
     }
 
@@ -123,6 +128,35 @@ class MessageListener : NotificationListenerService() {
         private val replies = mutableMapOf<String, Pair<String, Notification.Action>>()
 
         private fun key(app: String, conversation: String) = "$app|${normalize(conversation)}"
+
+        @Volatile private var connected: MessageListener? = null
+
+        /**
+         * Notifications affichées en ce moment par les autres applis (météo, banque, livraison…),
+         * filtrées par nom d'appli si [app] est donné.
+         */
+        fun currentNotifications(context: Context, app: String?): List<String>? {
+            val listener = connected ?: return null
+            val pm = context.packageManager
+            val wanted = app?.let(::normalize)?.takeIf { it.isNotEmpty() }
+            return runCatching { listener.activeNotifications }.getOrNull().orEmpty()
+                .filter { it.packageName != context.packageName }
+                .filter { it.notification.flags and Notification.FLAG_GROUP_SUMMARY == 0 }
+                .mapNotNull { sbn ->
+                    val label = runCatching {
+                        pm.getApplicationLabel(pm.getApplicationInfo(sbn.packageName, 0)).toString()
+                    }.getOrDefault(sbn.packageName)
+                    if (wanted != null && !normalize(label).contains(wanted) && !normalize(sbn.packageName).contains(wanted)) {
+                        return@mapNotNull null
+                    }
+                    val e = sbn.notification.extras
+                    val title = e.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
+                    val text = (e.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: e.getCharSequence(Notification.EXTRA_TEXT))
+                        ?.toString().orEmpty()
+                    if (title.isBlank() && text.isBlank()) null else "$label : $title — ${text.take(300)}"
+                }
+                .take(25)
+        }
 
         fun isEnabled(context: Context) =
             NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)

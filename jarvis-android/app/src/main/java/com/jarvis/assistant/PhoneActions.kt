@@ -69,6 +69,12 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         )
         "lire_messages_applis" -> readAppMessages(input.optStr("appli"), input.optStr("contact"), input.int("nombre"))
         "repondre_message_appli" -> replyAppMessage(input.optStr("appli"), input.str("contact"), input.str("message"))
+        "meteo" -> runCatching { Weather.report(context, input.optStr("ville"), input.int("jours").takeIf { it > 0 } ?: 1) }
+            .getOrElse { "Échec : ${it.message}" }
+        "lire_notifications" -> MessageListener.currentNotifications(context, input.optStr("appli"))?.let { list ->
+            if (list.isEmpty()) "Aucune notification affichée${input.optStr("appli")?.let { " pour « $it »" }.orEmpty()}."
+            else list.joinToString("\n")
+        } ?: "Échec : l'accès aux notifications n'est pas accordé à Jarvis."
         "lire_sms" -> readSms(input.optStr("contact"), input.int("nombre"), input["non_lus"] == true)
         "etat_telephone" -> status()
         else -> "Échec : outil inconnu « $name »."

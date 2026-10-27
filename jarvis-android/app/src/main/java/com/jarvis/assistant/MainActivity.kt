@@ -168,6 +168,8 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
         super.onResume()
         JarvisBus.listener = this
         onState(JarvisBus.state)
+        // Position mémorisée pour la météo (la position n'est lisible que quand Jarvis est à l'écran).
+        runCatching { Weather.rememberLocation(this) }
         // Réaffiche tout le journal, y compris ce qui s'est passé appli fermée, avec un diagnostic en tête.
         log.text = ""
         log.append("DIAGNOSTIC  " + diagnostic())
@@ -204,6 +206,7 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
             Manifest.permission.READ_PHONE_STATE,
             Manifest.permission.READ_CALL_LOG,
             Manifest.permission.ANSWER_PHONE_CALLS,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.READ_CALENDAR,
             Manifest.permission.WRITE_CALENDAR,
             Manifest.permission.READ_CONTACTS,

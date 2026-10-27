@@ -25,6 +25,8 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
   - mettre en pause, reprendre, passer au morceau suivant ou précédent ;
   - démarrer un itinéraire GPS ;
   - afficher le déverrouillage quand le téléphone est verrouillé (« Jarvis, déverrouille ») : vous déverrouillez avec votre empreinte, votre visage ou votre code, puis Jarvis termine l'action (ouvrir NewPipe, Maps…). Jarvis ne connaît ni ne tape jamais votre code ;
+  - donner la météo actuelle (température, ressenti, pluie, vent) et les prévisions, à votre position ou pour une ville, via Open-Meteo (gratuit, sans clé) ;
+  - lire les notifications affichées par vos autres applis (météo, banque, livraison, mails…), sans déverrouiller ;
   - donner l'état de la batterie et du réseau.
 - Parler avec une voix réaliste de majordome britannique si vous ajoutez une clé ElevenLabs : la voix originale « Jarvis » créée pour l'appli (elle doit se trouver dans le même compte ElevenLabs que la clé), sinon la voix « Daniel ». Sans clé, Jarvis utilise la voix de synthèse d'Android.
 - S'ouvrir avec une séquence de démarrage animée façon interface holographique, des sons synthétisés sur le téléphone et un message de bienvenue en français. Touchez l'écran pour la passer.
@@ -37,7 +39,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
 2. **Installer.** Copiez le fichier sur le téléphone et ouvrez-le. Android demande d'autoriser l'installation d'applis de source inconnue : acceptez pour cette fois.
 3. **Clé Anthropic** (obligatoire, payante à l'usage) : créez-la sur https://console.anthropic.com → *API Keys*, et ajoutez quelques euros de crédit.
 4. **Clé ElevenLabs** (facultative, pour la voix réaliste) : créez un compte gratuit sur https://elevenlabs.io, puis copiez une clé dans *Developers → API Keys*.
-5. Ouvrez Jarvis, collez les clés, puis touchez **Enregistrer et démarrer**. Acceptez les autorisations : micro, appels (passer, voir qui appelle, décrocher), SMS (envoi, lecture et réception), contacts, agenda et notifications.
+5. Ouvrez Jarvis, collez les clés, puis touchez **Enregistrer et démarrer**. Acceptez les autorisations : micro, appels (passer, voir qui appelle, décrocher), SMS (envoi, lecture et réception), contacts, agenda, position approximative (pour la météo) et notifications.
 6. Touchez **Autoriser Jarvis à ouvrir des applis**. Sans cette autorisation, Android l'empêche d'ouvrir Spotify, Maps ou l'Horloge quand son écran est fermé.
 7. Touchez **Autoriser l'écoute écran verrouillé** et acceptez : Android cesse alors de couper Jarvis quand l'écran est éteint. Jarvis garde aussi le processeur éveillé pendant qu'il écoute, ce qui consomme un peu plus de batterie. Sur certaines marques (Xiaomi, Oppo, Realme, Huawei…), autorisez aussi le démarrage automatique et l'activité en arrière-plan de Jarvis dans les réglages du téléphone.
 8. Pour WhatsApp et Messenger : touchez **Autoriser la lecture de WhatsApp et Messenger**, puis activez Jarvis dans la liste. Si Android affiche « Paramètre restreint », allez dans *Paramètres → Applis → Jarvis*, menu **⋮** en haut à droite → **Autoriser les paramètres restreints**, puis recommencez.
@@ -47,7 +49,9 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 
 ## Exemples
 
+- « Hey Jarvis… quelle température fait-il ? »
 - « Hey Jarvis… quel temps fera-t-il demain ? »
+- « Hey Jarvis… qu'est-ce qu'il y a dans mes notifications ? »
 - « Hey Jarvis… réveille-moi à 6 h 30. »
 - « Hey Jarvis… réveille-moi à 7 h et rappelle-moi le rendez-vous chez le dentiste. »
 - « Hey Jarvis… quels sont mes réveils ? »
@@ -91,6 +95,7 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 | `BootSequenceView.kt`, `BootSound.kt` | Animation et sons du démarrage |
 | `JarvisAlarm.kt`, `WakeUpActivity.kt` | Réveil de Jarvis : programmation, écran de réveil, carillon et voix |
 | `MessageListener.kt` | Lecture des notifications WhatsApp et Messenger, annonce et réponse |
+| `Weather.kt` | Météo Open-Meteo à la position mémorisée ou pour une ville |
 | `MainActivity.kt` | Écran des clés, journal de conversation, saisie au clavier |
 
 Compilation locale : `gradle assembleDebug` dans ce dossier (Android SDK 35, JDK 17, Gradle 8.11).
