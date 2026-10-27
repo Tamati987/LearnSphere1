@@ -9,7 +9,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
 - Agir sur le téléphone :
   - appeler un contact ou un numéro ;
   - annoncer qui vous appelle (« Monsieur, Paul vous appelle. Voulez-vous répondre ? ») et décrocher ou refuser l'appel à la voix (« oui », « non ») ; rien n'est annoncé si le téléphone est en silencieux ou en vibreur ;
-  - envoyer un SMS, après vous l'avoir relu et avoir eu votre « oui » ;
+  - envoyer un SMS, après vous l'avoir relu et avoir eu votre « oui ». Avec deux SIM, le SMS part toujours de la SIM 1 ;
   - lire vos SMS, ceux d'un contact précis ou seulement les non lus ;
   - lire les messages WhatsApp et Messenger reçus et y répondre, grâce à leurs notifications (seulement les messages arrivés depuis que Jarvis a l'accès ; l'historique plus ancien reste inaccessible) ;
   - annoncer à voix haute les nouveaux SMS, messages WhatsApp et Messenger dès qu'ils arrivent, puis proposer d'y répondre (désactivable dans l'écran des clés) ;

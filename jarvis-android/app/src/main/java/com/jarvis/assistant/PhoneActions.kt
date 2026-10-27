@@ -90,10 +90,27 @@ class PhoneActions(private val context: Context) : ToolExecutor {
     private fun sms(who: String, text: String): String {
         if (!granted(Manifest.permission.SEND_SMS)) return "Échec : permission SMS non accordée dans l'appli."
         val (label, number) = resolveNumber(who) ?: return "Échec : aucun contact ou numéro trouvé pour « $who »."
-        val manager = if (Build.VERSION.SDK_INT >= 31) context.getSystemService(SmsManager::class.java)
-        else @Suppress("DEPRECATION") SmsManager.getDefault()
+        val (manager, sim) = smsManager()
         manager.sendMultipartTextMessage(number, null, manager.divideMessage(text), null, null)
-        return "SMS envoyé à $label ($number)."
+        return "SMS envoyé à $label ($number)$sim."
+    }
+
+    /**
+     * Les SMS partent toujours de la SIM 1 (premier emplacement), à la demande de l'utilisateur.
+     * Sans SIM dans cet emplacement, on prend la SIM choisie par défaut dans Android.
+     */
+    @android.annotation.SuppressLint("MissingPermission") // READ_PHONE_STATE est vérifié juste avant.
+    private fun smsManager(): Pair<SmsManager, String> {
+        val default = if (Build.VERSION.SDK_INT >= 31) context.getSystemService(SmsManager::class.java)
+        else @Suppress("DEPRECATION") SmsManager.getDefault()
+        if (!granted(Manifest.permission.READ_PHONE_STATE)) return default to ""
+        val sim1 = runCatching {
+            context.getSystemService(android.telephony.SubscriptionManager::class.java)
+                .getActiveSubscriptionInfoForSimSlotIndex(SIM_SLOT)
+        }.getOrNull() ?: return default to " (SIM 1 introuvable, SIM par défaut utilisée)"
+        val manager = if (Build.VERSION.SDK_INT >= 31) default.createForSubscriptionId(sim1.subscriptionId)
+        else @Suppress("DEPRECATION") SmsManager.getSmsManagerForSubscriptionId(sim1.subscriptionId)
+        return manager to " depuis la SIM 1"
     }
 
     private fun alarm(hour: Int, minute: Int, label: String?): String {
@@ -502,6 +519,8 @@ class PhoneActions(private val context: Context) : ToolExecutor {
     private val names = mutableMapOf<String, String>()
 
     companion object {
+        // Emplacement de la SIM qui envoie les SMS : 0 = SIM 1.
+        private const val SIM_SLOT = 0
         private const val NEWPIPE = "org.schabi.newpipe"
         private val NEWPIPE_HOSTS = setOf("youtube.com", "music.youtube.com", "youtu.be", "soundcloud.com", "on.soundcloud.com")
         private val VIDEO_ID = Regex("\"videoRenderer\":\\{\"videoId\":\"([A-Za-z0-9_-]{11})\"")
