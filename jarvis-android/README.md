@@ -30,7 +30,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
   - donner l'état de la batterie et du réseau.
 - Parler avec une voix réaliste de majordome britannique si vous ajoutez une clé ElevenLabs : la voix originale « Jarvis » créée pour l'appli (elle doit se trouver dans le même compte ElevenLabs que la clé), sinon la voix « Daniel ». Sans clé, Jarvis utilise la voix de synthèse d'Android.
 - S'ouvrir avec une séquence de démarrage animée façon interface holographique, des sons synthétisés sur le téléphone et un message de bienvenue en français. Touchez l'écran pour la passer.
-- Rouvrir le micro tout seul, avec un bip, quand il vous pose une question, même si une courte phrase suit la question.
+- Rouvrir le micro tout seul, avec un bip, quand il vous pose une question, même si une courte phrase suit la question. Sans réponse, il repose la question une fois (« Je me permets d'insister, Monsieur… »), puis attend « Hey Jarvis ».
 - Vous laisser le temps de parler : s'il coupe pendant une pause au milieu d'une phrase (« mets-moi de la… »), il réécoute la suite avant de répondre. Si vous ne dites rien juste après « Hey Jarvis », il vous laisse une seconde chance.
 - Se souvenir de vous d'une conversation à l'autre, avec une mémoire gardée sur le téléphone :
   - il retient de lui-même ce qui est durable (vos proches, votre travail, vos goûts, vos habitudes), ou ce que vous lui demandez de retenir (« Jarvis, retiens que ma fille s'appelle Léa ») ;

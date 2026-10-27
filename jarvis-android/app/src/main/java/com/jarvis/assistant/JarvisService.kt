@@ -272,6 +272,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         main.removeCallbacks(endContinuation)
         heard.setLength(0)
         followUp = false
+        pendingQuestion = null
         awaitingCallAnswer = false
         wakeWord?.start()
         JarvisBus.state(JarvisBus.State.WAITING)
@@ -279,6 +280,8 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
 
     private fun onWakeWord() {
         if (JarvisBus.state == JarvisBus.State.LISTENING || JarvisBus.state == JarvisBus.State.THINKING) return
+        pendingQuestion = null
+        reasked = 0
         stopSpeech()
         pauseWakeWord()
         beep?.startTone(ToneGenerator.TONE_PROP_ACK, 120)
@@ -349,12 +352,12 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
                         partial.isNotBlank() -> { heard.append(' ').append(partial.trim()); finishListening() }
                         heard.isNotBlank() -> finishListening()
                         // Rien entendu tout de suite après « Hey Jarvis » : on laisse une seconde chance.
-                        silent && retries < 1 -> { retries++; main.postDelayed({ startRecognizer(continuation = false) }, RESTART_DELAY_MS) }
+                        silent && retries < 1 && pendingQuestion == null -> { retries++; main.postDelayed({ startRecognizer(continuation = false) }, RESTART_DELAY_MS) }
                         broken && restarts < 2 -> { restarts++; main.postDelayed({ startRecognizer(continuation) }, 600) }
                         else -> {
                             // Sinon on l'écrit dans le journal, pour comprendre un blocage (écran verrouillé…).
                             if (!silent) JarvisBus.line(false, "Reconnaissance vocale impossible (code $error).")
-                            resumeWakeWord()
+                            if (!(silent && reaskQuestion())) resumeWakeWord()
                         }
                     }
                 }
@@ -389,10 +392,11 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     }
 
     private fun finishListening() {
+        main.removeCallbacks(endContinuation)
         val text = heard.toString().trim()
         heard.setLength(0)
         partial = ""
-        if (text.isEmpty()) resumeWakeWord() else handle(text)
+        if (text.isNotEmpty()) handle(text) else if (!reaskQuestion()) resumeWakeWord()
     }
 
     /** La phrase s'arrête sur un mot qui appelle une suite (« de », « et », « mets »…). */
@@ -495,6 +499,9 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     }
 
     private fun handle(text: String) {
+        // L'utilisateur a répondu : plus de question à reposer.
+        pendingQuestion = null
+        reasked = 0
         if (awaitingCallAnswer) return handleCallAnswer(text)
         pauseWakeWord()
         JarvisBus.line(true, text)
@@ -615,6 +622,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
                 JarvisBus.line(false, answer)
                 // Une question appelle une réponse : on rouvre le micro sans attendre « Hey Jarvis ».
                 followUp = asksQuestion(answer)
+                lastQuestion = if (followUp) questionOf(answer) else null
                 replyDone = true
                 playNext()
             }
@@ -663,6 +671,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     private fun afterSpeaking() {
         if (!followUp) return resumeWakeWord()
         followUp = false
+        pendingQuestion = lastQuestion
         // Bip pour signaler que le micro se rouvre, puis une courte pause : le micro
         // n'entend pas la fin de la voix de Jarvis.
         JarvisBus.state(JarvisBus.State.LISTENING)
@@ -674,10 +683,35 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
      * Jarvis attend-il une réponse ? Une question dans l'une des deux dernières phrases
      * (« Voulez-vous que je l'appelle ? Je peux aussi lui écrire. »), même suivie d'un guillemet.
      */
-    private fun asksQuestion(answer: String): Boolean =
-        answer.trim().split(Regex("(?<=[.!?…])\\s+")).filter { it.isNotBlank() }.takeLast(2).any {
+    private fun asksQuestion(answer: String): Boolean = questionOf(answer) != null
+
+    /** La question posée dans l'une des deux dernières phrases, ou null. */
+    private fun questionOf(answer: String): String? =
+        answer.trim().split(Regex("(?<=[.!?…])\\s+")).filter { it.isNotBlank() }.takeLast(2).lastOrNull {
             it.trimEnd(' ', '\u00A0', '\u202F', '»', '"', ')', '.').endsWith("?")
         }
+
+    // Question en attente de réponse, et nombre de fois où Jarvis l'a déjà reposée.
+    private var lastQuestion: String? = null
+    private var pendingQuestion: String? = null
+    private var reasked = 0
+
+    /**
+     * Pas de réponse à une question de Jarvis : il la repose une fois, puis se remet à attendre
+     * « Hey Jarvis ». Renvoie false s'il n'y avait pas de question à reposer.
+     */
+    private fun reaskQuestion(): Boolean {
+        val question = pendingQuestion ?: return false
+        pendingQuestion = null
+        if (reasked >= MAX_REASKS) {
+            reasked = 0
+            JarvisBus.line(false, "Pas de réponse : dites « Hey Jarvis » quand vous voudrez reprendre.")
+            return false
+        }
+        reasked++
+        say("Je me permets d'insister, Monsieur. $question")
+        return true
+    }
 
     // --- Notification ----------------------------------------------------
 
@@ -708,6 +742,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         private const val MAX_CONTINUATIONS = 2
         private const val CONTINUATION_WAIT_MS = 3500L
         private const val RESTART_DELAY_MS = 250L
+        private const val MAX_REASKS = 1
         private val UNFINISHED_WORDS = setOf(
             "et", "ou", "de", "du", "des", "d", "le", "la", "les", "l", "un", "une", "à", "au", "aux",
             "pour", "que", "qu", "qui", "avec", "sur", "dans", "en", "chez", "par", "mais", "donc", "puis",
