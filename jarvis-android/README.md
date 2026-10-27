@@ -4,7 +4,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
 
 ## Ce qu'il sait faire
 
-- Se réveiller quand vous dites **« Hey Jarvis »**, même écran éteint. La détection tourne sur le téléphone avec les modèles libres openWakeWord, sans compte ni clé.
+- Se réveiller quand vous dites **« Hey Jarvis »**, même écran éteint. La détection tourne sur le téléphone avec les modèles libres openWakeWord, sans compte ni clé. Sa sensibilité se règle dans l'écran des clés (normale, élevée, très élevée) ; le journal note « presque reconnu » quand Jarvis vous a entendu de justesse, signe qu'il faut l'augmenter.
 - Répondre à toutes vos questions avec Claude, et chercher sur le web l'actualité, la météo ou les faits récents.
 - Agir sur le téléphone :
   - appeler un contact ou un numéro ;
@@ -13,7 +13,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
   - lire vos SMS, ceux d'un contact précis ou seulement les non lus ;
   - lire les messages WhatsApp et Messenger reçus et y répondre, grâce à leurs notifications (seulement les messages arrivés depuis que Jarvis a l'accès ; l'historique plus ancien reste inaccessible) ;
   - annoncer à voix haute les nouveaux SMS, messages WhatsApp et Messenger dès qu'ils arrivent, puis proposer d'y répondre (désactivable dans l'écran des clés) ;
-  - vous réveiller ou vous rappeler un moment de la journée lui-même : à l'heure dite, l'écran s'allume même verrouillé, un carillon sonne et Jarvis dit sa phrase de sa voix, avec « Arrêter » ou « Encore 10 min ». Les réveils peuvent se répéter certains jours. Deux sont installés au premier lancement :
+  - vous réveiller ou vous rappeler un moment de la journée lui-même : à l'heure dite, un carillon sonne et Jarvis dit sa phrase de sa voix, au volume d'alarme, même téléphone verrouillé. L'écran du réveil s'allume, et la notification propose aussi « Arrêter » ou « Encore 10 min ». La sonnerie vient d'un service à part, comme une vraie appli d'alarme : elle part même si le téléphone bloque l'ouverture de l'écran. Les réveils peuvent se répéter certains jours. Deux sont installés au premier lancement :
     - 6 h, du lundi au vendredi : « Bonjour, Monsieur. Il est six heures. C'est l'heure de vous préparer pour le travail. Je vous souhaite une excellente journée. » Puis le programme du jour lu dans l'agenda, par exemple « Au programme aujourd'hui : réunion à 9 heures et déjeuner avec Paul à 12 heures 30. »
     - 12 h, tous les jours : « Monsieur, il est midi. C'est l'heure du déjeuner. Je vous suggère de faire une pause, vous l'avez bien mérité. »
   - lire votre agenda (« qu'est-ce que j'ai demain ? ») et y ajouter des rendez-vous, avec un rappel 30 minutes avant ;
@@ -41,7 +41,11 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
 4. **Clé ElevenLabs** (facultative, pour la voix réaliste) : créez un compte gratuit sur https://elevenlabs.io, puis copiez une clé dans *Developers → API Keys*.
 5. Ouvrez Jarvis, collez les clés, puis touchez **Enregistrer et démarrer**. Acceptez les autorisations : micro, appels (passer, voir qui appelle, décrocher), SMS (envoi, lecture et réception), contacts, agenda, position approximative (pour la météo) et notifications.
 6. Touchez **Autoriser Jarvis à ouvrir des applis**. Sans cette autorisation, Android l'empêche d'ouvrir Spotify, Maps ou l'Horloge quand son écran est fermé.
-7. Touchez **Autoriser l'écoute écran verrouillé** et acceptez : Android cesse alors de couper Jarvis quand l'écran est éteint. Jarvis garde aussi le processeur éveillé pendant qu'il écoute, ce qui consomme un peu plus de batterie. Sur certaines marques (Xiaomi, Oppo, Realme, Huawei…), autorisez aussi le démarrage automatique et l'activité en arrière-plan de Jarvis dans les réglages du téléphone.
+7. Touchez **Autoriser l'écoute écran verrouillé** et acceptez : Android cesse alors de couper Jarvis quand l'écran est éteint. Jarvis garde aussi le processeur éveillé pendant qu'il écoute, ce qui consomme un peu plus de batterie. Sur certaines marques (Xiaomi, Oppo, Realme, Huawei…), autorisez aussi le démarrage automatique et l'activité en arrière-plan de Jarvis dans les réglages du téléphone. Sur Xiaomi (HyperOS, MIUI), dans *Paramètres → Applis → Gérer les applis → Jarvis* :
+   - **Démarrage automatique** : activé ;
+   - **Économiseur de batterie** : *Aucune restriction* ;
+   - **Autres autorisations** : *Afficher sur l'écran de verrouillage* et *Ouvrir de nouvelles fenêtres en arrière-plan* autorisés ;
+   - dans les applis récentes, verrouillez Jarvis (cadenas) : sinon « Tout effacer » ferme Jarvis de force et efface ses réveils jusqu'à sa prochaine ouverture.
 8. Pour WhatsApp et Messenger : touchez **Autoriser la lecture de WhatsApp et Messenger**, puis activez Jarvis dans la liste. Si Android affiche « Paramètre restreint », allez dans *Paramètres → Applis → Jarvis*, menu **⋮** en haut à droite → **Autoriser les paramètres restreints**, puis recommencez.
 9. Pour la musique dans NewPipe : dans NewPipe, *Paramètres → Vidéo et audio → Action par défaut à l'ouverture du contenu*, choisissez **Lecture en arrière-plan**. Sinon NewPipe demande à chaque fois comment ouvrir le morceau et la musique ne démarre pas toute seule.
 
@@ -93,7 +97,7 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 | `WakeWordDetector.kt`, `WakeWordListener.kt` | Détection de « Hey Jarvis » avec les modèles openWakeWord (ONNX) |
 | `ElevenLabsVoice.kt` | Voix réaliste ElevenLabs, avec retour à la voix Android en cas d'échec |
 | `BootSequenceView.kt`, `BootSound.kt` | Animation et sons du démarrage |
-| `JarvisAlarm.kt`, `WakeUpActivity.kt` | Réveil de Jarvis : programmation, écran de réveil, carillon et voix |
+| `JarvisAlarm.kt`, `AlarmRingService.kt`, `WakeUpActivity.kt` | Réveil de Jarvis : programmation, sonnerie (carillon et voix), écran de réveil |
 | `MessageListener.kt` | Lecture des notifications WhatsApp et Messenger, annonce et réponse |
 | `Weather.kt` | Météo Open-Meteo à la position mémorisée ou pour une ville |
 | `MainActivity.kt` | Écran des clés, journal de conversation, saisie au clavier |

@@ -54,11 +54,15 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
         elevenLabs.setText(prefs.elevenLabsKey)
         val announceSms = findViewById<android.widget.CheckBox>(R.id.announce_sms)
         announceSms.isChecked = prefs.announceSms
+        val sensitivity = findViewById<android.widget.RadioGroup>(R.id.sensitivity)
+        val sensitivityIds = listOf(R.id.sensitivity_normal, R.id.sensitivity_high, R.id.sensitivity_max)
+        sensitivity.check(sensitivityIds[prefs.wakeSensitivity])
 
         findViewById<Button>(R.id.save).setOnClickListener {
             prefs.anthropicKey = anthropic.text.toString()
             prefs.elevenLabsKey = elevenLabs.text.toString()
             prefs.announceSms = announceSms.isChecked
+            prefs.wakeSensitivity = sensitivityIds.indexOf(sensitivity.checkedRadioButtonId).coerceAtLeast(0)
             if (prefs.isConfigured) {
                 stopService(Intent(this, JarvisService::class.java))
                 showConsole()
@@ -99,8 +103,11 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
             } else false
         }
 
-        // Réveils de départ (6 h travail, midi déjeuner), installés une seule fois.
+        // Réveils de départ (6 h travail, midi déjeuner), installés une seule fois, puis
+        // tous les réveils reprogrammés : certains téléphones les effacent quand l'appli est fermée.
         runCatching { JarvisAlarm.installDefaults(this) }
+            .onFailure { JarvisBus.line(false, "Réveils de départ non installés : ${it.message}") }
+        JarvisAlarm.scheduleAll(this)
         if (prefs.isConfigured) {
             showConsole()
             startJarvis()
@@ -249,6 +256,10 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
             "annonces ${ok(prefs.announceSms)}",
             "sonnerie ${ok(ringer)}",
             "batterie sans restriction ${ok(power)}",
+            "réveil plein écran ${ok(Build.VERSION.SDK_INT < 34 ||
+                getSystemService(android.app.NotificationManager::class.java).canUseFullScreenIntent())}",
+            "prochain réveil ${JarvisAlarm.nextDescription(this) ?: "aucun"}",
+            "« Hey Jarvis » seuil ${prefs.wakeThreshold}",
         ).joinToString(" · ")
     }
 

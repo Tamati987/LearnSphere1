@@ -88,7 +88,6 @@ class WakeWordDetector(melModel: ByteArray, embeddingModel: ByteArray, wakeModel
     companion object {
         const val SAMPLE_RATE = 16000
         const val CHUNK = 1280
-        const val THRESHOLD = 0.5f
         private const val MEL_BINS = 32
         private const val MEL_WINDOW = 76
         private const val EMBEDDING = 96

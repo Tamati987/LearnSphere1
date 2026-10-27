@@ -195,6 +195,8 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         instance = this
         brain = JarvisBrain(prefs.anthropicKey, actions)
         registerReceivers()
+        // Les réveils ont pu être effacés si le téléphone a fermé Jarvis de force : on les reprogramme.
+        JarvisAlarm.scheduleAll(this)
         voice = prefs.elevenLabsKey.takeIf { it.isNotBlank() }?.let { ElevenLabsVoice(this, it) }
         tts = TextToSpeech(this, this)
         startInForeground()
@@ -256,7 +258,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
 
     private fun startWakeWord() {
         try {
-            wakeWord = WakeWordListener(this) { main.post { onWakeWord() } }
+            wakeWord = WakeWordListener(this, Prefs(this).wakeThreshold) { main.post { onWakeWord() } }
         } catch (e: Exception) {
             // Sans détecteur, Jarvis reste utilisable avec le bouton Parler.
             JarvisBus.line(false, "« Hey Jarvis » indisponible : ${e.message}. Utilisez le bouton Parler.")

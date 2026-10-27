@@ -20,10 +20,10 @@ data class Alarm(
 )
 
 /**
- * Réveils de Jarvis : à l'heure dite, [WakeUpActivity] s'ouvre (même téléphone
- * verrouillé) et Jarvis dit la phrase du réveil de sa voix.
- * Les réveils sont gardés dans les préférences pour survivre au redémarrage ;
- * ceux qui se répètent sont reprogrammés à chaque sonnerie.
+ * Réveils de Jarvis : à l'heure dite, [AlarmReceiver] lance [AlarmRingService], qui fait
+ * sonner le carillon et dit la phrase du réveil de la voix de Jarvis (même téléphone verrouillé).
+ * Les réveils sont gardés dans les préférences ; ils sont reprogrammés à chaque sonnerie,
+ * à chaque démarrage de Jarvis, après un redémarrage et après une mise à jour de l'appli.
  */
 object JarvisAlarm {
     private const val PREFS = "jarvis_alarm"
@@ -105,8 +105,25 @@ object JarvisAlarm {
         schedule(context, alarm)
     }
 
-    /** Reprogramme tous les réveils, après un redémarrage du téléphone. */
-    fun scheduleAll(context: Context) = all(context).forEach { runCatching { schedule(context, it) } }
+    /**
+     * Reprogramme tous les réveils. Sans risque à répéter : Android remplace l'alarme existante.
+     * Nécessaire après un redémarrage, et sur les téléphones (Xiaomi…) qui effacent les alarmes
+     * d'une appli fermée de force. Les échecs sont écrits dans le journal.
+     */
+    fun scheduleAll(context: Context) {
+        all(context).forEach { alarm ->
+            cancelLegacy(context, alarm.id)
+            runCatching { schedule(context, alarm) }.onFailure {
+                JarvisBus.line(false, "Réveil de %02d:%02d non programmé : %s".format(alarm.hour, alarm.minute, it.message))
+            }
+        }
+    }
+
+    /** Prochaine sonnerie, lisible (« lun. 06:00 »), ou null s'il n'y a aucun réveil. */
+    fun nextDescription(context: Context): String? {
+        val next = all(context).minByOrNull { nextTrigger(it).timeInMillis } ?: return null
+        return java.text.SimpleDateFormat("EEE HH:mm", java.util.Locale.FRANCE).format(nextTrigger(next).time)
+    }
 
     /** Description lisible, pour que Jarvis puisse les énumérer. */
     fun describe(alarm: Alarm): String {
@@ -149,6 +166,7 @@ object JarvisAlarm {
 
     private fun cancel(context: Context, id: Int) {
         context.getSystemService(AlarmManager::class.java).cancel(wakeIntent(context, id))
+        cancelLegacy(context, id)
     }
 
     private fun save(context: Context, alarms: List<Alarm>) {
@@ -168,18 +186,31 @@ object JarvisAlarm {
         return "$hello Il est $time. C'est l'heure de vous réveiller."
     }
 
-    private fun wakeIntent(context: Context, id: Int): PendingIntent = PendingIntent.getActivity(
+    private fun wakeIntent(context: Context, id: Int): PendingIntent = PendingIntent.getBroadcast(
         context, 100 + id,
-        Intent(context, WakeUpActivity::class.java)
-            .putExtra(EXTRA_ID, id)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        Intent(context, AlarmReceiver::class.java).putExtra(EXTRA_ID, id),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
+
+    /** Les versions 3.4 et avant ouvraient directement l'écran de réveil : on annule ces alarmes-là. */
+    private fun cancelLegacy(context: Context, id: Int) {
+        val legacy = PendingIntent.getActivity(
+            context, 100 + id,
+            Intent(context, WakeUpActivity::class.java).putExtra(EXTRA_ID, id).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE,
+        ) ?: return
+        context.getSystemService(AlarmManager::class.java).cancel(legacy)
+        legacy.cancel()
+    }
 }
 
-/** Après un redémarrage du téléphone, Android oublie les réveils : on reprogramme les nôtres. */
+/** Après un redémarrage, une mise à jour ou un changement d'heure : on reprogramme nos réveils. */
 class AlarmBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == Intent.ACTION_BOOT_COMPLETED) JarvisAlarm.scheduleAll(context)
+        when (intent.action) {
+            Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED, Intent.ACTION_TIME_CHANGED,
+            Intent.ACTION_TIMEZONE_CHANGED, "android.intent.action.QUICKBOOT_POWERON",
+            -> JarvisAlarm.scheduleAll(context)
+        }
     }
 }

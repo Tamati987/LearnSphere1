@@ -57,6 +57,32 @@
                 android:textColor="@color/fg"
                 android:textSize="16sp" />
 
+            <TextView
+                style="@style/Label"
+                android:text="Sensibilité de « Hey Jarvis »" />
+
+            <RadioGroup
+                android:id="@+id/sensitivity"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp">
+
+                <RadioButton
+                    android:id="@+id/sensitivity_normal"
+                    style="@style/Choice"
+                    android:text="Normale : se déclenche rarement par erreur" />
+
+                <RadioButton
+                    android:id="@+id/sensitivity_high"
+                    style="@style/Choice"
+                    android:text="Élevée (conseillée) : entend mieux l'accent français" />
+
+                <RadioButton
+                    android:id="@+id/sensitivity_max"
+                    style="@style/Choice"
+                    android:text="Très élevée : si Jarvis ne vous entend toujours pas" />
+            </RadioGroup>
+
             <Button
                 android:id="@+id/save"
                 style="@style/Primary"

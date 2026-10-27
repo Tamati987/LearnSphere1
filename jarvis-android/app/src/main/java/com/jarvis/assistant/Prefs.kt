@@ -18,5 +18,13 @@ class Prefs(context: Context) {
         get() = prefs.getBoolean("announce_sms", true)
         set(value) = prefs.edit().putBoolean("announce_sms", value).apply()
 
+    /** Sensibilité du mot d'activation : 0 normale, 1 élevée, 2 très élevée. */
+    var wakeSensitivity: Int
+        get() = prefs.getInt("wake_sensitivity", 1)
+        set(value) = prefs.edit().putInt("wake_sensitivity", value.coerceIn(0, 2)).apply()
+
+    /** Score à partir duquel « Hey Jarvis » est reconnu : plus bas, plus sensible. */
+    val wakeThreshold get() = when (wakeSensitivity) { 0 -> 0.5f; 2 -> 0.15f; else -> 0.3f }
+
     val isConfigured get() = anthropicKey.isNotBlank()
 }

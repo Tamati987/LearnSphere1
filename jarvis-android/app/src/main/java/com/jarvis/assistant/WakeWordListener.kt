@@ -7,10 +7,10 @@ import android.media.AudioRecord
 import android.media.MediaRecorder
 
 /**
- * Écoute le micro en continu et appelle [onWake] quand « Hey Jarvis » est détecté.
+ * Écoute le micro en continu et appelle [onWake] quand le score de « Hey Jarvis » atteint [threshold].
  * [stop] libère le micro, pour laisser la reconnaissance vocale l'utiliser.
  */
-class WakeWordListener(context: Context, private val onWake: () -> Unit) {
+class WakeWordListener(context: Context, private val threshold: Float, private val onWake: () -> Unit) {
 
     private val detector = WakeWordDetector(
         context.assets.open("wakeword/melspectrogram.onnx").use { it.readBytes() },
@@ -19,6 +19,7 @@ class WakeWordListener(context: Context, private val onWake: () -> Unit) {
     )
     @Volatile private var running = false
     private var thread: Thread? = null
+    private var lastNearMiss = 0L
 
     @SuppressLint("MissingPermission") // Le service ne démarre qu'une fois le micro autorisé.
     @Synchronized
@@ -49,9 +50,11 @@ class WakeWordListener(context: Context, private val onWake: () -> Unit) {
                     }
                     if (!running) break
                     val score = synchronized(detector) { detector.process(chunk) }
-                    if (score >= WakeWordDetector.THRESHOLD) {
+                    if (score >= threshold) {
                         running = false
                         onWake()
+                    } else if (score >= threshold / 3) {
+                        nearMiss(score)
                     }
                 }
             } catch (e: Exception) {
@@ -62,6 +65,17 @@ class WakeWordListener(context: Context, private val onWake: () -> Unit) {
                 record.release()
             }
         }, "hey-jarvis").apply { start() }
+    }
+
+    /**
+     * « Hey Jarvis » presque reconnu : noté dans le journal (au plus toutes les 20 s) pour
+     * savoir s'il faut augmenter la sensibilité.
+     */
+    private fun nearMiss(score: Float) {
+        val now = System.currentTimeMillis()
+        if (now - lastNearMiss < 20_000) return
+        lastNearMiss = now
+        JarvisBus.line(false, "« Hey Jarvis » presque reconnu (score %.2f, seuil %.2f).".format(score, threshold))
     }
 
     /** Arrête l'écoute et attend que le micro soit libéré. */
