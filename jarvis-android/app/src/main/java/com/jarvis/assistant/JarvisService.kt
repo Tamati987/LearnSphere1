@@ -521,6 +521,10 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
             val name = actions.contactName(address)
             val from = name ?: "le $address"
             val spoken = "Monsieur, nouveau message de $from : « ${body.take(400)} ». Souhaitez-vous répondre ?"
+            if (GameMode.isOn(this)) {
+                JarvisBus.line(false, "SMS de $from reçu pendant le mode jeu : pas d'annonce.")
+                return@execute
+            }
             brain.recordEvent("Nouveau SMS reçu de ${name ?: "numéro inconnu"} ($address) : $body", spoken)
             announce(spoken)
         }
@@ -531,6 +535,10 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         JarvisBus.line(false, "Message $app de $sender reçu.")
         if (!announceMessages) {
             JarvisBus.line(false, "Message $app de $sender reçu (annonces désactivées dans les clés).")
+            return
+        }
+        if (GameMode.isOn(this)) {
+            JarvisBus.line(false, "Message $app de $sender reçu pendant le mode jeu : pas d'annonce.")
             return
         }
         worker.execute {

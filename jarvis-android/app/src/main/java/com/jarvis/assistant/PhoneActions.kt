@@ -50,6 +50,8 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         "regler_alarme" -> alarm(input.int("heure"), input.int("minute"), input.optStr("libelle"))
         "minuteur" -> timer(input.int("secondes"), input.optStr("libelle"))
         "ouvrir_application" -> openApp(input.str("nom"))
+        "ouvrir_site" -> openSite(input.str("adresse"))
+        "mode_jeu" -> gameMode(input["activer"] != false, input.optStr("jeu"))
         "lampe_torche" -> torch(input["allumer"] == true)
         "regler_volume" -> volume(input.int("pourcentage"))
         "jouer_musique" -> music(input.str("recherche"))
@@ -313,6 +315,19 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         return "${match.first} ouverte."
     }
 
+    private fun openSite(address: String): String {
+        val url = address.trim().let { if (it.contains("://")) it else "https://$it" }
+        return if (launch(Intent(Intent.ACTION_VIEW, Uri.parse(url)))) "Site $url ouvert."
+        else "Échec : aucun navigateur pour ouvrir $url."
+    }
+
+    /** Active ou coupe le mode jeu, puis lance le jeu demandé. */
+    private fun gameMode(on: Boolean, game: String?): String {
+        if (!on) return GameMode.stop(context)
+        val result = GameMode.start(context)
+        return if (game == null) result else "$result ${openApp(game)}"
+    }
+
     private fun torch(on: Boolean): String {
         val cm = context.getSystemService(CameraManager::class.java)
         val id = cm.cameraIdList.firstOrNull {
@@ -447,7 +462,15 @@ class PhoneActions(private val context: Context) : ToolExecutor {
             caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "données mobiles"
             else -> "connecté"
         }
-        return "Batterie à $level %${if (charging) ", en charge" else ""}. Réseau : $network."
+        // Température en dixièmes de degré, donnée par la dernière annonce de la batterie.
+        val tenths = context.registerReceiver(null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
+            ?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) ?: 0
+        val heat = when {
+            tenths <= 0 -> ""
+            tenths >= HOT_BATTERY_TENTHS -> " Température de la batterie : ${tenths / 10} °C, le téléphone chauffe : conseille une pause."
+            else -> " Température de la batterie : ${tenths / 10} °C."
+        }
+        return "Batterie à $level %${if (charging) ", en charge" else ""}. Réseau : $network.$heat"
     }
 
     private fun readAppMessages(app: String?, contact: String?, count: Int): String {
@@ -521,6 +544,8 @@ class PhoneActions(private val context: Context) : ToolExecutor {
     companion object {
         // Emplacement de la SIM qui envoie les SMS : 0 = SIM 1.
         private const val SIM_SLOT = 0
+        // 40 °C : au-delà, Jarvis signale que le téléphone chauffe.
+        private const val HOT_BATTERY_TENTHS = 400
         private const val NEWPIPE = "org.schabi.newpipe"
         private val NEWPIPE_HOSTS = setOf("youtube.com", "music.youtube.com", "youtu.be", "soundcloud.com", "on.soundcloud.com")
         private val VIDEO_ID = Regex("\"videoRenderer\":\\{\"videoId\":\"([A-Za-z0-9_-]{11})\"")

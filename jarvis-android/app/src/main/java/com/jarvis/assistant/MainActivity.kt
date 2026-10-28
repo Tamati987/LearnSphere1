@@ -87,6 +87,10 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
             runCatching { startActivity(intent) }
                 .onFailure { startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
         }
+        findViewById<Button>(R.id.gameSettings).setOnClickListener {
+            // Le mode jeu règle la luminosité : Android le demande dans « Modifier les paramètres système ».
+            startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:$packageName")))
+        }
         toggle.setOnClickListener {
             if (JarvisBus.state == JarvisBus.State.OFF) startJarvis()
             else stopService(Intent(this, JarvisService::class.java))
@@ -196,6 +200,8 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
         val power = getSystemService(android.os.PowerManager::class.java)
         findViewById<Button>(R.id.battery).visibility =
             if (power.isIgnoringBatteryOptimizations(packageName)) View.GONE else View.VISIBLE
+        findViewById<Button>(R.id.gameSettings).visibility =
+            if (Settings.System.canWrite(this)) View.GONE else View.VISIBLE
     }
 
     override fun onPause() {
@@ -260,6 +266,9 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
                 getSystemService(android.app.NotificationManager::class.java).canUseFullScreenIntent())}",
             "prochain réveil ${JarvisAlarm.nextDescription(this) ?: "aucun"}",
             "« Hey Jarvis » seuil ${prefs.wakeThreshold}",
+            "mode jeu ${if (GameMode.isOn(this)) "actif" else "inactif"}" +
+                " (ne pas déranger ${ok(getSystemService(android.app.NotificationManager::class.java).isNotificationPolicyAccessGranted)}," +
+                " luminosité ${ok(Settings.System.canWrite(this))})",
         ).joinToString(" · ")
     }
 
