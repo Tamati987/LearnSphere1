@@ -541,6 +541,9 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         }
     }
 
+    /** Information à dire dès que Jarvis est libre (par exemple un SMS qui n'est pas parti). */
+    fun notice(spoken: String) = announce(spoken)
+
     private fun announce(spoken: String) {
         main.post {
             // Occupé à écouter ou à répondre : le message reste affiché sans interrompre.

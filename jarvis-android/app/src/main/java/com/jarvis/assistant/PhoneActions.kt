@@ -19,6 +19,7 @@ import android.provider.CalendarContract
 import android.provider.ContactsContract
 import android.provider.MediaStore
 import android.provider.Telephony
+import android.app.PendingIntent
 import android.telephony.SmsManager
 import androidx.core.content.ContextCompat
 import java.text.Normalizer
@@ -91,14 +92,38 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         if (!granted(Manifest.permission.SEND_SMS)) return "Échec : permission SMS non accordée dans l'appli."
         val (label, number) = resolveNumber(who) ?: return "Échec : aucun contact ou numéro trouvé pour « $who »."
         val (manager, sim) = smsManager()
-        manager.sendMultipartTextMessage(number, null, manager.divideMessage(text), null, null)
-        return "SMS envoyé à $label ($number)$sim."
+        val to = international(number)
+        val parts = manager.divideMessage(text)
+        // Android prévient [SmsSentReceiver] quand le SMS est vraiment parti, ou a échoué.
+        val id = (System.currentTimeMillis() % 1_000_000).toInt()
+        val sent = ArrayList(parts.map {
+            PendingIntent.getBroadcast(
+                context, id,
+                Intent(context, SmsSentReceiver::class.java).putExtra(SmsSentReceiver.EXTRA_ID, id).putExtra(SmsSentReceiver.EXTRA_TO, label),
+                // Modifiable : Android y ajoute le code d'erreur de l'opérateur.
+                (if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0) or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+        })
+        manager.sendMultipartTextMessage(to, null, parts, sent, null)
+        return "SMS transmis au réseau pour $label ($to)$sim ; Jarvis préviendra si l'envoi échoue."
     }
 
     /**
      * Les SMS partent toujours de la SIM 1 (premier emplacement), à la demande de l'utilisateur.
      * Sans SIM dans cet emplacement, on prend la SIM choisie par défaut dans Android.
      */
+    /**
+     * Numéro au format international (+689…), d'après le pays du réseau où se trouve le téléphone :
+     * un numéro local enregistré sans indicatif part alors correctement, quelle que soit la SIM.
+     */
+    private fun international(number: String): String {
+        if (number.trim().startsWith("+")) return number.filter { it.isDigit() || it == '+' }
+        val country = runCatching {
+            context.getSystemService(android.telephony.TelephonyManager::class.java).networkCountryIso
+        }.getOrNull()?.takeIf { it.isNotBlank() } ?: return number
+        return android.telephony.PhoneNumberUtils.formatNumberToE164(number, country.uppercase(Locale.ROOT)) ?: number
+    }
+
     @android.annotation.SuppressLint("MissingPermission") // READ_PHONE_STATE est vérifié juste avant.
     private fun smsManager(): Pair<SmsManager, String> {
         val default = if (Build.VERSION.SDK_INT >= 31) context.getSystemService(SmsManager::class.java)
@@ -590,5 +615,36 @@ class PhoneActions(private val context: Context) : ToolExecutor {
     private fun Map<String, Any?>.int(key: String) = when (val v = this[key]) {
         is Number -> v.toInt()
         else -> v?.toString()?.toDoubleOrNull()?.toInt() ?: 0
+    }
+}
+
+/** Résultat de l'envoi d'un SMS : en cas d'échec, Jarvis le dit et l'écrit dans le journal. */
+class SmsSentReceiver : android.content.BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val id = intent.getIntExtra(EXTRA_ID, -1)
+        // Un long SMS part en plusieurs morceaux : un seul compte rendu par SMS.
+        synchronized(reported) {
+            if (id in reported) return
+            if (resultCode != android.app.Activity.RESULT_OK) reported += id
+        }
+        val to = intent.getStringExtra(EXTRA_TO) ?: "votre contact"
+        if (resultCode == android.app.Activity.RESULT_OK) {
+            JarvisBus.line(false, "SMS pour $to parti.")
+            return
+        }
+        val error = intent.getIntExtra("errorCode", -1)
+        val reason = when (resultCode) {
+            SmsManager.RESULT_ERROR_NO_SERVICE -> "pas de réseau sur la SIM 1"
+            SmsManager.RESULT_ERROR_RADIO_OFF -> "mode avion ou SIM 1 désactivée"
+            else -> "refusé par l'opérateur de la SIM 1"
+        }
+        JarvisBus.line(false, "Échec de l'envoi du SMS pour $to : $reason (résultat $resultCode, code $error).")
+        JarvisService.instance?.notice("Monsieur, le SMS pour $to n'est pas parti : $reason.")
+    }
+
+    companion object {
+        const val EXTRA_ID = "sms_id"
+        const val EXTRA_TO = "sms_to"
+        private val reported = mutableSetOf<Int>()
     }
 }

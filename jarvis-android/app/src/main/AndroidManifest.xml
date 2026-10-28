@@ -103,6 +103,10 @@
             android:name=".AlarmReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".SmsSentReceiver"
+            android:exported="false" />
+
         <service
             android:name=".AlarmRingService"
             android:exported="false"
