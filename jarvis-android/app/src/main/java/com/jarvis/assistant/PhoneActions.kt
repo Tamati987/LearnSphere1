@@ -51,7 +51,6 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         "minuteur" -> timer(input.int("secondes"), input.optStr("libelle"))
         "ouvrir_application" -> openApp(input.str("nom"))
         "ouvrir_site" -> openSite(input.str("adresse"))
-        "mode_jeu" -> gameMode(input["activer"] != false, input.optStr("jeu"))
         "lampe_torche" -> torch(input["allumer"] == true)
         "regler_volume" -> volume(input.int("pourcentage"))
         "jouer_musique" -> music(input.str("recherche"))
@@ -319,13 +318,6 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         val url = address.trim().let { if (it.contains("://")) it else "https://$it" }
         return if (launch(Intent(Intent.ACTION_VIEW, Uri.parse(url)))) "Site $url ouvert."
         else "Échec : aucun navigateur pour ouvrir $url."
-    }
-
-    /** Active ou coupe le mode jeu, puis lance le jeu demandé. */
-    private fun gameMode(on: Boolean, game: String?): String {
-        if (!on) return GameMode.stop(context)
-        val result = GameMode.start(context)
-        return if (game == null) result else "$result ${openApp(game)}"
     }
 
     private fun torch(on: Boolean): String {

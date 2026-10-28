@@ -19,7 +19,6 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
   - lire votre agenda (« qu'est-ce que j'ai demain ? ») et y ajouter des rendez-vous, avec un rappel 30 minutes avant ;
   - régler une alarme classique ou un minuteur ;
   - ouvrir une application, un jeu ou un site web ;
-  - passer en **mode jeu** (« Hey Jarvis… mode jeu et lance Free Fire ») : ne pas déranger (les appels prioritaires et les alarmes passent encore), luminosité au maximum, son multimédia à 80 %, et Jarvis n'annonce plus les messages pendant la partie (ils restent notés dans le journal). « Mode normal » remet tout comme avant ;
   - allumer ou éteindre la lampe torche ;
   - régler le volume ;
   - mettre de la musique dans NewPipe en une seule étape : Jarvis cherche sur YouTube (de préférence une playlist, pour que la musique continue) et lance aussitôt le premier résultat dans NewPipe. Pour une demande vague, il choisit lui-même. Il peut aussi ouvrir la recherche dans NewPipe ;
@@ -54,8 +53,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
    - **Autres autorisations** : *Afficher sur l'écran de verrouillage* et *Ouvrir de nouvelles fenêtres en arrière-plan* autorisés ;
    - dans les applis récentes, verrouillez Jarvis (cadenas) : sinon « Tout effacer » ferme Jarvis de force et efface ses réveils jusqu'à sa prochaine ouverture.
 8. Pour WhatsApp et Messenger : touchez **Autoriser la lecture de WhatsApp et Messenger**, puis activez Jarvis dans la liste. Si Android affiche « Paramètre restreint », allez dans *Paramètres → Applis → Jarvis*, menu **⋮** en haut à droite → **Autoriser les paramètres restreints**, puis recommencez.
-9. Pour le mode jeu : touchez **Autoriser le mode jeu (luminosité)** et activez *Modifier les paramètres système* pour Jarvis. Le ne pas déranger fonctionne dès que l'accès aux notifications (étape 8) est accordé. Sans ces accès, le mode jeu fait le reste et Jarvis dit ce qui manque.
-10. Pour la musique dans NewPipe : dans NewPipe, *Paramètres → Vidéo et audio → Action par défaut à l'ouverture du contenu*, choisissez **Lecture en arrière-plan**. Sinon NewPipe demande à chaque fois comment ouvrir le morceau et la musique ne démarre pas toute seule.
+9. Pour la musique dans NewPipe : dans NewPipe, *Paramètres → Vidéo et audio → Action par défaut à l'ouverture du contenu*, choisissez **Lecture en arrière-plan**. Sinon NewPipe demande à chaque fois comment ouvrir le morceau et la musique ne démarre pas toute seule.
 
 Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au lieu de dire « Hey Jarvis ».
 
@@ -80,8 +78,7 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 - « Hey Jarvis… mets une playlist de jazz pour travailler. »
 - « Hey Jarvis… morceau suivant. »
 - « Hey Jarvis… ouvre WhatsApp. »
-- « Hey Jarvis… mode jeu et lance Free Fire. »
-- « Hey Jarvis… j'ai fini de jouer. »
+- « Hey Jarvis… lance Free Fire. »
 - « Hey Jarvis… est-ce que le téléphone chauffe ? »
 - « Hey Jarvis… ouvre youtube.com. »
 - « Hey Jarvis… emmène-moi à l'aéroport. »
@@ -106,14 +103,13 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 |---|---|
 | `JarvisBrain.kt` | Conversation avec Claude : prompt de Jarvis, outils du téléphone, recherche web |
 | `JarvisMemory.kt` | Mémoire à long terme : souvenirs, consignes apprises, résumés des conversations |
-| `PhoneActions.kt` | Exécution des outils : appels, SMS, agenda, alarmes, applis, sites, mode jeu, lampe, volume, musique et NewPipe, GPS |
+| `PhoneActions.kt` | Exécution des outils : appels, SMS, agenda, alarmes, applis, sites, lampe, volume, musique et NewPipe, GPS |
 | `JarvisService.kt` | Service au premier plan : mot d'activation, reconnaissance vocale, synthèse vocale |
 | `WakeWordDetector.kt`, `WakeWordListener.kt` | Détection de « Hey Jarvis » avec les modèles openWakeWord (ONNX) |
 | `ElevenLabsVoice.kt` | Voix réaliste ElevenLabs, avec retour à la voix Android en cas d'échec |
 | `BootSequenceView.kt`, `BootSound.kt` | Animation et sons du démarrage |
 | `JarvisAlarm.kt`, `AlarmRingService.kt`, `WakeUpActivity.kt` | Réveil de Jarvis : programmation, sonnerie (carillon et voix), écran de réveil |
 | `MessageListener.kt` | Lecture des notifications WhatsApp et Messenger, annonce et réponse |
-| `GameMode.kt` | Mode jeu : ne pas déranger, luminosité, son, pause des annonces, puis retour aux réglages d'avant |
 | `Weather.kt` | Météo Open-Meteo à la position mémorisée ou pour une ville |
 | `MainActivity.kt` | Écran des clés, journal de conversation, saisie au clavier |
 
