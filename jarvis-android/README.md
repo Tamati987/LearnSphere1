@@ -29,6 +29,8 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
   - lire les notifications affichées par vos autres applis (météo, banque, livraison, mails…), sans déverrouiller ;
   - donner l'état de la batterie et du réseau, avec la température de la batterie : au-delà de 40 °C, Jarvis signale que le téléphone chauffe et conseille une pause.
 - Parler avec une voix réaliste de majordome britannique si vous ajoutez une clé ElevenLabs : la voix originale « Jarvis » créée pour l'appli (elle doit se trouver dans le même compte ElevenLabs que la clé), sinon la voix « Daniel ». Sans clé, Jarvis utilise la voix de synthèse d'Android.
+- Afficher une interface holographique façon Iron Man : un réacteur central dont les anneaux tournent et changent selon ce que fait Jarvis (cyan qui respire en veille, ondes au rythme de votre voix quand il écoute, arcs dorés qui tournent vite quand il réfléchit, barres d'onde quand il parle), entouré de l'heure, de la date et d'une jauge d'énergie. Touchez le réacteur pour parler.
+- Jouer des sons d'interface synthétisés sur le téléphone, avec réverbération : activation cristalline quand vous dites « Hey Jarvis », double tic quand il attend votre réponse, glissement descendant en fin d'échange.
 - S'ouvrir avec une séquence de démarrage animée façon interface holographique, des sons synthétisés sur le téléphone et un message de bienvenue en français. Touchez l'écran pour la passer.
 - Rouvrir le micro tout seul, avec un bip, quand il vous pose une question, même si une courte phrase suit la question. Sans réponse, il repose la question une fois (« Je me permets d'insister, Monsieur… »), puis attend « Hey Jarvis ».
 - Vous laisser le temps de parler : s'il coupe pendant une pause au milieu d'une phrase (« mets-moi de la… »), il réécoute la suite avant de répondre. Si vous ne dites rien juste après « Hey Jarvis », il vous laisse une seconde chance.
@@ -108,6 +110,7 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 | `WakeWordDetector.kt`, `WakeWordListener.kt` | Détection de « Hey Jarvis » avec les modèles openWakeWord (ONNX) |
 | `ElevenLabsVoice.kt` | Voix réaliste ElevenLabs, avec retour à la voix Android en cas d'échec |
 | `BootSequenceView.kt`, `BootSound.kt` | Animation et sons du démarrage |
+| `HudView.kt`, `HudSound.kt` | Interface holographique de la console et sons d'interface (activation, réponse attendue, fin d'échange) |
 | `JarvisAlarm.kt`, `AlarmRingService.kt`, `WakeUpActivity.kt` | Réveil de Jarvis : programmation, sonnerie (carillon et voix), écran de réveil |
 | `MessageListener.kt` | Lecture des notifications WhatsApp et Messenger, annonce et réponse |
 | `Weather.kt` | Météo Open-Meteo à la position mémorisée ou pour une ville |

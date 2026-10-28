@@ -13,7 +13,6 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.media.AudioManager
-import android.media.ToneGenerator
 import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
@@ -49,7 +48,10 @@ object JarvisBus {
     /** Historique du journal, gardé même quand l'écran de Jarvis est fermé. */
     private val history = ArrayDeque<Pair<Boolean, String>>()
 
-    fun state(s: State) { state = s; main.post { listener?.onState(s) } }
+    /** Volume de la voix captée par le micro, de 0 à 1, pour l'animation de l'interface. */
+    @Volatile var level = 0f
+
+    fun state(s: State) { state = s; level = 0f; main.post { listener?.onState(s) } }
 
     fun line(fromUser: Boolean, text: String) {
         val stamped = java.text.SimpleDateFormat("HH:mm", java.util.Locale.FRANCE).format(java.util.Date()) + "  " + text
@@ -169,8 +171,6 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         }
     }
     private var voice: ElevenLabsVoice? = null
-    // Certains téléphones refusent le générateur de bips : Jarvis s'en passe alors.
-    private val beep = runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, 60) }.getOrNull()
     private var followUp = false
 
     // Lecture phrase par phrase : la voix de chaque phrase est générée dans l'ordre
@@ -229,7 +229,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         recognizer?.destroy()
         tts.shutdown()
         voice?.stop()
-        beep?.release()
+        HudSound.release()
         worker.shutdownNow()
         synth.shutdownNow()
         JarvisBus.state(JarvisBus.State.OFF)
@@ -275,6 +275,10 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         pendingQuestion = null
         awaitingCallAnswer = false
         wakeWord?.start()
+        // Son de fin d'échange, seulement après une écoute ou une réponse.
+        if (JarvisBus.state == JarvisBus.State.LISTENING || JarvisBus.state == JarvisBus.State.SPEAKING) {
+            HudSound.play(HudSound.Cue.CLOSE)
+        }
         JarvisBus.state(JarvisBus.State.WAITING)
     }
 
@@ -284,9 +288,9 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         reasked = 0
         stopSpeech()
         pauseWakeWord()
-        beep?.startTone(ToneGenerator.TONE_PROP_ACK, 120)
-        // Laisse le bip finir avant d'ouvrir le micro.
-        main.postDelayed({ listen() }, 150)
+        HudSound.play(HudSound.Cue.ACTIVATE)
+        // Laisse le son d'activation finir avant d'ouvrir le micro.
+        main.postDelayed({ listen() }, 320)
     }
 
     // --- Reconnaissance vocale -------------------------------------------
@@ -363,7 +367,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
                 }
                 override fun onReadyForSpeech(params: Bundle?) {}
                 override fun onBeginningOfSpeech() { main.removeCallbacks(endContinuation) }
-                override fun onRmsChanged(rmsdB: Float) {}
+                override fun onRmsChanged(rmsdB: Float) { JarvisBus.level = ((rmsdB + 2) / 12).coerceIn(0f, 1f) }
                 override fun onBufferReceived(buffer: ByteArray?) {}
                 override fun onEndOfSpeech() {}
                 override fun onPartialResults(partialResults: Bundle?) {
@@ -675,7 +679,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         // Bip pour signaler que le micro se rouvre, puis une courte pause : le micro
         // n'entend pas la fin de la voix de Jarvis.
         JarvisBus.state(JarvisBus.State.LISTENING)
-        beep?.startTone(ToneGenerator.TONE_PROP_ACK, 120)
+        HudSound.play(HudSound.Cue.PROMPT)
         main.postDelayed({ listen() }, 350)
     }
 

@@ -99,14 +99,17 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <TextView
-            style="@style/Title"
-            android:text="JARVIS" />
+        <com.jarvis.assistant.HudView
+            android:id="@+id/hud"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1.3" />
 
         <TextView
             android:id="@+id/status"
             style="@style/Label"
             android:layout_marginTop="4dp"
+            android:gravity="center"
             android:text="Hors ligne" />
 
         <Button

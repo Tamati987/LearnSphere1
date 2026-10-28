@@ -72,6 +72,10 @@ object BootSound {
         }
         for (k in 0 until 6) blip(mix, 11.8 + k * 0.18, 4000.0 + k * 300.0, 0.04, 0.10f)
 
+        // Réverbération de grande salle, coupée à la durée de la séquence.
+        val room = HudSound.reverb(mix, SAMPLE_RATE, wet = 0.28f).copyOf(n)
+        room.copyInto(mix)
+
         // Normalise le volume : le son le plus fort atteint 90 % du maximum.
         val peak = mix.maxOf { abs(it) }.coerceAtLeast(1e-3f)
         val out = ShortArray(n)

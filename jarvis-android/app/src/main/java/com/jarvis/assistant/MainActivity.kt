@@ -29,6 +29,7 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
     private lateinit var setup: View
     private lateinit var console: View
     private lateinit var toggle: Button
+    private lateinit var hud: HudView
     private var bootTrack: AudioTrack? = null
 
     private val askPermissions =
@@ -94,6 +95,9 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
         findViewById<Button>(R.id.talk).setOnClickListener {
             JarvisService.start(this, JarvisService.ACTION_LISTEN)
         }
+        hud = findViewById(R.id.hud)
+        // Toucher le réacteur revient à toucher « Parler ».
+        hud.setOnClickListener { JarvisService.start(this, JarvisService.ACTION_LISTEN) }
         val input = findViewById<EditText>(R.id.input)
         input.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEND && input.text.isNotBlank()) {
@@ -234,6 +238,7 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
             JarvisBus.State.SPEAKING -> "Réponse"
         }
         toggle.text = if (state == JarvisBus.State.OFF) "Activer" else "Pause"
+        hud.setState(state)
     }
 
     companion object {
