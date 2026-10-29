@@ -59,7 +59,7 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         "newpipe_rechercher" -> newPipeSearch(input.str("recherche"))
         "controle_musique" -> mediaControl(input.str("action"))
         "itineraire" -> navigate(input.str("destination"))
-        "reveil_jarvis" -> wakeUp(input.int("heure"), input.int("minute"), input["jours"], input.optStr("phrase"), input["agenda"] == true)
+        "reveil_jarvis" -> wakeUp(input.int("heure"), input.int("minute"), input)
         "lister_reveils" -> JarvisAlarm.all(context).takeIf { it.isNotEmpty() }
             ?.joinToString("\n") { JarvisAlarm.describe(it) } ?: "Aucun réveil de Jarvis n'est programmé."
         "annuler_reveil" -> cancelWakeUp(input["tous"] == true, input["heure"]?.let { input.int("heure") }, input.int("minute"))
@@ -120,12 +120,20 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         return "Alarme réglée à %02d:%02d.".format(hour, minute)
     }
 
-    private fun wakeUp(hour: Int, minute: Int, days: Any?, phrase: String?, agenda: Boolean): String {
-        val daySet = (days as? List<*>).orEmpty()
-            .mapNotNull { JarvisAlarm.DAY_NAMES[it.toString().lowercase().trim()] }
-            .toSet()
+    private fun wakeUp(hour: Int, minute: Int, input: Map<String, Any?>): String {
+        val h = hour.coerceIn(0, 23)
+        val m = minute.coerceIn(0, 59)
+        // Modifier un réveil existant (« ajoute de la musique au réveil de 6 h ») garde ce qui n'est pas précisé.
+        val existing = JarvisAlarm.all(context).firstOrNull { it.hour == h && it.minute == m }
+        val daySet = (input["jours"] as? List<*>)
+            ?.mapNotNull { JarvisAlarm.DAY_NAMES[it.toString().lowercase().trim()] }?.toSet()
+            ?: existing?.days ?: emptySet()
+        val phrase = input.optStr("phrase") ?: existing?.text
+        val agenda = (input["agenda"] as? Boolean) ?: existing?.agenda ?: false
+        // Musique : absente = inchangée ; texte vide = retirée.
+        val music = if (input.containsKey("musique")) input["musique"]?.toString() else existing?.music
         val alarm = try {
-            JarvisAlarm.add(context, hour.coerceIn(0, 23), minute.coerceIn(0, 59), daySet, phrase, agenda)
+            JarvisAlarm.add(context, h, m, daySet, phrase, agenda, music)
         } catch (e: IllegalStateException) {
             // Android 12 : l'autorisation « Alarmes et rappels » se donne dans les réglages.
             launch(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")))

@@ -12,11 +12,12 @@ import java.util.Calendar
 
 /**
  * Un réveil de Jarvis : une heure, des jours de la semaine (aucun = une seule fois), la phrase
- * à dire et, si [agenda], le programme de la journée lu dans l'agenda du téléphone.
+ * à dire, si [agenda] le programme de la journée lu dans l'agenda du téléphone, et si [music]
+ * une recherche lancée dans NewPipe une fois la phrase dite (« reggae roots »).
  */
 data class Alarm(
     val id: Int, val hour: Int, val minute: Int, val days: Set<Int>, val text: String,
-    val agenda: Boolean = false,
+    val agenda: Boolean = false, val music: String? = null,
 )
 
 /**
@@ -60,10 +61,13 @@ object JarvisAlarm {
     }
 
     /** Ajoute ou remplace le réveil de [hour]:[minute] et le programme. */
-    fun add(context: Context, hour: Int, minute: Int, days: Set<Int>, text: String?, agenda: Boolean = false): Alarm {
+    fun add(
+        context: Context, hour: Int, minute: Int, days: Set<Int>, text: String?, agenda: Boolean = false,
+        music: String? = null,
+    ): Alarm {
         val alarms = all(context).filterNot { it.hour == hour && it.minute == minute && it.id != SNOOZE_ID }
         val id = (alarms.filter { it.id != SNOOZE_ID }.maxOfOrNull { it.id } ?: 0) + 1
-        val alarm = Alarm(id, hour, minute, days, text ?: defaultText(hour, minute), agenda)
+        val alarm = Alarm(id, hour, minute, days, text ?: defaultText(hour, minute), agenda, music?.trim()?.takeIf { it.isNotEmpty() })
         save(context, alarms + alarm)
         schedule(context, alarm)
         return alarm
@@ -86,7 +90,10 @@ object JarvisAlarm {
         return (0 until array.length()).map { i ->
             val o = array.getJSONObject(i)
             val days = o.getJSONArray("days").let { d -> (0 until d.length()).map { d.getInt(it) }.toSet() }
-            Alarm(o.getInt("id"), o.getInt("hour"), o.getInt("minute"), days, o.getString("text"), o.optBoolean("agenda"))
+            Alarm(
+                o.getInt("id"), o.getInt("hour"), o.getInt("minute"), days, o.getString("text"), o.optBoolean("agenda"),
+                o.optString("music").takeIf { it.isNotBlank() },
+            )
         }
     }
 
@@ -134,7 +141,8 @@ object JarvisAlarm {
             else -> DAY_NAMES.filterValues { it in alarm.days }.keys.joinToString(", ")
         }
         val agenda = if (alarm.agenda) ", puis le programme du jour" else ""
-        return "%02d:%02d, %s : « %s »%s".format(alarm.hour, alarm.minute, days, alarm.text, agenda)
+        val music = alarm.music?.let { ", puis la musique « $it » dans NewPipe" }.orEmpty()
+        return "%02d:%02d, %s : « %s »%s%s".format(alarm.hour, alarm.minute, days, alarm.text, agenda, music)
     }
 
     fun nextTrigger(alarm: Alarm, from: Calendar = Calendar.getInstance()): Calendar {
@@ -175,6 +183,7 @@ object JarvisAlarm {
             array.put(
                 JSONObject().put("id", a.id).put("hour", a.hour).put("minute", a.minute)
                     .put("days", JSONArray(a.days.sorted())).put("text", a.text).put("agenda", a.agenda)
+                    .put("music", a.music ?: "")
             )
         }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("alarms", array.toString()).apply()

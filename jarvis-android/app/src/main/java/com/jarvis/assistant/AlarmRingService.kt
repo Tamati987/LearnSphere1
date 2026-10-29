@@ -51,6 +51,9 @@ class AlarmRingService : Service(), TextToSpeech.OnInitListener {
     @Volatile private var voiceReady = false
     private var waitedForVoice = 0
     private var savedAlarmVolume = -1
+    // Musique à lancer dans NewPipe après la phrase du réveil, et récepteur du déverrouillage.
+    private var music: String? = null
+    private var unlockReceiver: BroadcastReceiver? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -58,11 +61,13 @@ class AlarmRingService : Service(), TextToSpeech.OnInitListener {
         // Android exige la notification au premier plan, même pour un simple « Arrêter ».
         if (!ringing && intent?.action != null && intent.action != ACTION_RING) startInForeground()
         when (intent?.action) {
-            ACTION_STOP -> stopRinging()
+            // « Arrêter » : la voix se tait et la musique du réveil démarre, s'il y en a une.
+            ACTION_STOP -> if (music != null) startMusic() else stopRinging()
             ACTION_SNOOZE -> {
                 runCatching { JarvisAlarm.snooze(this, text) }
                     .onFailure { JarvisBus.line(false, "Impossible de reprogrammer le réveil dans 10 minutes : ${it.message}") }
                 JarvisBus.line(false, "Réveil repoussé de 10 minutes.")
+                music = null
                 stopRinging()
             }
             else -> ring(intent?.getIntExtra(JarvisAlarm.EXTRA_ID, -1) ?: -1)
@@ -103,6 +108,7 @@ class AlarmRingService : Service(), TextToSpeech.OnInitListener {
         tts = TextToSpeech(this, this)
         // Le programme du jour (lu dans l'agenda) puis la voix se préparent pendant que le carillon sonne.
         val withAgenda = alarm?.agenda == true
+        music = alarm?.music
         worker.execute {
             if (withAgenda) {
                 runCatching { PhoneActions(this).todaySummary() }.getOrNull()?.let { summary ->
@@ -166,10 +172,46 @@ class AlarmRingService : Service(), TextToSpeech.OnInitListener {
     }
 
     private fun scheduleNextCycle() {
-        if (ringing) main.postDelayed({ cycle() }, 12_000)
+        if (!ringing) return
+        // Réveil en musique : après la première phrase, la musique prend le relais.
+        if (music != null && unlockReceiver == null) {
+            if (!UnlockActivity.isLocked(this)) return startMusic()
+            // Téléphone verrouillé : NewPipe ne peut s'ouvrir qu'une fois déverrouillé. Jarvis continue
+            // de sonner jusque-là, pour ne pas laisser l'utilisateur se rendormir.
+            waitForUnlock()
+        }
+        main.postDelayed({ cycle() }, 12_000)
+    }
+
+    private fun waitForUnlock() {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) { startMusic() }
+        }
+        unlockReceiver = receiver
+        androidx.core.content.ContextCompat.registerReceiver(
+            this, receiver, android.content.IntentFilter(Intent.ACTION_USER_PRESENT),
+            androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        runCatching { UnlockActivity.request(this) }
+    }
+
+    /** Arrête la sonnerie et lance la recherche du réveil dans NewPipe. */
+    private fun startMusic() {
+        val query = music ?: return stopRinging()
+        music = null
+        stopRinging()
+        val app = applicationContext
+        Thread {
+            val result = runCatching {
+                PhoneActions(app).execute("musique_newpipe", mapOf("recherche" to query, "playlist" to true))
+            }.getOrElse { "Échec : ${it.message}" }
+            JarvisBus.line(false, "Musique du réveil : $result")
+        }.start()
     }
 
     private fun stopRinging() {
+        unlockReceiver?.let { runCatching { unregisterReceiver(it) } }
+        unlockReceiver = null
         ringing = false
         active = false
         main.removeCallbacksAndMessages(null)

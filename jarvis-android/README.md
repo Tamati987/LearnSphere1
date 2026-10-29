@@ -19,6 +19,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
   - vous réveiller ou vous rappeler un moment de la journée lui-même : à l'heure dite, un carillon sonne et Jarvis dit sa phrase de sa voix, au volume d'alarme, même téléphone verrouillé. L'écran du réveil s'allume, et la notification propose aussi « Arrêter » ou « Encore 10 min ». La sonnerie vient d'un service à part, comme une vraie appli d'alarme : elle part même si le téléphone bloque l'ouverture de l'écran. Les réveils peuvent se répéter certains jours. Deux sont installés au premier lancement :
     - 6 h, du lundi au vendredi : « Bonjour, Monsieur. Il est six heures. C'est l'heure de vous préparer pour le travail. Je vous souhaite une excellente journée. » Puis le programme du jour lu dans l'agenda, par exemple « Au programme aujourd'hui : réunion à 9 heures et déjeuner avec Paul à 12 heures 30. »
     - 12 h, tous les jours : « Monsieur, il est midi. C'est l'heure du déjeuner. Je vous suggère de faire une pause, vous l'avez bien mérité. »
+  - réveiller en musique : « Jarvis, au réveil de 6 h, mets du reggae roots ». Après sa phrase, Jarvis lance la recherche dans NewPipe. Si le téléphone est verrouillé, il continue de sonner jusqu'à ce que vous déverrouilliez (ou touchiez « Arrêter »), puis la musique démarre ; « Encore 10 min » repousse sans musique ;
   - lire votre agenda (« qu'est-ce que j'ai demain ? ») et y ajouter des rendez-vous, avec un rappel 30 minutes avant ;
   - régler une alarme classique ou un minuteur ;
   - ouvrir une application ;

@@ -388,7 +388,8 @@ class JarvisBrain(
             tool(
                 "reveil_jarvis",
                 "Programme un réveil de Jarvis : à l'heure dite, l'écran s'allume et Jarvis dit la phrase de sa voix. " +
-                    "À préférer pour « réveille-moi » ou un rappel à heure fixe. Remplace un réveil existant à la même heure.",
+                    "À préférer pour « réveille-moi » ou un rappel à heure fixe. Remplace un réveil existant à la même heure ; " +
+                    "les champs absents (jours, phrase, agenda, musique) gardent alors leur valeur.",
                 mapOf(
                     "heure" to prop("integer", "Heure de 0 à 23"),
                     "minute" to prop("integer", "Minute de 0 à 59"),
@@ -400,6 +401,11 @@ class JarvisBrain(
                         )
                     ),
                     "agenda" to prop("boolean", "true pour que Jarvis annonce aussi le programme du jour lu dans l'agenda"),
+                    "musique" to prop(
+                        "string",
+                        "Recherche lancée dans NewPipe après la phrase du réveil, par exemple « playlist reggae roots » ; " +
+                            "chaîne vide pour retirer la musique ; absent pour garder celle du réveil existant",
+                    ),
                     "phrase" to prop(
                         "string",
                         "Phrase complète que Jarvis dira, dans son style, en appelant l'utilisateur Monsieur ; " +
