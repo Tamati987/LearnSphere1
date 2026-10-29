@@ -33,6 +33,10 @@ class PhoneActions(private val context: Context) : ToolExecutor {
 
     // Une appli a dû attendre le déverrouillage pendant l'action en cours.
     private var waitingForUnlock = false
+    // Capture d'écran ou image de la caméra du dernier outil, transmise à Claude.
+    private var image: ByteArray? = null
+
+    override fun takeImage(): ByteArray? = image.also { image = null }
 
     override fun execute(name: String, input: Map<String, Any?>): String {
         waitingForUnlock = false
@@ -78,9 +82,38 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         } ?: "Échec : l'accès aux notifications n'est pas accordé à Jarvis."
         "lire_sms" -> readSms(input.optStr("contact"), input.int("nombre"), input["non_lus"] == true)
         "etat_telephone" -> status()
+        "voir_ecran" -> lookAtScreen()
+        "regarder_camera" -> lookThroughCamera(input.optStr("mode") ?: "photo", input.optStr("camera") == "avant")
         "reglages_jarvis" -> JarvisSettings(context).jarvis(input.optStr("action"), input.optStr("reglage"), input.optStr("valeur"))
         "reglage_telephone" -> JarvisSettings(context).phone(input.str("reglage"), input.optStr("valeur")) { launch(it) }
         else -> "Échec : outil inconnu « $name »."
+    }
+
+    /** Capture et texte de l'écran, par le service d'accessibilité de Jarvis. */
+    private fun lookAtScreen(): String {
+        val (text, shot) = ScreenReader.look() ?: run {
+            launch(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            return "Échec : la lecture de l'écran n'est pas activée. La page Accessibilité est ouverte : l'utilisateur doit " +
+                "toucher « Jarvis » (dans « Applis installées ») et l'activer. Si Android dit « Paramètre restreint », il faut " +
+                "d'abord, dans Paramètres → Applis → Jarvis, menu ⋮, « Autoriser les paramètres restreints »."
+        }
+        image = shot
+        return if (shot != null) "Capture de l'écran jointe. $text" else "Capture impossible (écran protégé ou Android trop ancien). $text"
+    }
+
+    /** Ouvre la caméra à l'écran et en renvoie une image ; en mode direct, Jarvis commente ensuite tout seul. */
+    private fun lookThroughCamera(mode: String, front: Boolean): String {
+        if (mode == "arreter") {
+            CameraActivity.close()
+            return "Caméra fermée."
+        }
+        val live = mode == "direct"
+        launch(CameraActivity.intent(context, front, live))
+        val shot = CameraActivity.capture(timeoutMs = if (waitingForUnlock) 20_000 else 8_000)
+            ?: return "Échec : la caméra n'a pas donné d'image (autorisation refusée ou téléphone verrouillé)."
+        image = shot
+        return "Image de la caméra ${if (front) "avant" else "arrière"} jointe." +
+            if (live) " Mode direct activé : tu recevras une image toutes les dix secondes environ pour commenter." else ""
     }
 
     private fun call(who: String): String {

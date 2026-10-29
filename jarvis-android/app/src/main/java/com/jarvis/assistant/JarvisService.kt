@@ -533,7 +533,9 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         worker.execute {
             var queued = 0
             // Chaque phrase part vers la voix dès que Claude l'a écrite.
-            val answer = brain.ask(text) { sentence -> queued++; queueSentence(gen, sentence) }
+            // Caméra ouverte : Jarvis voit ce que fait l'utilisateur en même temps qu'il l'entend.
+            val image = if (CameraActivity.isOpen) CameraActivity.capture(timeoutMs = 2_000) else null
+            val answer = brain.ask(text, image) { sentence -> queued++; queueSentence(gen, sentence) }
             if (queued == 0) queueSentence(gen, answer)
             finishReply(gen, answer)
         }
@@ -561,6 +563,26 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
             val spoken = "Monsieur, nouveau message $app de $sender$where : « ${body.take(400)} ». Souhaitez-vous répondre ?"
             brain.recordEvent("Nouveau message $app reçu de $sender$where : $body", spoken)
             announce(spoken)
+        }
+    }
+
+    @Volatile private var lookingLive = false
+
+    /**
+     * Image du mode direct de la caméra : quand Jarvis est libre, il la regarde et la commente
+     * en une phrase si quelque chose a changé. Une seule à la fois ; les autres sont ignorées.
+     */
+    fun liveFrame(jpeg: ByteArray) {
+        if (lookingLive || JarvisBus.state != JarvisBus.State.WAITING) return
+        lookingLive = true
+        worker.execute {
+            try {
+                val comment = brain.commentFrame(jpeg) ?: return@execute
+                brain.recordEvent("[Mode direct de la caméra : Jarvis a regardé l'image]", comment)
+                main.post { if (JarvisBus.state == JarvisBus.State.WAITING) say(comment) }
+            } finally {
+                lookingLive = false
+            }
         }
     }
 

@@ -11,8 +11,8 @@ android {
         applicationId = "com.jarvis.assistant"
         minSdk = 26
         targetSdk = 35
-        versionCode = 37
-        versionName = "5.1"
+        versionCode = 38
+        versionName = "5.2"
 
         ndk {
             abiFilters += setOf("arm64-v8a", "armeabi-v7a")
@@ -64,6 +64,9 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")
+    implementation("androidx.camera:camera-camera2:1.4.1")
+    implementation("androidx.camera:camera-lifecycle:1.4.1")
+    implementation("androidx.camera:camera-view:1.4.1")
     implementation("com.anthropic:anthropic-java:3.2.0")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.3")
 }

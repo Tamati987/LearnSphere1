@@ -9,6 +9,7 @@
     <color name="on_core">#03202B</color>
 
     <string name="app_name">Jarvis</string>
+    <string name="screen_reader_description">Permet à Jarvis de regarder l\'écran quand vous le lui demandez (« Jarvis, qu\'est-ce qu\'il y a à l\'écran ? ») : capture et texte affiché, envoyés à Claude pour vous répondre. Rien n\'est observé en continu.</string>
     <string name="setup_intro">Pour fonctionner, Jarvis a besoin d\'une clé API Anthropic (console.anthropic.com/settings/keys). Pour une voix réaliste de majordome britannique, ajoutez une clé ElevenLabs (elevenlabs.io). Les clés restent sur ce téléphone. Ensuite, dites « Hey Jarvis » pour lui parler.</string>
 
     <style name="Theme.Jarvis" parent="Theme.MaterialComponents.NoActionBar">

@@ -256,6 +256,7 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
             "annonces ${ok(prefs.announceSms)}",
             "sonnerie ${ok(ringer)}",
             "batterie sans restriction ${ok(power)}",
+            "lecture de l'écran ${ok(ScreenReader.isEnabled(this))}",
             "réveil plein écran ${ok(Build.VERSION.SDK_INT < 34 ||
                 getSystemService(android.app.NotificationManager::class.java).canUseFullScreenIntent())}",
             "prochain réveil ${JarvisAlarm.nextDescription(this) ?: "aucun"}",

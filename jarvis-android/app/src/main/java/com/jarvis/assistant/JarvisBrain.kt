@@ -8,6 +8,7 @@ import com.anthropic.errors.AnthropicServiceException
 import com.anthropic.errors.BadRequestException
 import com.anthropic.errors.RateLimitException
 import com.anthropic.errors.UnauthorizedException
+import com.anthropic.models.messages.Base64ImageSource
 import com.anthropic.models.messages.CacheControlEphemeral
 import com.anthropic.models.messages.ContentBlockParam
 import com.anthropic.models.messages.Message
@@ -66,6 +67,9 @@ class SentenceSplitter(private val onSentence: (String) -> Unit) {
 interface ToolExecutor {
     /** Exécute l'outil et renvoie un compte rendu court pour Claude. */
     fun execute(name: String, input: Map<String, Any?>): String
+
+    /** Image (JPEG) produite par le dernier outil, à montrer à Claude avec son compte rendu. */
+    fun takeImage(): ByteArray? = null
 }
 
 /**
@@ -106,7 +110,7 @@ class JarvisBrain(
      * dès qu'elle est écrite, pour que Jarvis commence à parler sans attendre la fin.
      */
     @Synchronized
-    fun ask(userText: String, onSentence: (String) -> Unit = {}): String {
+    fun ask(userText: String, image: ByteArray? = null, onSentence: (String) -> Unit = {}): String {
         // Nouvelle conversation après 10 minutes de silence : l'historique
         // reste en ajout seul pendant une conversation, jamais réécrit.
         val now = System.currentTimeMillis()
@@ -114,7 +118,12 @@ class JarvisBrain(
         lastExchange = now
 
         val stamp = SimpleDateFormat("EEEE d MMMM yyyy, HH:mm", Locale.FRANCE).format(Date())
-        history += MessageParam.ofUser("[$stamp] $userText")
+        history += if (image == null) MessageParam.ofUser("[$stamp] $userText") else MessageParam.ofUserOfContentBlockParams(
+            listOf(
+                ContentBlockParam.ofImage(base64(image)),
+                ContentBlockParam.ofText("[$stamp] [Image actuelle de la caméra jointe] $userText"),
+            )
+        )
         memory.addLine("Utilisateur : $userText")
 
         try {
@@ -133,13 +142,16 @@ class JarvisBrain(
                                 val input = jsonToMap(use._input())
                                 val output = runCatching { runTool(use.name(), input) }
                                     .getOrElse { "Échec : ${it.message}" }
-                                ContentBlockParam.ofToolResult(
-                                    ToolResultBlockParam.builder()
-                                        .toolUseId(use.id())
-                                        .content(output)
-                                        .isError(output.startsWith("Échec"))
-                                        .build()
+                                val shot = executor.takeImage()
+                                val result = ToolResultBlockParam.builder().toolUseId(use.id()).isError(output.startsWith("Échec"))
+                                // Capture d'écran ou image de la caméra : Claude la voit avec le compte rendu.
+                                if (shot == null) result.content(output) else result.contentOfBlocks(
+                                    listOf(
+                                        ToolResultBlockParam.Content.Block.ofImage(base64(shot)),
+                                        ToolResultBlockParam.Content.Block.ofText(output),
+                                    )
                                 )
+                                ContentBlockParam.ofToolResult(result.build())
                             }
                         }
                         history += MessageParam.ofUserOfContentBlockParams(results)
@@ -171,6 +183,47 @@ class JarvisBrain(
     }
 
     fun reset() = synchronized(this) { endConversation() }
+
+    private fun base64(jpeg: ByteArray): Base64ImageSource = Base64ImageSource.builder()
+        .data(java.util.Base64.getEncoder().encodeToString(jpeg))
+        .mediaType(Base64ImageSource.MediaType.IMAGE_JPEG)
+        .build()
+
+    // Derniers commentaires du mode direct, pour ne pas se répéter.
+    private val recentComments = ArrayDeque<String>()
+
+    /**
+     * Mode direct de la caméra : commente l'image en une phrase si quelque chose de nouveau ou
+     * d'intéressant se passe, sinon renvoie null. Appel indépendant de la conversation (l'image
+     * n'y reste pas), pour que chaque regard coûte peu.
+     */
+    fun commentFrame(jpeg: ByteArray): String? {
+        val before = if (recentComments.isEmpty()) "aucun" else recentComments.joinToString(" / ")
+        val params = MessageCreateParams.builder()
+            .model(MODEL)
+            .maxTokens(300L)
+            .system(SYSTEM_PROMPT + "\n\n" + contextBlock())
+            .outputConfig(OutputConfig.builder().effort(OutputConfig.Effort.LOW).build())
+            .addUserMessageOfContentBlockParams(
+                listOf(
+                    ContentBlockParam.ofImage(base64(jpeg)),
+                    ContentBlockParam.ofText(
+                        "[Mode direct : image de la caméra toutes les dix secondes.] Tes derniers commentaires : $before. " +
+                            "Si l'utilisateur fait quelque chose de nouveau ou d'intéressant, commente-le en une phrase courte et " +
+                            "naturelle, comme un ami qui regarde par-dessus son épaule (encouragement, remarque, humour). " +
+                            "Si rien n'a vraiment changé, réponds exactement RIEN."
+                    ),
+                )
+            )
+            .build()
+        val reply = runCatching {
+            client.messages().create(params).content().mapNotNull { it.text().orElse(null)?.text() }.joinToString(" ").trim()
+        }.getOrNull() ?: return null
+        if (reply.isEmpty() || reply.trimEnd('.', ' ').equals("RIEN", ignoreCase = true)) return null
+        recentComments.addLast(Speech.clean(reply))
+        while (recentComments.size > 3) recentComments.removeFirst()
+        return reply
+    }
 
     /** Termine la conversation : l'historique repart de zéro et la conversation est résumée en mémoire. */
     private fun endConversation() {
@@ -312,6 +365,7 @@ class JarvisBrain(
             Parle comme un vrai majordome humain qui connaît bien l'utilisateur, pas comme un robot : naturel, chaleureux, attentif à son humeur. Varie tes tournures ; évite les formules toutes faites (« C'est fait », « Bien sûr » à chaque fois). Réagis à ce qu'il te dit avant d'enchaîner, montre de l'intérêt, rebondis sur ce que tu sais de lui grâce à ta mémoire, pose parfois une question en retour quand c'est naturel, et sais aussi simplement bavarder. Tu peux donner ton avis avec tact et être en désaccord poliment. Si l'utilisateur semble fatigué, stressé ou content, ajuste ton ton.
             Ta voix comprend quelques indications d'intonation en anglais entre crochets, placées juste avant les mots concernés : [chuckles], [laughs], [sighs], [whispers], [warmly]. Utilise-les avec parcimonie, au plus une par réponse et seulement quand c'est naturel (une plaisanterie, un soupir amusé). Elles ne sont pas prononcées.
             Tes réponses sont lues à voix haute : sans markdown, sans listes à puces, sans emoji, sans URL. Par défaut une à trois phrases ; respecte la longueur des réponses indiquée dans tes réglages (courtes : une phrase ; détaillées : jusqu'à six phrases quand le sujet le mérite).
+            Tu as des yeux. Avec voir_ecran, tu regardes ce qui est affiché sur le téléphone (capture et texte) : utilise-le quand l'utilisateur te demande ce qu'il y a à l'écran, quel est ce jeu, de l'aider sur ce qu'il voit. Avec regarder_camera, tu regardes par la caméra (arrière par défaut ; avant pour le voir lui) : mode photo pour un coup d'œil, mode direct pour le suivre et commenter en continu, arreter pour fermer. Quand une image de la caméra accompagne son message, elle montre ce qu'il fait en ce moment. Décris ce que tu vois avec précision et naturel ; si tu reconnais un jeu, une appli, un objet ou un lieu, dis-le. Ne regarde jamais l'écran ou la caméra sans qu'il le demande ou l'accepte.
             Tu peux lire et changer tes propres réglages avec reglages_jarvis (sensibilité de « Hey Jarvis », annonces, mode conversation, voix, vitesse de la voix, SIM des SMS, longueur des réponses), et ceux du téléphone avec reglage_telephone (sonnerie, Ne pas déranger, luminosité, mise en veille, rotation ; pour le Wi-Fi, le Bluetooth, les données ou le mode avion, tu ouvres le panneau et l'utilisateur touche l'interrupteur). Fais-le quand l'utilisateur le demande, ou propose-le quand ça l'aiderait (par exemple baisser la luminosité le soir), sans changer un réglage du téléphone sans son accord. Si un outil dit qu'une autorisation manque, explique simplement ce qu'il doit activer sur la page ouverte.
             Réponds dans la langue de l'utilisateur, en français par défaut. Chaque message commence par la date et l'heure actuelles entre crochets.
             Tu peux agir sur le téléphone avec tes outils et chercher sur le web pour l'actualité, la météo ou tout fait récent.
@@ -554,6 +608,30 @@ class JarvisBrain(
                 mapOf("appli" to prop("string", "Nom de l'appli pour filtrer ; absent pour toutes")),
             ),
             tool("etat_telephone", "Donne le niveau de batterie, la charge et la connexion réseau."),
+            tool(
+                "voir_ecran",
+                "Regarde l'écran du téléphone : capture d'écran et texte affiché, avec le nom de l'appli au premier plan.",
+            ),
+            tool(
+                "regarder_camera",
+                "Ouvre la caméra à l'écran et renvoie ce qu'elle voit. En mode direct, Jarvis continue de regarder et commente tout seul.",
+                mapOf(
+                    "mode" to JsonValue.from(
+                        mapOf(
+                            "type" to "string",
+                            "enum" to listOf("photo", "direct", "arreter"),
+                            "description" to "photo : un coup d'œil ; direct : regarder et commenter en continu ; arreter : fermer la caméra",
+                        )
+                    ),
+                    "camera" to JsonValue.from(
+                        mapOf(
+                            "type" to "string",
+                            "enum" to listOf("arriere", "avant"),
+                            "description" to "avant pour voir l'utilisateur, arriere pour voir ce qu'il montre ; arriere par défaut",
+                        )
+                    ),
+                ),
+            ),
             tool(
                 "reglages_jarvis",
                 "Lit ou change les réglages de Jarvis lui-même.",
