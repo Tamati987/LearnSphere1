@@ -54,6 +54,8 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
         elevenLabs.setText(prefs.elevenLabsKey)
         val announceSms = findViewById<android.widget.CheckBox>(R.id.announce_sms)
         announceSms.isChecked = prefs.announceSms
+        val readContent = findViewById<android.widget.CheckBox>(R.id.read_content)
+        readContent.isChecked = prefs.readMessageContent
         val sensitivity = findViewById<android.widget.RadioGroup>(R.id.sensitivity)
         val sensitivityIds = listOf(R.id.sensitivity_normal, R.id.sensitivity_high, R.id.sensitivity_max)
         sensitivity.check(sensitivityIds[prefs.wakeSensitivity])
@@ -62,6 +64,7 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
             prefs.anthropicKey = anthropic.text.toString()
             prefs.elevenLabsKey = elevenLabs.text.toString()
             prefs.announceSms = announceSms.isChecked
+            prefs.readMessageContent = readContent.isChecked
             prefs.wakeSensitivity = sensitivityIds.indexOf(sensitivity.checkedRadioButtonId).coerceAtLeast(0)
             if (prefs.isConfigured) {
                 stopService(Intent(this, JarvisService::class.java))
@@ -74,6 +77,7 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
         findViewById<Button>(R.id.settings).setOnClickListener {
             // Jarvis a pu changer ces réglages à la voix : on affiche leur état actuel.
             announceSms.isChecked = prefs.announceSms
+            readContent.isChecked = prefs.readMessageContent
             sensitivity.check(sensitivityIds[prefs.wakeSensitivity])
             showSetup()
         }

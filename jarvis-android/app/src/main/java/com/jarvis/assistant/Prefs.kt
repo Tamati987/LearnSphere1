@@ -26,6 +26,11 @@ class Prefs(context: Context) {
     /** Score à partir duquel « Hey Jarvis » est reconnu : plus bas, plus sensible. */
     val wakeThreshold get() = when (wakeSensitivity) { 0 -> 0.5f; 2 -> 0.15f; else -> 0.3f }
 
+    /** Annonce des messages : seulement l'expéditeur (false), ou aussi le texte reçu (true). */
+    var readMessageContent: Boolean
+        get() = prefs.getBoolean("read_message_content", false)
+        set(value) = prefs.edit().putBoolean("read_message_content", value).apply()
+
     /** Après chaque réponse, le micro se rouvre une fois pour continuer la conversation. */
     var conversationMode: Boolean
         get() = prefs.getBoolean("conversation_mode", true)

@@ -35,6 +35,11 @@ class JarvisSettings(private val context: Context) {
                 "Sensibilité de « Hey Jarvis » : ${SENSITIVITY[prefs.wakeSensitivity]}."
             }
             "annonces" -> { prefs.announceSms = yes(v); "Annonces des appels et messages ${onOff(prefs.announceSms)}." }
+            "lire_messages" -> {
+                prefs.readMessageContent = yes(v)
+                if (prefs.readMessageContent) "Les annonces de messages liront le texte reçu."
+                else "Les annonces de messages diront seulement l'expéditeur, sans lire le texte."
+            }
             "mode_conversation" -> { prefs.conversationMode = yes(v); "Mode conversation ${onOff(prefs.conversationMode)}." }
             "voix" -> {
                 prefs.realisticVoice = !v.contains("android")
@@ -67,7 +72,7 @@ class JarvisSettings(private val context: Context) {
     }
 
     fun describe() = "Réglages de Jarvis : sensibilité ${SENSITIVITY[prefs.wakeSensitivity]} ; " +
-        "annonces ${onOff(prefs.announceSms)} ; mode conversation ${onOff(prefs.conversationMode)} ; " +
+        "annonces ${onOff(prefs.announceSms)} (${if (prefs.readMessageContent) "avec le texte" else "sans lire le texte"}) ; mode conversation ${onOff(prefs.conversationMode)} ; " +
         "voix ${if (prefs.realisticVoice && prefs.elevenLabsKey.isNotBlank()) "Jarvis (ElevenLabs)" else "Android"} ; " +
         "qualité de la voix ${prefs.voiceQuality} ; vitesse de la voix %.1f ; SMS par la SIM ${prefs.smsSim} ; réponses ${prefs.replyLength}.".format(prefs.speechRate)
 

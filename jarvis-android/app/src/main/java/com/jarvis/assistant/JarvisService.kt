@@ -557,7 +557,9 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         worker.execute {
             val name = actions.contactName(address)
             val from = name ?: "le $address"
-            val spoken = "Monsieur, nouveau message de $from : « ${body.take(400)} ». Souhaitez-vous répondre ?"
+            val spoken = if (Prefs(this).readMessageContent) "Monsieur, nouveau message de $from : « ${body.take(400)} ». Souhaitez-vous répondre ?"
+            // Annoncer sans lire : le texte reste connu de Jarvis, qui le lit seulement si on le lui demande.
+            else "Monsieur, nouveau message de $from. Voulez-vous que je vous le lise ?"
             brain.recordEvent("Nouveau SMS reçu de ${name ?: "numéro inconnu"} ($address) : $body", spoken)
             announce(spoken)
         }
@@ -572,7 +574,8 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         }
         worker.execute {
             val where = if (conversation != sender) " dans « $conversation »" else ""
-            val spoken = "Monsieur, nouveau message $app de $sender$where : « ${body.take(400)} ». Souhaitez-vous répondre ?"
+            val spoken = if (Prefs(this).readMessageContent) "Monsieur, nouveau message $app de $sender$where : « ${body.take(400)} ». Souhaitez-vous répondre ?"
+            else "Monsieur, nouveau message $app de $sender$where. Voulez-vous que je vous le lise ?"
             brain.recordEvent("Nouveau message $app reçu de $sender$where : $body", spoken)
             announce(spoken)
         }

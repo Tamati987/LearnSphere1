@@ -11,8 +11,8 @@ android {
         applicationId = "com.jarvis.assistant"
         minSdk = 26
         targetSdk = 35
-        versionCode = 42
-        versionName = "5.6"
+        versionCode = 43
+        versionName = "5.7"
 
         ndk {
             abiFilters += setOf("arm64-v8a", "armeabi-v7a")
