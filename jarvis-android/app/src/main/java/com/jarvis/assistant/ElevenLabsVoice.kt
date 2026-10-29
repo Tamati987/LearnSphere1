@@ -14,13 +14,27 @@ class ElevenLabsVoice(private val context: Context, private val apiKey: String) 
     private var player: MediaPlayer? = null
 
     /** Génère l'audio de [text]. Appel réseau : à faire hors du fil principal. */
-    fun synthesize(text: String, fast: Boolean = false): File =
+    fun synthesize(text: String, fast: Boolean = false): File {
+        // Crédits épuisés : inutile de redemander à chaque phrase, la voix Android répond tout de suite.
+        if (System.currentTimeMillis() < quotaBlockedUntil) throw IllegalStateException("crédits ElevenLabs épuisés")
         // La voix Jarvis n'existe que dans le compte qui l'a créée : sinon, Daniel prend le relais.
         // [fast] : modèle express, pour une annonce qui ne peut pas attendre (appel entrant).
-        runCatching { jarvisVoice(text, if (fast) FALLBACK_MODEL else MODEL) }.getOrElse { error ->
+        return runCatching { jarvisVoice(text, if (fast) FALLBACK_MODEL else MODEL) }.getOrElse { error ->
+            if (isQuota(error)) {
+                quotaBlockedUntil = System.currentTimeMillis() + QUOTA_RETRY_MS
+                JarvisBus.line(
+                    false,
+                    "Crédits ElevenLabs épuisés : Jarvis parle avec la voix d'Android. Sa voix reviendra quand " +
+                        "l'abonnement ElevenLabs sera renouvelé ou rechargé (nouvel essai toutes les 30 minutes).",
+                )
+                throw error
+            }
             JarvisBus.line(false, "Voix Jarvis indisponible (${error.message}). Voix Daniel utilisée.")
             synthesize(text, FALLBACK_VOICE_ID, FALLBACK_MODEL, withSpeed = true)
         }
+    }
+
+    private fun isQuota(error: Throwable) = error.message.orEmpty().let { it.contains("quota_exceeded") || it.contains("credits") }
 
     /**
      * La voix Jarvis, au débit choisi. Si ElevenLabs refuse le réglage de débit pour ce modèle,
@@ -28,7 +42,7 @@ class ElevenLabsVoice(private val context: Context, private val apiKey: String) 
      */
     private fun jarvisVoice(text: String, model: String): File =
         runCatching { synthesize(text, VOICE_ID, model, withSpeed = true) }.getOrElse { error ->
-            if (speed == 1.0) throw error
+            if (speed == 1.0 || isQuota(error)) throw error
             synthesize(text, VOICE_ID, model, withSpeed = false)
         }
 
@@ -98,6 +112,9 @@ class ElevenLabsVoice(private val context: Context, private val apiKey: String) 
     }
 
     companion object {
+        // Les crédits sont ceux du compte : un blocage vaut pour toutes les voix de l'appli.
+        @Volatile private var quotaBlockedUntil = 0L
+        private const val QUOTA_RETRY_MS = 30 * 60_000L
         // « Jarvis (voix originale) », créée pour l'appli : homme britannique, grave, calme.
         const val VOICE_ID = "53CXgEMfXvQXipNADfUR"
         // « Daniel », voix ElevenLabs par défaut : britannique, posée, formelle.

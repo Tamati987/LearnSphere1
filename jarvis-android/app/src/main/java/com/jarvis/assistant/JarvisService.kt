@@ -664,7 +664,8 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
             if (gen != speechGeneration) return@execute
             val audio = voice?.let { v ->
                 runCatching { v.synthesize(sentence, fast = gen == urgentGeneration) }
-                    .onFailure { JarvisBus.line(false, "Voix ElevenLabs indisponible (${it.message}), voix Android utilisée.") }
+                    // Crédits épuisés : déjà signalé une fois par la voix, inutile de le répéter à chaque phrase.
+                    .onFailure { if (it.message != "crédits ElevenLabs épuisés") JarvisBus.line(false, "Voix ElevenLabs indisponible (${it.message}), voix Android utilisée.") }
                     .getOrNull()
             }
             main.post {
