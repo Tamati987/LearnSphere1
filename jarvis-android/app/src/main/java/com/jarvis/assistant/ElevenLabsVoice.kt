@@ -17,15 +17,25 @@ class ElevenLabsVoice(private val context: Context, private val apiKey: String) 
     fun synthesize(text: String, fast: Boolean = false): File =
         // La voix Jarvis n'existe que dans le compte qui l'a créée : sinon, Daniel prend le relais.
         // [fast] : modèle express, pour une annonce qui ne peut pas attendre (appel entrant).
-        runCatching { synthesize(text, VOICE_ID, if (fast) FALLBACK_MODEL else MODEL) }.getOrElse { error ->
+        runCatching { jarvisVoice(text, if (fast) FALLBACK_MODEL else MODEL) }.getOrElse { error ->
             JarvisBus.line(false, "Voix Jarvis indisponible (${error.message}). Voix Daniel utilisée.")
-            synthesize(text, FALLBACK_VOICE_ID, FALLBACK_MODEL)
+            synthesize(text, FALLBACK_VOICE_ID, FALLBACK_MODEL, withSpeed = true)
+        }
+
+    /**
+     * La voix Jarvis, au débit choisi. Si ElevenLabs refuse le réglage de débit pour ce modèle,
+     * on garde la voix Jarvis au débit normal plutôt que de passer à Daniel.
+     */
+    private fun jarvisVoice(text: String, model: String): File =
+        runCatching { synthesize(text, VOICE_ID, model, withSpeed = true) }.getOrElse { error ->
+            if (speed == 1.0) throw error
+            synthesize(text, VOICE_ID, model, withSpeed = false)
         }
 
     // Débit choisi dans les réglages de Jarvis (0,7 à 1,2).
     private val speed get() = Prefs(context).speechRate.toDouble()
 
-    private fun synthesize(text: String, voiceId: String, model: String): File {
+    private fun synthesize(text: String, voiceId: String, model: String, withSpeed: Boolean): File {
         val connection = URL("https://api.elevenlabs.io/v1/text-to-speech/$voiceId?output_format=mp3_44100_128")
             .openConnection() as HttpURLConnection
         try {
@@ -41,7 +51,10 @@ class ElevenLabsVoice(private val context: Context, private val apiKey: String) 
                 .put("text", if (model == MODEL) text else Speech.clean(text))
                 .put("model_id", model)
                 // eleven_v3 n'accepte que 0, 0,5 ou 1 pour la stabilité.
-                .put("voice_settings", JSONObject().put("stability", 0.5).put("similarity_boost", 0.8).put("speed", speed))
+                .put("voice_settings", JSONObject().put("stability", 0.5).put("similarity_boost", 0.8).apply {
+                    // Débit envoyé seulement s'il a été changé : au réglage normal, la requête reste celle d'avant.
+                    if (withSpeed && speed != 1.0) put("speed", speed)
+                })
             // eleven_v3 détecte la langue seul ; on ne la précise qu'au modèle rapide.
             if (model == FALLBACK_MODEL) body.put("language_code", "fr")
             connection.outputStream.use { it.write(body.toString().toByteArray()) }

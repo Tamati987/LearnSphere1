@@ -104,7 +104,8 @@ class AlarmRingService : Service(), TextToSpeech.OnInitListener {
         // Sur certains téléphones l'écran ne s'ouvre que par la notification ; on essaie aussi directement.
         runCatching { startActivity(screenIntent()) }
 
-        voice = Prefs(this).elevenLabsKey.takeIf { it.isNotBlank() }?.let { ElevenLabsVoice(this, it) }
+        val prefs = Prefs(this)
+        voice = prefs.elevenLabsKey.takeIf { it.isNotBlank() && prefs.realisticVoice }?.let { ElevenLabsVoice(this, it) }
         tts = TextToSpeech(this, this)
         // Le programme du jour (lu dans l'agenda) puis la voix se préparent pendant que le carillon sonne.
         val withAgenda = alarm?.agenda == true
