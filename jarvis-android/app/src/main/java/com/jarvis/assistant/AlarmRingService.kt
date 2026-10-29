@@ -117,7 +117,7 @@ class AlarmRingService : Service(), TextToSpeech.OnInitListener {
                     main.post { listener?.invoke() }
                 }
             }
-            voice?.let { v -> voiceFile = runCatching { v.synthesize(text) }.getOrNull() }
+            voice?.let { v -> voiceFile = runCatching { v.synthesize(text, premium = true) }.getOrNull() }
             voiceReady = true
         }
         vibrate()

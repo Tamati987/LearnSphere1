@@ -14,12 +14,22 @@ class ElevenLabsVoice(private val context: Context, private val apiKey: String) 
     private var player: MediaPlayer? = null
 
     /** Génère l'audio de [text]. Appel réseau : à faire hors du fil principal. */
-    fun synthesize(text: String, fast: Boolean = false): File {
+    /**
+     * [fast] : annonce urgente (appel entrant). [premium] : moment important (réveil), toujours
+     * avec le modèle eleven_v3. Sinon le réglage « qualité de la voix » choisit le modèle.
+     */
+    fun synthesize(text: String, fast: Boolean = false, premium: Boolean = false): File {
         // Crédits épuisés : inutile de redemander à chaque phrase, la voix Android répond tout de suite.
         if (System.currentTimeMillis() < quotaBlockedUntil) throw IllegalStateException("crédits ElevenLabs épuisés")
         // La voix Jarvis n'existe que dans le compte qui l'a créée : sinon, Daniel prend le relais.
         // [fast] : modèle express, pour une annonce qui ne peut pas attendre (appel entrant).
-        return runCatching { jarvisVoice(text, if (fast) FALLBACK_MODEL else MODEL) }.getOrElse { error ->
+        val model = when {
+            fast -> FALLBACK_MODEL
+            premium || Prefs(context).voiceQuality == "premium" -> MODEL
+            // Réponses ordinaires : modèle rapide, la même voix pour environ moitié moins de crédits.
+            else -> FALLBACK_MODEL
+        }
+        return runCatching { jarvisVoice(text, model) }.getOrElse { error ->
             if (isQuota(error)) {
                 quotaBlockedUntil = System.currentTimeMillis() + QUOTA_RETRY_MS
                 JarvisBus.line(

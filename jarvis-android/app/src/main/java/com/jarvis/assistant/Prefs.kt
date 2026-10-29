@@ -46,6 +46,11 @@ class Prefs(context: Context) {
         get() = prefs.getInt("sms_sim", 1)
         set(value) = prefs.edit().putInt("sms_sim", value.coerceIn(1, 2)).apply()
 
+    /** Qualité de la voix : « economique » (modèle rapide, moitié moins de crédits) ou « premium » (eleven_v3). */
+    var voiceQuality: String
+        get() = prefs.getString("voice_quality", "economique").orEmpty()
+        set(value) = prefs.edit().putString("voice_quality", value).apply()
+
     /** Longueur des réponses : courtes, normales ou détaillées. */
     var replyLength: String
         get() = prefs.getString("reply_length", "normales").orEmpty()

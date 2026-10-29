@@ -51,6 +51,10 @@ class JarvisSettings(private val context: Context) {
                 "Vitesse de la voix : %.1f.".format(prefs.speechRate)
             }
             "sim_sms" -> { prefs.smsSim = if (v.contains("2")) 2 else 1; "Les SMS partiront de la SIM ${prefs.smsSim}." }
+            "qualite_voix" -> {
+                prefs.voiceQuality = if (v.startsWith("prem") || v.contains("v3") || v.contains("meilleur")) "premium" else "economique"
+                "Qualité de la voix : ${prefs.voiceQuality} (le réveil reste toujours en premium)."
+            }
             "longueur_reponses" -> {
                 prefs.replyLength = when { v.startsWith("court") -> "courtes"; v.startsWith("d") -> "détaillées"; else -> "normales" }
                 "Réponses ${prefs.replyLength}."
@@ -65,7 +69,7 @@ class JarvisSettings(private val context: Context) {
     fun describe() = "Réglages de Jarvis : sensibilité ${SENSITIVITY[prefs.wakeSensitivity]} ; " +
         "annonces ${onOff(prefs.announceSms)} ; mode conversation ${onOff(prefs.conversationMode)} ; " +
         "voix ${if (prefs.realisticVoice && prefs.elevenLabsKey.isNotBlank()) "Jarvis (ElevenLabs)" else "Android"} ; " +
-        "vitesse de la voix %.1f ; SMS par la SIM ${prefs.smsSim} ; réponses ${prefs.replyLength}.".format(prefs.speechRate)
+        "qualité de la voix ${prefs.voiceQuality} ; vitesse de la voix %.1f ; SMS par la SIM ${prefs.smsSim} ; réponses ${prefs.replyLength}.".format(prefs.speechRate)
 
     /** Réglage du téléphone. Renvoie un compte rendu, ou ce que l'utilisateur doit autoriser. */
     fun phone(name: String, value: String?, open: (Intent) -> Unit): String {
