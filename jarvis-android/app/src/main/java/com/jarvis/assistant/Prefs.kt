@@ -51,5 +51,5 @@ class Prefs(context: Context) {
         get() = prefs.getString("reply_length", "normales").orEmpty()
         set(value) = prefs.edit().putString("reply_length", value).apply()
 
-    $a get() = anthropicKey.isNotBlank()
+    val isConfigured get() = anthropicKey.isNotBlank()
 }
