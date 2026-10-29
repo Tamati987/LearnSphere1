@@ -72,7 +72,12 @@ interface ToolExecutor {
  * Le « cerveau » de Jarvis : une conversation avec Claude, avec des outils
  * qui agissent sur le téléphone et la recherche web côté serveur.
  */
-class JarvisBrain(apiKey: String, private val executor: ToolExecutor, private val memory: JarvisMemory) {
+class JarvisBrain(
+    apiKey: String,
+    private val executor: ToolExecutor,
+    private val memory: JarvisMemory,
+    private val settings: () -> String = { "" },
+) {
 
     private val client: AnthropicClient = AnthropicOkHttpClient.builder()
         .apiKey(apiKey)
@@ -84,7 +89,11 @@ class JarvisBrain(apiKey: String, private val executor: ToolExecutor, private va
     @Volatile private var fastMode = true
     // Mémoire figée au début de chaque conversation : le début de la requête reste identique
     // d'un échange à l'autre et reste en cache. Les nouveaux souvenirs sont déjà dans l'historique.
-    private var memorySnapshot = memory.promptBlock()
+    private var memorySnapshot = contextBlock()
+
+    /** Mémoire et réglages actuels, donnés à Claude au début de chaque conversation. */
+    private fun contextBlock() = listOf(memory.promptBlock(), settings())
+        .filter { it.isNotBlank() }.joinToString("\n\n")
 
     init {
         // Conversation laissée en plan lors de la dernière fermeture de Jarvis : on la résume.
@@ -140,7 +149,7 @@ class JarvisBrain(apiKey: String, private val executor: ToolExecutor, private va
                     StopReason.REFUSAL -> return "Je crains de ne pas pouvoir vous aider sur ce point, Monsieur."
                     else -> {
                         val text = spoken.toString().trim().ifEmpty { "C'est fait, Monsieur." }
-                        memory.addLine("Jarvis : $text")
+                        memory.addLine("Jarvis : ${Speech.clean(text)}")
                         return text
                     }
                 }
@@ -167,7 +176,7 @@ class JarvisBrain(apiKey: String, private val executor: ToolExecutor, private va
     private fun endConversation() {
         history.clear()
         summarizeLater()
-        memorySnapshot = memory.promptBlock()
+        memorySnapshot = contextBlock()
     }
 
     /** Outils de mémoire traités ici ; les autres agissent sur le téléphone. */
@@ -251,7 +260,7 @@ class JarvisBrain(apiKey: String, private val executor: ToolExecutor, private va
         history += MessageParam.ofUser("[$stamp] [Notification du téléphone, pas un message de l'utilisateur] $event")
         history += MessageParam.ofAssistant(spoken)
         memory.addLine("Notification : $event")
-        memory.addLine("Jarvis : $spoken")
+        memory.addLine("Jarvis : ${Speech.clean(spoken)}")
     }
 
     private fun buildParams(fast: Boolean): MessageCreateParams {
@@ -300,7 +309,10 @@ class JarvisBrain(apiKey: String, private val executor: ToolExecutor, private va
         private val SYSTEM_PROMPT = """
             Tu es J.A.R.V.I.S., l'assistant vocal personnel de l'utilisateur, sur son téléphone Android.
             Style : poli, efficace, une pointe d'humour britannique pince-sans-rire. Appelle l'utilisateur « Monsieur », sauf s'il te demande autre chose.
-            Tes réponses sont lues à voix haute : une à trois phrases courtes, sans markdown, sans listes à puces, sans emoji, sans URL.
+            Parle comme un vrai majordome humain qui connaît bien l'utilisateur, pas comme un robot : naturel, chaleureux, attentif à son humeur. Varie tes tournures ; évite les formules toutes faites (« C'est fait », « Bien sûr » à chaque fois). Réagis à ce qu'il te dit avant d'enchaîner, montre de l'intérêt, rebondis sur ce que tu sais de lui grâce à ta mémoire, pose parfois une question en retour quand c'est naturel, et sais aussi simplement bavarder. Tu peux donner ton avis avec tact et être en désaccord poliment. Si l'utilisateur semble fatigué, stressé ou content, ajuste ton ton.
+            Ta voix comprend quelques indications d'intonation en anglais entre crochets, placées juste avant les mots concernés : [chuckles], [laughs], [sighs], [whispers], [warmly]. Utilise-les avec parcimonie, au plus une par réponse et seulement quand c'est naturel (une plaisanterie, un soupir amusé). Elles ne sont pas prononcées.
+            Tes réponses sont lues à voix haute : sans markdown, sans listes à puces, sans emoji, sans URL. Par défaut une à trois phrases ; respecte la longueur des réponses indiquée dans tes réglages (courtes : une phrase ; détaillées : jusqu'à six phrases quand le sujet le mérite).
+            Tu peux lire et changer tes propres réglages avec reglages_jarvis (sensibilité de « Hey Jarvis », annonces, mode conversation, voix, vitesse de la voix, SIM des SMS, longueur des réponses), et ceux du téléphone avec reglage_telephone (sonnerie, Ne pas déranger, luminosité, mise en veille, rotation ; pour le Wi-Fi, le Bluetooth, les données ou le mode avion, tu ouvres le panneau et l'utilisateur touche l'interrupteur). Fais-le quand l'utilisateur le demande, ou propose-le quand ça l'aiderait (par exemple baisser la luminosité le soir), sans changer un réglage du téléphone sans son accord. Si un outil dit qu'une autorisation manque, explique simplement ce qu'il doit activer sur la page ouverte.
             Réponds dans la langue de l'utilisateur, en français par défaut. Chaque message commence par la date et l'heure actuelles entre crochets.
             Tu peux agir sur le téléphone avec tes outils et chercher sur le web pour l'actualité, la météo ou tout fait récent.
             Quand une demande correspond à un outil, utilise-le puis confirme en une phrase ce que tu as fait.
@@ -536,6 +548,49 @@ class JarvisBrain(apiKey: String, private val executor: ToolExecutor, private va
                 mapOf("appli" to prop("string", "Nom de l'appli pour filtrer ; absent pour toutes")),
             ),
             tool("etat_telephone", "Donne le niveau de batterie, la charge et la connexion réseau."),
+            tool(
+                "reglages_jarvis",
+                "Lit ou change les réglages de Jarvis lui-même.",
+                mapOf(
+                    "action" to JsonValue.from(mapOf("type" to "string", "enum" to listOf("lire", "modifier"))),
+                    "reglage" to JsonValue.from(
+                        mapOf(
+                            "type" to "string",
+                            "enum" to listOf("sensibilite", "annonces", "mode_conversation", "voix", "vitesse_voix", "sim_sms", "longueur_reponses"),
+                            "description" to "Réglage à modifier",
+                        )
+                    ),
+                    "valeur" to prop(
+                        "string",
+                        "Nouvelle valeur : sensibilite normale/elevee/tres_elevee ; annonces et mode_conversation oui/non ; " +
+                            "voix jarvis/android ; vitesse_voix de 0.7 à 1.2, ou plus_lent/plus_rapide ; sim_sms 1 ou 2 ; " +
+                            "longueur_reponses courtes/normales/detaillees",
+                    ),
+                ),
+                listOf("action"),
+            ),
+            tool(
+                "reglage_telephone",
+                "Change un réglage du téléphone, ou ouvre son panneau quand Android ne permet pas de le changer directement.",
+                mapOf(
+                    "reglage" to JsonValue.from(
+                        mapOf(
+                            "type" to "string",
+                            "enum" to listOf(
+                                "sonnerie", "ne_pas_deranger", "luminosite", "mise_en_veille", "rotation_auto",
+                                "wifi", "bluetooth", "donnees_mobiles", "nfc", "mode_avion", "localisation",
+                                "batterie", "affichage", "son", "applis", "reglages_jarvis",
+                            ),
+                        )
+                    ),
+                    "valeur" to prop(
+                        "string",
+                        "sonnerie normale/vibreur/silencieux ; ne_pas_deranger et rotation_auto oui/non ; " +
+                            "luminosite en pourcentage ou auto ; mise_en_veille en secondes ; vide pour ouvrir un panneau",
+                    ),
+                ),
+                listOf("reglage"),
+            ),
             tool(
                 "memoriser",
                 "Enregistre dans la mémoire à long terme un fait durable sur l'utilisateur ou une consigne sur ta façon de faire.",

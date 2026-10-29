@@ -22,6 +22,9 @@ class ElevenLabsVoice(private val context: Context, private val apiKey: String) 
             synthesize(text, FALLBACK_VOICE_ID, FALLBACK_MODEL)
         }
 
+    // Débit choisi dans les réglages de Jarvis (0,7 à 1,2).
+    private val speed get() = Prefs(context).speechRate.toDouble()
+
     private fun synthesize(text: String, voiceId: String, model: String): File {
         val connection = URL("https://api.elevenlabs.io/v1/text-to-speech/$voiceId?output_format=mp3_44100_128")
             .openConnection() as HttpURLConnection
@@ -33,11 +36,12 @@ class ElevenLabsVoice(private val context: Context, private val apiKey: String) 
             connection.setRequestProperty("xi-api-key", apiKey)
             connection.setRequestProperty("Content-Type", "application/json")
             connection.setRequestProperty("Accept", "audio/mpeg")
+            // Les indications d'intonation ([laughs]…) ne sont comprises que par eleven_v3.
             val body = JSONObject()
-                .put("text", text)
+                .put("text", if (model == MODEL) text else Speech.clean(text))
                 .put("model_id", model)
                 // eleven_v3 n'accepte que 0, 0,5 ou 1 pour la stabilité.
-                .put("voice_settings", JSONObject().put("stability", 0.5).put("similarity_boost", 0.8))
+                .put("voice_settings", JSONObject().put("stability", 0.5).put("similarity_boost", 0.8).put("speed", speed))
             // eleven_v3 détecte la langue seul ; on ne la précise qu'au modèle rapide.
             if (model == FALLBACK_MODEL) body.put("language_code", "fr")
             connection.outputStream.use { it.write(body.toString().toByteArray()) }

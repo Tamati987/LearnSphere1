@@ -193,11 +193,11 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         actions = PhoneActions(this)
         announceMessages = prefs.announceSms
         instance = this
-        brain = JarvisBrain(prefs.anthropicKey, actions, JarvisMemory(this))
+        brain = JarvisBrain(prefs.anthropicKey, actions, JarvisMemory(this)) { JarvisSettings(this).describe() }
         registerReceivers()
         // Les réveils ont pu être effacés si le téléphone a fermé Jarvis de force : on les reprogramme.
         JarvisAlarm.scheduleAll(this)
-        voice = prefs.elevenLabsKey.takeIf { it.isNotBlank() }?.let { ElevenLabsVoice(this, it) }
+        voice = prefs.elevenLabsKey.takeIf { it.isNotBlank() && prefs.realisticVoice }?.let { ElevenLabsVoice(this, it) }
         tts = TextToSpeech(this, this)
         startInForeground()
         // Garde le processeur éveillé écran éteint : sinon le micro s'arrête et « Hey Jarvis » n'est plus entendu.
@@ -241,6 +241,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
             ttsState = TTS_READY
             tts.language = Locale.FRANCE
             tts.setPitch(0.9f)
+            tts.setSpeechRate(Prefs(this).speechRate)
             tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) {}
                 override fun onDone(utteranceId: String?) { main.post { onUtteranceDone(utteranceId) } }
@@ -255,6 +256,27 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     }
 
     // --- Mot d'activation -------------------------------------------------
+
+    /**
+     * Un réglage vient de changer (souvent à la demande de l'utilisateur, par Jarvis lui-même) :
+     * on l'applique tout de suite, sans redémarrer le service.
+     */
+    fun applySettings() = main.post {
+        val prefs = Prefs(this)
+        announceMessages = prefs.announceSms
+        tts.setSpeechRate(prefs.speechRate)
+        val wantVoice = prefs.realisticVoice && prefs.elevenLabsKey.isNotBlank()
+        if (wantVoice != (voice != null)) {
+            voice?.stop()
+            voice = if (wantVoice) ElevenLabsVoice(this, prefs.elevenLabsKey) else null
+        }
+        // Nouvelle sensibilité : le détecteur repart avec le nouveau seuil à la prochaine écoute.
+        val listening = JarvisBus.state == JarvisBus.State.WAITING
+        wakeWord?.release()
+        wakeWord = null
+        runCatching { wakeWord = WakeWordListener(this, prefs.wakeThreshold) { main.post { onWakeWord() } } }
+        if (listening) wakeWord?.start()
+    }
 
     private fun startWakeWord() {
         try {
@@ -298,9 +320,9 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     private var restarts = 0
     private var continuations = 0
 
-    private fun listen() {
+    private fun listen(secondChance: Boolean = true) {
         heard.setLength(0)
-        retries = 0
+        retries = if (secondChance) 0 else 1
         restarts = 0
         continuations = 0
         startRecognizer(continuation = false)
@@ -503,6 +525,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         pendingQuestion = null
         reasked = 0
         if (awaitingCallAnswer) return handleCallAnswer(text)
+        answeringUser = true
         pauseWakeWord()
         JarvisBus.line(true, text)
         JarvisBus.state(JarvisBus.State.THINKING)
@@ -573,6 +596,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
      * d'alarme, qui reste audible pendant que le téléphone sonne.
      */
     private fun say(text: String, urgent: Boolean = false) {
+        answeringUser = false
         pauseWakeWord()
         JarvisBus.state(JarvisBus.State.THINKING)
         val gen = startReply()
@@ -622,7 +646,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         synth.execute {
             main.post {
                 if (gen != speechGeneration) return@post
-                JarvisBus.line(false, answer)
+                JarvisBus.line(false, Speech.clean(answer))
                 // Une question appelle une réponse : on rouvre le micro sans attendre « Hey Jarvis ».
                 followUp = asksQuestion(answer)
                 lastQuestion = if (followUp) questionOf(answer) else null
@@ -658,7 +682,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
             currentUtterance = "jarvis-${utterance++}"
             val params = Bundle()
             if (urgent) params.putInt(TextToSpeech.Engine.KEY_PARAM_STREAM, AudioManager.STREAM_ALARM)
-            tts.speak(text, TextToSpeech.QUEUE_ADD, params, currentUtterance)
+            tts.speak(Speech.clean(text), TextToSpeech.QUEUE_ADD, params, currentUtterance)
         } else {
             onUtteranceDone()
         }
@@ -672,15 +696,22 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     }
 
     private fun afterSpeaking() {
-        if (!followUp) return resumeWakeWord()
+        // Mode conversation : après une réponse à l'utilisateur, le micro reste ouvert une fois,
+        // comme quand on discute avec quelqu'un. Silence : retour à « Hey Jarvis », sans insister.
+        val chatting = !followUp && answeringUser && Prefs(this).conversationMode
+        answeringUser = false
+        if (!followUp && !chatting) return resumeWakeWord()
         followUp = false
-        pendingQuestion = lastQuestion
+        pendingQuestion = if (chatting) null else lastQuestion
         // Bip pour signaler que le micro se rouvre, puis une courte pause : le micro
         // n'entend pas la fin de la voix de Jarvis.
         JarvisBus.state(JarvisBus.State.LISTENING)
         beep?.startTone(ToneGenerator.TONE_PROP_ACK, 120)
-        main.postDelayed({ listen() }, 350)
+        main.postDelayed({ listen(secondChance = !chatting) }, 350)
     }
+
+    // La réponse en cours répond à l'utilisateur (et non à une annonce de message ou d'appel).
+    private var answeringUser = false
 
     /**
      * Jarvis attend-il une réponse ? Une question dans l'une des deux dernières phrases

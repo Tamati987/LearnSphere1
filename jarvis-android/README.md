@@ -6,6 +6,9 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
 
 - Se réveiller quand vous dites **« Hey Jarvis »**, même écran éteint. La détection tourne sur le téléphone avec les modèles libres openWakeWord, sans compte ni clé. Sa sensibilité se règle dans l'écran des clés (normale, élevée, très élevée) ; le journal note « presque reconnu » quand Jarvis vous a entendu de justesse, signe qu'il faut l'augmenter.
 - Répondre à toutes vos questions avec Claude, et chercher sur le web l'actualité, la météo ou les faits récents.
+- Discuter comme un vrai majordome : ton naturel et chaleureux, attentif à votre humeur, avec un peu d'humour et quelques intonations (petit rire, soupir) dans la voix ElevenLabs. En **mode conversation** (activé par défaut), le micro reste ouvert après chaque réponse : vous enchaînez sans redire « Hey Jarvis ». Un silence le remet en attente.
+- Changer ses propres réglages à la voix : « parle plus lentement », « réponds plus brièvement », « sois plus sensible », « arrête le mode conversation », « utilise la SIM 2 pour les SMS », « quels sont tes réglages ? ».
+- Changer les réglages du téléphone : sonnerie (normale, vibreur, silencieux), Ne pas déranger, luminosité, délai de mise en veille, rotation automatique. Pour le Wi-Fi, le Bluetooth, les données, le NFC et le mode avion, Android impose que vous touchiez vous-même l'interrupteur : Jarvis ouvre le bon panneau. La première fois, il ouvre la page d'autorisation à activer (« Modifier les paramètres système » ou « Ne pas déranger »).
 - Agir sur le téléphone :
   - appeler un contact ou un numéro ;
   - annoncer qui vous appelle (« Monsieur, Paul vous appelle. Voulez-vous répondre ? ») et décrocher ou refuser l'appel à la voix (« oui », « non ») ; rien n'est annoncé si le téléphone est en silencieux ou en vibreur ;

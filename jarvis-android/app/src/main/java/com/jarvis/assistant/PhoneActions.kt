@@ -78,6 +78,8 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         } ?: "Échec : l'accès aux notifications n'est pas accordé à Jarvis."
         "lire_sms" -> readSms(input.optStr("contact"), input.int("nombre"), input["non_lus"] == true)
         "etat_telephone" -> status()
+        "reglages_jarvis" -> JarvisSettings(context).jarvis(input.optStr("action"), input.optStr("reglage"), input.optStr("valeur"))
+        "reglage_telephone" -> JarvisSettings(context).phone(input.str("reglage"), input.optStr("valeur")) { launch(it) }
         else -> "Échec : outil inconnu « $name »."
     }
 
@@ -588,12 +590,9 @@ class PhoneActions(private val context: Context) : ToolExecutor {
 
 /** Envoi des SMS par la SIM 1, avec compte rendu à [SmsSentReceiver]. */
 object SmsSender {
-    // Emplacement de la SIM qui envoie les SMS : 0 = SIM 1.
-    private const val SIM_SLOT = 0
-
     /** Envoie [text] à [to] ; renvoie la précision sur la SIM utilisée, pour le compte rendu. */
     fun send(context: Context, label: String, to: String, text: String, attempt: Int): String {
-        val (manager, sim) = manager(context)
+        val (manager, sim) = manager(context, Prefs(context).smsSim)
         val parts = manager.divideMessage(text)
         // Android prévient [SmsSentReceiver] quand le SMS est vraiment parti, ou a échoué.
         val id = (System.currentTimeMillis() % 1_000_000).toInt()
@@ -615,11 +614,11 @@ object SmsSender {
     }
 
     /**
-     * Les SMS partent toujours de la SIM 1 (premier emplacement), à la demande de l'utilisateur.
+     * Les SMS partent de la SIM choisie dans les réglages de Jarvis (la SIM 1 par défaut).
      * Sans SIM dans cet emplacement, on prend la SIM choisie par défaut dans Android.
      */
     @android.annotation.SuppressLint("MissingPermission") // READ_PHONE_STATE est vérifié juste avant.
-    private fun manager(context: Context): Pair<SmsManager, String> {
+    private fun manager(context: Context, simNumber: Int): Pair<SmsManager, String> {
         val default = if (Build.VERSION.SDK_INT >= 31) context.getSystemService(SmsManager::class.java)
         else @Suppress("DEPRECATION") SmsManager.getDefault()
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
@@ -627,11 +626,11 @@ object SmsSender {
         }
         val sim1 = runCatching {
             context.getSystemService(android.telephony.SubscriptionManager::class.java)
-                .getActiveSubscriptionInfoForSimSlotIndex(SIM_SLOT)
-        }.getOrNull() ?: return default to " (SIM 1 introuvable, SIM par défaut utilisée)"
+                .getActiveSubscriptionInfoForSimSlotIndex(simNumber - 1)
+        }.getOrNull() ?: return default to " (SIM $simNumber introuvable, SIM par défaut utilisée)"
         val manager = if (Build.VERSION.SDK_INT >= 31) default.createForSubscriptionId(sim1.subscriptionId)
         else @Suppress("DEPRECATION") SmsManager.getSmsManagerForSubscriptionId(sim1.subscriptionId)
-        return manager to " depuis la SIM 1"
+        return manager to " depuis la SIM $simNumber"
     }
 }
 
@@ -659,10 +658,10 @@ class SmsSentReceiver : android.content.BroadcastReceiver() {
         val attempt = intent.getIntExtra(EXTRA_ATTEMPT, 0)
         val error = intent.getIntExtra("errorCode", -1)
         val reason = when (resultCode) {
-            SmsManager.RESULT_ERROR_NO_SERVICE -> "pas de réseau sur la SIM 1"
-            SmsManager.RESULT_ERROR_RADIO_OFF -> "mode avion ou SIM 1 désactivée"
-            RESULT_RIL_MODEM_ERR -> "erreur du modem de la SIM 1"
-            else -> "refusé par l'opérateur de la SIM 1"
+            SmsManager.RESULT_ERROR_NO_SERVICE -> "pas de réseau sur la SIM"
+            SmsManager.RESULT_ERROR_RADIO_OFF -> "mode avion ou SIM désactivée"
+            RESULT_RIL_MODEM_ERR -> "erreur du modem de la SIM"
+            else -> "refusé par l'opérateur de la SIM"
         }
         JarvisBus.line(false, "Échec de l'envoi du SMS pour $label : $reason (résultat $resultCode, code $error, essai ${attempt + 1}).")
         if (number.isEmpty() || text.isEmpty()) return
@@ -687,7 +686,7 @@ class SmsSentReceiver : android.content.BroadcastReceiver() {
             if (UnlockActivity.isLocked(context)) UnlockActivity.request(context, compose) else context.startActivity(compose)
         }
         JarvisService.instance?.notice(
-            "Monsieur, le SMS pour $label n'est pas parti par la SIM 1. J'ai ouvert Messages avec le texte prêt : il vous suffit d'appuyer sur Envoyer."
+            "Monsieur, le SMS pour $label n'est pas parti. J'ai ouvert Messages avec le texte prêt : il vous suffit d'appuyer sur Envoyer."
         )
     }
 

@@ -26,5 +26,30 @@ class Prefs(context: Context) {
     /** Score à partir duquel « Hey Jarvis » est reconnu : plus bas, plus sensible. */
     val wakeThreshold get() = when (wakeSensitivity) { 0 -> 0.5f; 2 -> 0.15f; else -> 0.3f }
 
-    val isConfigured get() = anthropicKey.isNotBlank()
+    /** Après chaque réponse, le micro se rouvre une fois pour continuer la conversation. */
+    var conversationMode: Boolean
+        get() = prefs.getBoolean("conversation_mode", true)
+        set(value) = prefs.edit().putBoolean("conversation_mode", value).apply()
+
+    /** Voix réaliste ElevenLabs (true) ou voix d'Android (false). */
+    var realisticVoice: Boolean
+        get() = prefs.getBoolean("realistic_voice", true)
+        set(value) = prefs.edit().putBoolean("realistic_voice", value).apply()
+
+    /** Débit de la voix, de 0,7 (lent) à 1,2 (rapide). */
+    var speechRate: Float
+        get() = prefs.getFloat("speech_rate", 1f)
+        set(value) = prefs.edit().putFloat("speech_rate", value.coerceIn(0.7f, 1.2f)).apply()
+
+    /** SIM qui envoie les SMS : 1 ou 2. */
+    var smsSim: Int
+        get() = prefs.getInt("sms_sim", 1)
+        set(value) = prefs.edit().putInt("sms_sim", value.coerceIn(1, 2)).apply()
+
+    /** Longueur des réponses : courtes, normales ou détaillées. */
+    var replyLength: String
+        get() = prefs.getString("reply_length", "normales").orEmpty()
+        set(value) = prefs.edit().putString("reply_length", value).apply()
+
+    $a get() = anthropicKey.isNotBlank()
 }
