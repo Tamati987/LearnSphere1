@@ -270,17 +270,29 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
             voice?.stop()
             voice = if (wantVoice) ElevenLabsVoice(this, prefs.elevenLabsKey) else null
         }
-        // Nouvelle sensibilité : le détecteur repart avec le nouveau seuil à la prochaine écoute.
-        val listening = JarvisBus.state == JarvisBus.State.WAITING
-        wakeWord?.release()
-        wakeWord = null
-        runCatching { wakeWord = WakeWordListener(this, prefs.wakeThreshold) { main.post { onWakeWord() } } }
-        if (listening) wakeWord?.start()
+        // Nouvelle sensibilité seulement : le détecteur repart avec le nouveau seuil. Les autres
+        // réglages ne touchent pas à l'écoute de « Hey Jarvis ».
+        if (prefs.wakeThreshold != wakeThreshold) {
+            val listening = JarvisBus.state == JarvisBus.State.WAITING
+            runCatching { WakeWordListener(this, prefs.wakeThreshold) { main.post { onWakeWord() } } }
+                .onSuccess { fresh ->
+                    wakeWord?.release()
+                    wakeWord = fresh
+                    wakeThreshold = prefs.wakeThreshold
+                    if (listening) fresh.start()
+                }
+                // Échec : on garde l'ancien détecteur, qui marche toujours.
+                .onFailure { JarvisBus.line(false, "Nouvelle sensibilité non appliquée : ${it.message}") }
+        }
     }
+
+    // Seuil du détecteur en service.
+    private var wakeThreshold = 0f
 
     private fun startWakeWord() {
         try {
-            wakeWord = WakeWordListener(this, Prefs(this).wakeThreshold) { main.post { onWakeWord() } }
+            wakeThreshold = Prefs(this).wakeThreshold
+            wakeWord = WakeWordListener(this, wakeThreshold) { main.post { onWakeWord() } }
         } catch (e: Exception) {
             // Sans détecteur, Jarvis reste utilisable avec le bouton Parler.
             JarvisBus.line(false, "« Hey Jarvis » indisponible : ${e.message}. Utilisez le bouton Parler.")

@@ -71,7 +71,12 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
                 anthropic.error = "Clé requise"
             }
         }
-        findViewById<Button>(R.id.settings).setOnClickListener { showSetup() }
+        findViewById<Button>(R.id.settings).setOnClickListener {
+            // Jarvis a pu changer ces réglages à la voix : on affiche leur état actuel.
+            announceSms.isChecked = prefs.announceSms
+            sensitivity.check(sensitivityIds[prefs.wakeSensitivity])
+            showSetup()
+        }
         findViewById<Button>(R.id.overlay).setOnClickListener {
             startActivity(
                 Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
