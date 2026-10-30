@@ -56,6 +56,11 @@ class Prefs(context: Context) {
         get() = prefs.getString("voice_quality", "economique").orEmpty()
         set(value) = prefs.edit().putString("voice_quality", value).apply()
 
+    /** Animation d'ouverture : « anneau » (image JARVIS animée) ou « film » (séquence de démarrage). */
+    var openingStyle: String
+        get() = prefs.getString("opening_style", "anneau").orEmpty()
+        set(value) = prefs.edit().putString("opening_style", value).apply()
+
     /** Longueur des réponses : courtes, normales ou détaillées. */
     var replyLength: String
         get() = prefs.getString("reply_length", "normales").orEmpty()

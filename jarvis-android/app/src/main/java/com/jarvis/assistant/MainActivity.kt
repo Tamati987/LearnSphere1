@@ -170,29 +170,36 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
     /** Animation et sons de démarrage, puis message de bienvenue de Jarvis. */
     private fun playBootSequence() {
         val root = findViewById<ViewGroup>(android.R.id.content)
-        val boot = BootSequenceView(
-            this,
-            onGreet = {
-                // La voix de Jarvis souhaite la bienvenue pendant l'apparition des cercles.
-                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                    JarvisService.start(this, JarvisService.ACTION_GREET)
-                }
-            },
-            onFinished = {
-                root.findViewWithTag<View>(BOOT_TAG)?.let(root::removeView)
-                bootTrack?.release()
-                bootTrack = null
-            },
-        )
-        boot.tag = BOOT_TAG
-        root.addView(boot, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-        bootTrack = runCatching { bootSoundTrack() }.getOrNull()
-        bootTrack?.play()
-        boot.start()
+        val onGreet = {
+            // La voix de Jarvis souhaite la bienvenue pendant l'animation.
+            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                JarvisService.start(this, JarvisService.ACTION_GREET)
+            }
+        }
+        val onFinished = {
+            root.findViewWithTag<View>(BOOT_TAG)?.let(root::removeView)
+            bootTrack?.release()
+            bootTrack = null
+        }
+        // Deux ouvertures au choix : l'anneau (par défaut) ou la séquence façon film.
+        if (prefs.openingStyle == "film") {
+            val boot = BootSequenceView(this, onGreet, onFinished)
+            boot.tag = BOOT_TAG
+            root.addView(boot, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            bootTrack = runCatching { bootSoundTrack(BootSound.render(), BootSound.SAMPLE_RATE) }.getOrNull()
+            bootTrack?.play()
+            boot.start()
+        } else {
+            val opening = OpeningView(this, onGreet, onFinished)
+            opening.tag = BOOT_TAG
+            root.addView(opening, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            bootTrack = runCatching { bootSoundTrack(OpeningView.sound(), OpeningView.SOUND_RATE) }.getOrNull()
+            bootTrack?.play()
+            opening.start()
+        }
     }
 
-    private fun bootSoundTrack(): AudioTrack {
-        val pcm = BootSound.render()
+    private fun bootSoundTrack(pcm: ShortArray, rate: Int): AudioTrack {
         val track = AudioTrack.Builder()
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -202,7 +209,7 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
             )
             .setAudioFormat(
                 AudioFormat.Builder()
-                    .setSampleRate(BootSound.SAMPLE_RATE)
+                    .setSampleRate(rate)
                     .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
                     .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
                     .build()
