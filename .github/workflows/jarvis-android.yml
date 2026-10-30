@@ -10,6 +10,12 @@ on:
 permissions:
   contents: write
 
+# Une seule compilation à la fois : une nouvelle mise à jour annule la précédente, pour que
+# Jarvis.apk soit toujours la dernière version, en un seul fichier.
+concurrency:
+  group: jarvis-apk-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
