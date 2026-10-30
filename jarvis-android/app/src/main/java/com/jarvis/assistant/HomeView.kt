@@ -230,11 +230,8 @@ class HomeView(context: Context) : View(context) {
         titlePaint.textSize = s(40f)
         canvas.drawText(TextUtils.ellipsize(title, titlePaint, width, TextUtils.TruncateAt.END).toString(), x(345f), y(1318f), titlePaint)
         captionPaint.textSize = s(26f)
-        val text = when (state) {
-            JarvisBus.State.WAITING -> caption.ifBlank { "Dites « Hey Jarvis » ou touchez le micro" }
-            JarvisBus.State.OFF -> "Touchez le micro pour le réactiver"
-            else -> caption
-        }
+        // Aucune consigne à l'écran : seulement la dernière phrase de Jarvis.
+        val text = if (state == JarvisBus.State.OFF) "" else caption
         canvas.drawText(TextUtils.ellipsize(text, captionPaint, width, TextUtils.TruncateAt.END).toString(), x(345f), y(1362f), captionPaint)
     }
 
