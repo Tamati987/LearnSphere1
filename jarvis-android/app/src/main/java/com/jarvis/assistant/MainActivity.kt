@@ -28,6 +28,7 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
     private lateinit var scroll: ScrollView
     private lateinit var setup: View
     private lateinit var console: View
+    private lateinit var home: HomeView
     private lateinit var toggle: Button
     private var bootTrack: AudioTrack? = null
 
@@ -68,19 +69,52 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
             prefs.wakeSensitivity = sensitivityIds.indexOf(sensitivity.checkedRadioButtonId).coerceAtLeast(0)
             if (prefs.isConfigured) {
                 stopService(Intent(this, JarvisService::class.java))
-                showConsole()
+                showHome()
                 startJarvis()
             } else {
                 anthropic.error = "Clé requise"
             }
         }
-        findViewById<Button>(R.id.settings).setOnClickListener {
+        val openSettings = {
             // Jarvis a pu changer ces réglages à la voix : on affiche leur état actuel.
             announceSms.isChecked = prefs.announceSms
             readContent.isChecked = prefs.readMessageContent
             sensitivity.check(sensitivityIds[prefs.wakeSensitivity])
             showSetup()
         }
+        findViewById<Button>(R.id.settings).setOnClickListener { openSettings() }
+        findViewById<Button>(R.id.wallpaper).setOnClickListener { button ->
+            // L'image d'accueil de Jarvis devient le fond d'écran du téléphone.
+            val done = runCatching {
+                android.app.WallpaperManager.getInstance(this).setResource(R.drawable.jarvis_home)
+            }.isSuccess
+            (button as Button).text = if (done) "Fond d'écran Jarvis appliqué ✓" else "Fond d'écran impossible à changer"
+        }
+
+        // Accueil : l'image J.A.R.V.I.S animée, par-dessus la console et les clés.
+        home = HomeView(this)
+        findViewById<ViewGroup>(android.R.id.content).getChildAt(0).let { root ->
+            (root as ViewGroup).addView(home, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        }
+        home.onSpot = { spot ->
+            when (spot) {
+                HomeView.Spot.SETTINGS, HomeView.Spot.PARAMETERS -> openSettings()
+                HomeView.Spot.FUNCTIONS, HomeView.Spot.TOOLS -> showConsole()
+                HomeView.Spot.HOME -> showHome()
+                HomeView.Spot.AGENDA ->
+                    JarvisService.start(this, JarvisService.ACTION_TEXT, "Qu'est-ce que j'ai à l'agenda aujourd'hui ?")
+                HomeView.Spot.MICROPHONE, HomeView.Spot.CONTROL_PHONE, HomeView.Spot.OPEN_APP, HomeView.Spot.QUESTIONS ->
+                    if (JarvisBus.state == JarvisBus.State.OFF) startJarvis()
+                    else JarvisService.start(this, JarvisService.ACTION_LISTEN)
+            }
+        }
+        // Retour : depuis la console ou les clés, on revient à l'accueil.
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (home.visibility != View.VISIBLE && prefs.isConfigured) showHome()
+                else { isEnabled = false; onBackPressedDispatcher.onBackPressed(); isEnabled = true }
+            }
+        })
         findViewById<Button>(R.id.overlay).setOnClickListener {
             startActivity(
                 Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
@@ -118,7 +152,7 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
             .onFailure { JarvisBus.line(false, "Réveils de départ non installés : ${it.message}") }
         JarvisAlarm.scheduleAll(this)
         if (prefs.isConfigured) {
-            showConsole()
+            showHome()
             startJarvis()
             // La séquence de démarrage ne joue qu'à l'ouverture, pas après une rotation.
             if (savedInstanceState == null) playBootSequence()
@@ -231,10 +265,12 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
         askPermissions.launch(wanted.toTypedArray())
     }
 
-    private fun showSetup() { setup.visibility = View.VISIBLE; console.visibility = View.GONE }
-    private fun showConsole() { setup.visibility = View.GONE; console.visibility = View.VISIBLE }
+    private fun showSetup() { setup.visibility = View.VISIBLE; console.visibility = View.GONE; home.visibility = View.GONE }
+    private fun showConsole() { setup.visibility = View.GONE; console.visibility = View.VISIBLE; home.visibility = View.GONE }
+    private fun showHome() { setup.visibility = View.GONE; console.visibility = View.GONE; home.visibility = View.VISIBLE }
 
     override fun onState(state: JarvisBus.State) {
+        home.state = state
         status.text = when (state) {
             JarvisBus.State.OFF -> "Hors ligne"
             JarvisBus.State.WAITING -> "En attente · dites « Hey Jarvis »"
@@ -274,6 +310,7 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
     }
 
     override fun onLine(fromUser: Boolean, text: String) {
+        if (!fromUser) home.caption = text
         log.append((if (log.text.isEmpty()) "" else "\n\n") + (if (fromUser) "VOUS  " else "JARVIS  ") + text)
         scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
     }

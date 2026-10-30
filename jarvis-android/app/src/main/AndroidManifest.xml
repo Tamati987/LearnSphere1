@@ -28,6 +28,8 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- L'image d'accueil de Jarvis en fond d'écran du téléphone, à la demande. -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <!-- La sonnerie du réveil tourne dans un service au premier plan, l'écran s'ouvre en plein écran. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
