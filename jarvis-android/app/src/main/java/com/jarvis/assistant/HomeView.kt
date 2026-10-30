@@ -94,6 +94,7 @@ class HomeView(context: Context) : View(context) {
             JarvisBus.State.OFF -> Unit
         }
         drawStatus(canvas)
+        drawClock(canvas)
         // Animation continue tant que l'écran est affiché (et figée quand Jarvis est en pause).
         if (state != JarvisBus.State.OFF && isShown) postInvalidateOnAnimation()
     }
@@ -191,6 +192,26 @@ class HomeView(context: Context) : View(context) {
         val oy = ORBIT_Y + ORBIT_RY * sin(angle)
         glow(canvas, ox, oy, 28f, CYAN, 0.8f * strength)
         glow(canvas, ox, oy, 8f, Color.WHITE, strength)
+    }
+
+    private val clockPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+        textAlign = Paint.Align.CENTER
+    }
+    private val timeFormat = java.text.SimpleDateFormat("HH:mm", java.util.Locale.FRANCE)
+    private val dateFormat = java.text.SimpleDateFormat("EEEE d MMMM", java.util.Locale.FRANCE)
+
+    /** Panneau central : l'heure et la date, en direct. */
+    private fun drawClock(canvas: Canvas) {
+        val now = java.util.Date()
+        clockPaint.color = Color.rgb(214, 250, 255)
+        clockPaint.textSize = s(96f)
+        clockPaint.setShadowLayer(s(14f), 0f, 0f, CYAN)
+        canvas.drawText(timeFormat.format(now), x(470f), y(852f), clockPaint)
+        clockPaint.textSize = s(32f)
+        clockPaint.setShadowLayer(0f, 0f, 0f, 0)
+        clockPaint.color = Color.rgb(170, 225, 245)
+        canvas.drawText(dateFormat.format(now).replaceFirstChar { it.uppercase() }, x(470f), y(905f), clockPaint)
     }
 
     /** Cadre d'état : l'état réel de Jarvis à la place du texte de l'image. */
