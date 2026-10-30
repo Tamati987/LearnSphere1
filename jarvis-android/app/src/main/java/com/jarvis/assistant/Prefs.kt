@@ -61,6 +61,11 @@ class Prefs(context: Context) {
         get() = prefs.getString("opening_style", "anneau").orEmpty()
         set(value) = prefs.edit().putString("opening_style", value).apply()
 
+    /** « Hey Jarvis » appli fermée : Jarvis demande d'abord s'il ouvre son application. */
+    var askOpenApp: Boolean
+        get() = prefs.getBoolean("ask_open_app", true)
+        set(value) = prefs.edit().putBoolean("ask_open_app", value).apply()
+
     /** Longueur des réponses : courtes, normales ou détaillées. */
     var replyLength: String
         get() = prefs.getString("reply_length", "normales").orEmpty()

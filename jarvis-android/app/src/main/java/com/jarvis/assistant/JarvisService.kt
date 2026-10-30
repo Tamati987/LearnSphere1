@@ -84,6 +84,8 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     private var ringing = false
     private var callAnnounced = false
     private var awaitingCallAnswer = false
+    // Jarvis vient de demander s'il doit ouvrir son application.
+    private var awaitingOpenAnswer = false
 
     /** Branche l'écoute des SMS et des appels dès que leurs autorisations sont accordées. */
     private fun registerReceivers() {
@@ -274,7 +276,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         // réglages ne touchent pas à l'écoute de « Hey Jarvis ».
         if (prefs.wakeThreshold != wakeThreshold) {
             val listening = JarvisBus.state == JarvisBus.State.WAITING
-            runCatching { WakeWordListener(this, prefs.wakeThreshold) { main.post { onWakeWord() } } }
+            runCatching { WakeWordListener(this, prefs.wakeThreshold) { main.post { onWakeWord(heard = true) } } }
                 .onSuccess { fresh ->
                     wakeWord?.release()
                     wakeWord = fresh
@@ -292,7 +294,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     private fun startWakeWord() {
         try {
             wakeThreshold = Prefs(this).wakeThreshold
-            wakeWord = WakeWordListener(this, wakeThreshold) { main.post { onWakeWord() } }
+            wakeWord = WakeWordListener(this, wakeThreshold) { main.post { onWakeWord(heard = true) } }
         } catch (e: Exception) {
             // Sans détecteur, Jarvis reste utilisable avec le bouton Parler.
             JarvisBus.line(false, "« Hey Jarvis » indisponible : ${e.message}. Utilisez le bouton Parler.")
@@ -307,15 +309,26 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         heard.setLength(0)
         followUp = false
         pendingQuestion = null
+        awaitingOpenAnswer = false
         awaitingCallAnswer = false
         wakeWord?.start()
         JarvisBus.state(JarvisBus.State.WAITING)
     }
 
-    private fun onWakeWord() {
+    /**
+     * « Hey Jarvis » ([heard]) ou bouton Parler. Appli fermée et « Hey Jarvis » entendu : Jarvis
+     * demande d'abord s'il doit ouvrir son application (réglage demander_ouverture).
+     */
+    private fun onWakeWord(heard: Boolean = false) {
         if (JarvisBus.state == JarvisBus.State.LISTENING || JarvisBus.state == JarvisBus.State.THINKING) return
         pendingQuestion = null
         reasked = 0
+        val appOnScreen = JarvisBus.listener != null
+        if (heard && !appOnScreen && Prefs(this).askOpenApp) {
+            awaitingOpenAnswer = true
+            say("Oui, Monsieur ? Voulez-vous que j'ouvre mon application ?")
+            return
+        }
         stopSpeech()
         pauseWakeWord()
         beep?.startTone(ToneGenerator.TONE_PROP_ACK, 120)
@@ -532,11 +545,42 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         say(reply)
     }
 
+    /**
+     * Réponse à « Voulez-vous que j'ouvre mon application ? ». Oui : l'appli s'ouvre (après le
+     * déverrouillage si besoin). Non : Jarvis demande ce qu'il peut faire. Autre chose : c'est
+     * déjà une demande, traitée normalement (renvoie false).
+     */
+    private fun handleOpenAnswer(text: String): Boolean {
+        val words = text.lowercase(Locale.FRANCE).replace(Regex("[^a-zàâçéèêëîïôûùüÿ' ]"), " ")
+            .split(Regex("\\s+")).filter { it.isNotBlank() }
+        val no = words.any { it in setOf("non", "pas", "nan", "inutile") }
+        val yes = !no && words.any { it in setOf("oui", "ouais", "ouvre", "ouvrir", "vas", "d'accord", "ok", "volontiers", "affirmatif") }
+        // « Non, mets de la musique » : c'est déjà une demande.
+        if (words.size > 6 || (!yes && !no) || (no && words.size > 3)) return false
+        JarvisBus.line(true, text)
+        if (yes) {
+            val open = Intent(this, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra(MainActivity.EXTRA_QUIET_BOOT, true)
+            runCatching {
+                if (UnlockActivity.isLocked(this)) UnlockActivity.request(this, open) else startActivity(open)
+            }
+            say("Tout de suite, Monsieur.")
+        } else {
+            say("Très bien, Monsieur. Que puis-je faire pour vous ?")
+        }
+        return true
+    }
+
     private fun handle(text: String) {
         // L'utilisateur a répondu : plus de question à reposer.
         pendingQuestion = null
         reasked = 0
         if (awaitingCallAnswer) return handleCallAnswer(text)
+        if (awaitingOpenAnswer) {
+            awaitingOpenAnswer = false
+            if (handleOpenAnswer(text)) return
+        }
         answeringUser = true
         pauseWakeWord()
         JarvisBus.line(true, text)

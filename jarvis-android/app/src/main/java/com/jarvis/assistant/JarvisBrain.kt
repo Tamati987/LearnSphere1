@@ -643,7 +643,7 @@ class JarvisBrain(
                             "type" to "string",
                             "enum" to listOf(
                                 "sensibilite", "annonces", "lire_messages", "mode_conversation", "voix", "qualite_voix", "vitesse_voix",
-                                "sim_sms", "longueur_reponses", "ouverture",
+                                "sim_sms", "longueur_reponses", "ouverture", "demander_ouverture",
                             ),
                             "description" to "Réglage à modifier",
                         )
@@ -655,7 +655,8 @@ class JarvisBrain(
                             "voix jarvis/android ; vitesse_voix de 0.7 à 1.2, ou plus_lent/plus_rapide ; sim_sms 1 ou 2 ; " +
                             "longueur_reponses courtes/normales/detaillees ; " +
                             "qualite_voix economique (moitié moins de crédits ElevenLabs) ou premium (plus expressive, intonations) ; " +
-                            "ouverture anneau (image JARVIS animée) ou film (séquence de démarrage façon film)",
+                            "ouverture anneau (image JARVIS animée) ou film (séquence de démarrage façon film) ; " +
+                            "demander_ouverture oui/non (demander s'il faut ouvrir l'appli après « Hey Jarvis »)",
                     ),
                 ),
                 listOf("action"),

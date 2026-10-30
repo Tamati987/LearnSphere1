@@ -60,6 +60,11 @@ class JarvisSettings(private val context: Context) {
                 prefs.voiceQuality = if (v.startsWith("prem") || v.contains("v3") || v.contains("meilleur")) "premium" else "economique"
                 "Qualité de la voix : ${prefs.voiceQuality} (le réveil reste toujours en premium)."
             }
+            "demander_ouverture" -> {
+                prefs.askOpenApp = yes(v)
+                if (prefs.askOpenApp) "Après « Hey Jarvis », je demanderai si j'ouvre mon application."
+                else "Après « Hey Jarvis », je vous écouterai directement, sans proposer d'ouvrir l'application."
+            }
             "ouverture" -> {
                 prefs.openingStyle = if (v.contains("film") || v.contains("ancien") || v.contains("classique")) "film" else "anneau"
                 "Ouverture : ${if (prefs.openingStyle == "film") "séquence façon film" else "anneau JARVIS animé"}, à la prochaine ouverture de l'appli."

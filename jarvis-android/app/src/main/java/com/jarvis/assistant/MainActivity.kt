@@ -155,7 +155,8 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
             showHome()
             startJarvis()
             // La séquence de démarrage ne joue qu'à l'ouverture, pas après une rotation.
-            if (savedInstanceState == null) playBootSequence()
+            // Ouverte à la voix (« oui, ouvre-la ») : animation sans second message de bienvenue.
+            if (savedInstanceState == null) playBootSequence(greet = !intent.getBooleanExtra(EXTRA_QUIET_BOOT, false))
         } else {
             showSetup()
         }
@@ -168,11 +169,11 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
     }
 
     /** Animation et sons de démarrage, puis message de bienvenue de Jarvis. */
-    private fun playBootSequence() {
+    private fun playBootSequence(greet: Boolean = true) {
         val root = findViewById<ViewGroup>(android.R.id.content)
         val onGreet = {
             // La voix de Jarvis souhaite la bienvenue pendant l'animation.
-            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            if (greet && checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                 JarvisService.start(this, JarvisService.ACTION_GREET)
             }
         }
@@ -290,6 +291,7 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
 
     companion object {
         private const val BOOT_TAG = "boot"
+        const val EXTRA_QUIET_BOOT = "quiet_boot"
     }
 
     /** État de ce dont les annonces ont besoin, pour repérer d'un coup d'œil ce qui bloque. */
