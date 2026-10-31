@@ -36,8 +36,15 @@ const hideIfMissing = `onerror="this.style.display='none'"`;
 const cfg = (k: string) => (Bun.env[k] || "").trim();
 const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const ADSENSE = /^ca-pub-\d{10,20}$/.test(cfg("ADSENSE_CLIENT")) ? cfg("ADSENSE_CLIENT") : "";
-const adHead = ADSENSE ? `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE}" crossorigin="anonymous"></script>` : "";
-const adSlot = ADSENSE ? `<div class="adzone"><div class="adlabel">Publicité</div><ins class="adsbygoogle" style="display:block" data-ad-client="${ADSENSE}" data-ad-format="auto" data-full-width-responsive="true"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>` : "";
+// Balise de vérification du site pour Google : le script publicitaire, lui, n'est chargé qu'après consentement
+const adHead = ADSENSE ? `<meta name="google-adsense-account" content="${ADSENSE}">` : "";
+const adSlot = ADSENSE ? `<div class="adzone"><div class="adlabel">Publicité</div><ins class="adsbygoogle" style="display:block" data-ad-client="${ADSENSE}" data-ad-format="auto" data-full-width-responsive="true"></ins></div>` : "";
+// Bandeau cookies : sans accord, aucun script Google n'est chargé. Choix gardé dans le navigateur du visiteur.
+const consentBox = ADSENSE ? `<div id="ck" class="ck" hidden role="dialog" aria-live="polite" aria-label="Cookies"><p>🍪 Des publicités Google aident à financer FENUA MANGA. Avec ton accord, Google utilise des cookies pour les afficher et les personnaliser. <a href="/mentions-legales#cookies">En savoir plus</a></p><div class="ck-b"><button type="button" data-c="0">Refuser</button><button type="button" data-c="1">Accepter</button></div></div>
+<script>(()=>{const K='fm_consent',box=document.getElementById('ck');let v=null;try{v=localStorage.getItem(K)}catch(e){}
+const load=()=>{if(window.__fmAds)return;window.__fmAds=1;const s=document.createElement('script');s.async=true;s.crossOrigin='anonymous';s.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE}';document.head.appendChild(s);document.querySelectorAll('ins.adsbygoogle').forEach(()=>(window.adsbygoogle=window.adsbygoogle||[]).push({}))};
+box.querySelectorAll('button').forEach(b=>b.onclick=()=>{const c=b.dataset.c;try{localStorage.setItem(K,c)}catch(e){}box.hidden=true;if(c==='1')load();else if(window.__fmAds)location.reload()});
+window.fmCookies=()=>{box.hidden=false};if(v==='1')load();else if(v!=='0')box.hidden=false})()</script>` : "";
 const sponsorBox = () => {
   const name = cfg("SPONSOR_NAME"), url = cfg("SPONSOR_URL");
   if (name && /^https:\/\//.test(url)) return `<a class="sponsor" href="${esc(url)}" target="_blank" rel="sponsored noopener"><span class="sp-tag">PARTENAIRE</span><b>${esc(name)}</b><span>${esc(cfg("SPONSOR_TEXT"))}</span></a>`;
@@ -46,7 +53,11 @@ const sponsorBox = () => {
 const SPONSOR_CSS = `.sponsor{display:grid;gap:4px;max-width:720px;margin:28px auto;padding:18px 20px;background:#fff;color:#0a0a0a;border:3px solid #0a0a0a;border-radius:18px;box-shadow:8px 8px 0 #ffe14d;text-decoration:none;text-align:center;transition:transform .1s,box-shadow .1s}
 .sponsor:hover{transform:translate(-2px,-2px);box-shadow:10px 10px 0 #ffe14d}.sponsor b{font-size:20px}.sponsor span{color:#4a4550}
 .sponsor.empty{border-style:dashed;background:#fffdf7}.sp-tag{font-size:11px;font-weight:900;letter-spacing:.25em;color:#ff2a36!important}
-.adzone{max-width:760px;margin:28px auto;padding:0 16px;text-align:center}.adlabel{font-size:11px;letter-spacing:.2em;color:#8a8490;margin-bottom:4px}`;
+.adzone{max-width:760px;margin:28px auto;padding:0 16px;text-align:center}.adlabel{font-size:11px;letter-spacing:.2em;color:#8a8490;margin-bottom:4px}
+.ck{position:fixed;left:12px;right:12px;bottom:12px;z-index:50;max-width:560px;margin:0 auto;background:#fff;color:#0a0a0a;border:3px solid #0a0a0a;border-radius:18px;box-shadow:6px 6px 0 #ff2a36;padding:14px 16px;font-size:14px;line-height:1.45}
+.ck[hidden]{display:none}.ck p{margin:0 0 10px}.ck a{color:#0a0a0a}.ck-b{display:flex;gap:10px;justify-content:flex-end}
+.ck button{font:inherit;font-weight:900;padding:9px 16px;border-radius:12px;border:2px solid #0a0a0a;background:#fff;color:#0a0a0a;cursor:pointer}
+.ck button[data-c="1"]{background:#ff2a36;color:#fff}`;
 
 // Apparition en fondu des blocs .rv au défilement
 const REVEAL = `<script>document.documentElement.classList.add('js');addEventListener('DOMContentLoaded',()=>{const els=document.querySelectorAll('.rv');if(!('IntersectionObserver' in window)){els.forEach(e=>e.classList.add('in'));return}const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{rootMargin:'0px 0px -8% 0px'});els.forEach((e,i)=>{e.style.transitionDelay=(i%3)*70+'ms';io.observe(e)})});</script>`;
@@ -209,10 +220,11 @@ ${REVEAL}
 
 <section style="padding:0 16px;">${sponsorBox()}</section>
 ${adSlot}
+${consentBox}
 
 <footer>
   <div class="brand">FENUA <span>MANGA</span></div>
-  <p>Le fenua en manga · <a href="https://www.tiktok.com/@fenuamanga" rel="noopener">TikTok</a> · <a href="https://www.youtube.com/@fenuamanga" rel="noopener">YouTube</a> · <a href="/tshirts">T-shirts</a> · <a href="https://ko-fi.com/loshing57323" rel="noopener">Soutenir</a> · <a href="/liens.html">Tous les liens</a></p>
+  <p>Le fenua en manga · <a href="https://www.tiktok.com/@fenuamanga" rel="noopener">TikTok</a> · <a href="https://www.youtube.com/@fenuamanga" rel="noopener">YouTube</a> · <a href="/tshirts">T-shirts</a> · <a href="https://ko-fi.com/loshing57323" rel="noopener">Soutenir</a> · <a href="/liens.html">Tous les liens</a> · <a href="/mentions-legales">Mentions légales</a></p>
   <p class="small">Histoires et personnages originaux © 2026 Fenua Manga. Illustrations créées avec l'aide de l'IA.</p>
 </footer>
 
@@ -278,7 +290,9 @@ ${adHead}
     </ol>
   </section>
   ${adSlot}
+  <p class="small" style="margin-top:22px"><a href="/mentions-legales">Mentions légales & cookies</a></p>
 </main>
+${consentBox}
 </body>
 </html>
 `;
@@ -976,7 +990,7 @@ const setCart=c=>{try{localStorage.setItem('fm_cart',JSON.stringify(c))}catch(e)
 function count(){const el=document.getElementById('cc');if(el)el.textContent=getCart().reduce((a,l)=>a+l.qty,0)}document.addEventListener('DOMContentLoaded',count);
 </script></head><body><header><a class="logo" href="/">FENUA <span>MANGA</span></a><nav><a class="navl opt" href="/">Mangas</a><a class="navl" href="/tshirts">T-shirts</a><a class="navl opt" href="/tshirts#daytho">Daytho</a><a class="cartbtn" href="/panier">Panier<span id="cc">0</span></a></nav></header>
 <div class="marquee" aria-hidden="true"><div>${MARQUEE.repeat(6)}</div></div><main>${body}</main>
-<footer><a class="logo" href="/">FENUA <span>MANGA</span></a><br>Tahiti — T-shirts imprimés à la demande et livrés par notre partenaire d'impression. Paiement sécurisé par Stripe.<br><a href="/">Les mangas</a> · <a href="/tshirts">T-shirts</a> · <a href="/livraison">Livraison & retours</a> · <a href="/soutenir">Soutenir</a> · <a href="/liens">Liens</a></footer>
+<footer><a class="logo" href="/">FENUA <span>MANGA</span></a><br>Tahiti — T-shirts imprimés à la demande et livrés par notre partenaire d'impression. Paiement sécurisé par Stripe.<br><a href="/">Les mangas</a> · <a href="/tshirts">T-shirts</a> · <a href="/livraison">Livraison & retours</a> · <a href="/soutenir">Soutenir</a> · <a href="/liens">Liens</a> · <a href="/mentions-legales">Mentions légales</a></footer>
 </body></html>`;
 
 function card(p: TProduct) {
@@ -1064,6 +1078,27 @@ async function readLeads() {
   return (await f.text()).split("\n").filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean).reverse();
 }
 
+/* ===================== MENTIONS LÉGALES ===================== */
+// LEGAL_NAME, LEGAL_ADDRESS, LEGAL_EMAIL, LEGAL_ID (n° Tahiti / SIRET) : identité de l'éditeur, obligatoire pour un site marchand
+function legalPage() {
+  const v = (k: string) => esc(cfg(k));
+  const ed = [v("LEGAL_NAME") || "FENUA MANGA", v("LEGAL_ADDRESS"), v("LEGAL_ID") && `N° d'entreprise : ${v("LEGAL_ID")}`, v("LEGAL_EMAIL") && `Contact : <a href="mailto:${v("LEGAL_EMAIL")}">${v("LEGAL_EMAIL")}</a>`].filter(Boolean).join("<br>");
+  const ads = ADSENSE ? `<p>Des publicités Google AdSense sont affichées sur l'accueil et la page Liens. Elles ne sont chargées que si tu cliques sur « Accepter » dans le bandeau cookies. Google peut alors déposer des cookies pour afficher, mesurer et personnaliser les annonces (<a href="https://policies.google.com/technologies/ads?hl=fr" rel="noopener">en savoir plus</a>). Si tu refuses, aucun script publicitaire n'est chargé.</p>
+  <p><button class="buy" type="button" style="width:auto;padding:12px 22px" onclick="fmCookies()">Modifier mon choix cookies</button></p>` : `<p>Aucune publicité ni aucun cookie publicitaire n'est utilisé pour le moment.</p>`;
+  return tlayout("Mentions légales — FENUA MANGA", `<div style="max-width:760px;margin:0 auto"><div class="kata" style="margin-top:20px">法的情報</div><h2>Mentions légales</h2>
+  <div class="box"><h3>Éditeur</h3><p>${ed}</p>
+  <h3>Hébergement</h3><p>Railway Corporation, San Francisco (États-Unis) · <a href="https://railway.com" rel="noopener">railway.com</a></p>
+  <h3>Propriété intellectuelle</h3><p>Les histoires, personnages, illustrations et visuels de FENUA MANGA, TOA, MANA et DAYTHO sont protégés. Toute reproduction sans autorisation est interdite.</p></div>
+  <h2 style="margin-top:36px">Confidentialité</h2>
+  <div class="box"><h3>Ce qu'on collecte</h3><ul>
+  <li><b>Achats</b> : le paiement est traité par Stripe. On reçoit ton nom, ton e-mail, ton téléphone et, pour les t-shirts, ton adresse de livraison. On ne voit jamais ta carte bancaire.</li>
+  <li><b>T-shirts</b> : ton nom et ton adresse sont transmis à notre partenaire d'impression Printful pour fabriquer et expédier ta commande.</li>
+  <li><b>Formulaire partenaires</b> : les informations que tu envoies sont conservées sur notre serveur pour te recontacter.</li></ul>
+  <p>Ces données servent uniquement à traiter ta commande ou ta demande. Elles ne sont jamais vendues. Tu peux demander à les consulter, les corriger ou les supprimer${v("LEGAL_EMAIL") ? ` en écrivant à <a href="mailto:${v("LEGAL_EMAIL")}">${v("LEGAL_EMAIL")}</a>` : ""}.</p>
+  <h3 id="cookies">Cookies</h3><p>Le panier, ta zone de livraison et ton choix cookies sont gardés dans ton navigateur (stockage local). Ils sont nécessaires au fonctionnement du site et ne servent pas à te suivre.</p>
+  ${ads}</div></div>${consentBox}`, { desc: "Mentions légales, données personnelles et cookies de FENUA MANGA." });
+}
+
 /* ===================== ROUTES T-SHIRTS ===================== */
 const thtml = (s: string, status = 200) => new Response(s, { status, headers: { "Content-Type": "text/html; charset=utf-8" } });
 const tjson = (o: any, status = 200) => new Response(JSON.stringify(o), { status, headers: { "Content-Type": "application/json" } });
@@ -1090,6 +1125,7 @@ async function tshirtRoute(req: Request, url: URL, p: string): Promise<Response 
     log(`Nouvelle demande partenaire : ${lead.marque || lead.nom}`);
     return thtml(partnersPage(`<div class="notice">Māuruuru ${esc(lead.nom)} ! On te recontacte très vite.</div>`));
   }
+  if (p === "/mentions-legales" || p === "/confidentialite" || p === "/cookies") return thtml(legalPage());
   if (p === "/livraison") return thtml(tlayout("Livraison — FENUA MANGA", `<div class="kata" style="margin-top:20px">配送</div><h2>Livraison & retours</h2>
   <p>Chaque t-shirt est imprimé à la commande par notre partenaire d'impression puis expédié directement chez toi. Fabrication : 2 à 5 jours ouvrés. Livraison : environ 3 à 8 jours en Europe, plus pour l'outre-mer et l'international.</p>
   <p>Frais de port par commande :</p><ul>${Object.values(ZONES).map((z) => `<li>${z.label} : ${teuro(z.cents)}</li>`).join("")}</ul>
@@ -1157,7 +1193,8 @@ async function tshirtRoute(req: Request, url: URL, p: string): Promise<Response 
     const ev = events.map((e) => `<div class="row"><span class="mute">${e.at.slice(0, 16).replace("T", " ")}</span><span>${esc(e.msg)}</span></div>`).join("") || `<p class="mute">Rien pour l'instant.</p>`;
     const tests = TPRODUCTS.filter((pr) => pr.hidden).map((pr) => `<a href="/tshirts/${pr.id}">${pr.name}</a>`).join(" · ");
     const leads = (await readLeads()).map((l: any) => `<div class="row"><span class="mute">${esc(String(l.at).slice(0, 16).replace("T", " "))}</span><span><b>${esc(l.marque || l.nom)}</b> · ${esc(l.nom)} · ${esc(l.contact)}<br>${esc(l.message || "")}</span></div>`).join("") || `<p class="mute">Aucune demande pour l'instant.</p>`;
-    const money = `<div class="row"><b>Publicité AdSense</b><span>${ADSENSE ? `✅ active (${ADSENSE})` : "⏸️ inactive : ajouter ADSENSE_CLIENT"}</span></div><div class="row"><b>Encart partenaire</b><span>${cfg("SPONSOR_NAME") ? `✅ ${esc(cfg("SPONSOR_NAME"))}` : "⏸️ libre (« Ton commerce ici »)"}</span></div>`;
+    const legalMissing = ["LEGAL_NAME", "LEGAL_ADDRESS", "LEGAL_EMAIL"].filter((k) => !cfg(k));
+    const money = `<div class="row"><b>Mentions légales</b><span>${legalMissing.length ? `⚠️ à compléter : ${legalMissing.join(", ")}` : "✅ complètes"}</span></div><div class="row"><b>Publicité AdSense</b><span>${ADSENSE ? `✅ active (${ADSENSE})` : "⏸️ inactive : ajouter ADSENSE_CLIENT"}</span></div><div class="row"><b>Encart partenaire</b><span>${cfg("SPONSOR_NAME") ? `✅ ${esc(cfg("SPONSOR_NAME"))}` : "⏸️ libre (« Ton commerce ici »)"}</span></div>`;
     return thtml(tlayout("Admin t-shirts — FENUA MANGA", `<h2>Admin t-shirts</h2>${rows}${money}<h3>Demandes partenaires</h3>${leads}<h3>T-shirts test (privés)</h3><p>${tests}</p><h3>Journal</h3>${ev}`, { noindex: true }));
   }
   return null;
@@ -1192,7 +1229,7 @@ Bun.serve({
 
     if (p === "/robots.txt") return new Response(`User-agent: *\nDisallow: /admin\nDisallow: /tshirts/admin\nDisallow: /panier\nDisallow: /merci\nDisallow: /telecharger\nSitemap: ${TPUB}/sitemap.xml\n`, { headers: { "Content-Type": "text/plain" } });
     if (p === "/sitemap.xml") {
-      const urls = ["/", "/tshirts", "/liens", "/livraison", "/partenaires", ...TPRODUCTS.filter((x) => !x.hidden).map((x) => `/tshirts/${x.id}`)];
+      const urls = ["/", "/tshirts", "/liens", "/livraison", "/partenaires", "/mentions-legales", ...TPRODUCTS.filter((x) => !x.hidden).map((x) => `/tshirts/${x.id}`)];
       return new Response(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map((u) => `<url><loc>${TPUB}${u}</loc></url>`).join("")}</urlset>`, { headers: { "Content-Type": "application/xml" } });
     }
     if (p === "/ads.txt") return ADSENSE ? new Response(`google.com, ${ADSENSE.replace("ca-", "")}, DIRECT, f08c47fec0942fa0\n`, { headers: { "Content-Type": "text/plain" } }) : new Response("Not found", { status: 404 });
