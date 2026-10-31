@@ -41,13 +41,16 @@ const INDEX = `<!doctype html>
 <meta property="og:description" content="Des mangas 100 % tahitiens à télécharger en PDF.">
 <meta property="og:image" content="/img/og.jpg">
 <link rel="icon" href="/img/favicon.png">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 
 <header class="top">
   <a href="/" class="brand">FENUA <span>MANGA</span></a>
-  <span><a href="/tshirts" style="font-weight:900;text-decoration:none;margin-right:12px">T-shirts</a><a href="#acheter" class="btn small-btn">Acheter</a></span>
+  <nav class="nav"><a href="#toa" class="opt">TOA</a><a href="#mana" class="opt">MANA</a><a href="/tshirts">T-shirts</a><a href="#acheter" class="btn small-btn">Acheter</a></nav>
 </header>
 
 <section class="hero" id="toa">
@@ -65,6 +68,7 @@ const INDEX = `<!doctype html>
   </div>
 </section>
 
+<div class="marquee" aria-hidden="true"><div>${"TOA ✦ MANA ✦ 100 % TAHITIEN ✦ PDF INSTANTANÉ ✦ T-SHIRTS FENUA MANGA ✦ ".repeat(8)}</div></div>
 <section class="strip">
   <div><b>100 %</b> tahitien</div>
   <div><b>2</b> mangas</div>
@@ -197,6 +201,9 @@ const LIENS = `<!doctype html>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FENUA MANGA — Liens</title>
 <link rel="icon" href="/img/favicon.png">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 <style>
   .links { max-width:440px; margin:0 auto; padding:40px 16px 56px; text-align:center; }
@@ -206,6 +213,9 @@ const LIENS = `<!doctype html>
   .links p.bio { color:#ccc; margin:6px 0 26px; }
   .links a.l { display:block; margin:0 0 16px; padding:16px; background:var(--paper); color:var(--ink); font-weight:900; font-size:17px;
     text-decoration:none; border:4px solid var(--ink); box-shadow:6px 6px 0 var(--red); }
+  .links a.l { transition:transform .1s, box-shadow .1s; }
+  .links a.l:hover { transform:translate(-2px,-2px); box-shadow:8px 8px 0 var(--red); }
+  .links h1 { font-family:Bangers,Inter,sans-serif; font-weight:400; font-size:44px; letter-spacing:1.5px; }
   .links a.l.main { background:var(--red); color:var(--paper); border-color:var(--paper); box-shadow:6px 6px 0 var(--paper); }
   .guide { text-align:left; background:#141414; border:3px solid #2a2a2a; padding:18px; margin-top:28px; }
   .guide h2 { font-size:20px; text-align:left; margin-bottom:10px; }
@@ -245,7 +255,8 @@ const LIENS = `<!doctype html>
 
 const CSS = `:root { --ink:#0a0a0a; --paper:#fbf8f1; --red:#e0141e; --grey:#9a9a9a; }
 * { margin:0; padding:0; box-sizing:border-box; }
-html { scroll-behavior:smooth; }
+html { scroll-behavior:smooth; overflow-x:hidden; overflow-x:clip; }
+body { overflow-x:hidden; overflow-x:clip; }
 body { background:var(--ink); color:var(--paper); font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; line-height:1.5;
   background-image:radial-gradient(#1a1a1a 18%, transparent 19%); background-size:22px 22px; }
 img { max-width:100%; display:block; }
@@ -327,11 +338,45 @@ body.simple { display:flex; min-height:100vh; align-items:center; justify-conten
   .buy-box h2 { text-align:center; }
   .buy-box ul { text-align:left; display:inline-block; }
 }
+/* ---- Style manga : polices, lignes de vitesse, animations ---- */
+.brand { font-family:Bangers,Inter,sans-serif; font-weight:400; font-size:28px; letter-spacing:1.5px; }
+.nav { display:flex; align-items:center; gap:4px; }
+.nav a:not(.btn) { font-weight:900; text-decoration:none; padding:6px 8px; text-transform:uppercase; letter-spacing:.05em; font-size:15px; }
+.nav a:not(.btn):hover { color:#ffe14d; }
+@media (max-width:520px) { .nav .opt { display:none; } }
+.btn:hover { transform:translate(-2px,-2px); box-shadow:8px 8px 0 var(--paper); }
+.small-btn:hover { box-shadow:5px 5px 0 var(--paper); }
+.buy-box .btn:hover { box-shadow:8px 8px 0 var(--ink); }
+:focus-visible { outline:3px solid #ffe14d; outline-offset:3px; }
+::selection { background:var(--red); color:var(--paper); }
+.hero { position:relative; isolation:isolate; }
+.hero::before { content:""; position:absolute; inset:0 -50vw; z-index:-1;
+  background:repeating-conic-gradient(from 0deg at 30% 50%, rgba(224,20,30,.12) 0 4deg, transparent 4deg 12deg);
+  -webkit-mask:radial-gradient(circle at 30% 50%, transparent 10%, #000 65%); mask:radial-gradient(circle at 30% 50%, transparent 10%, #000 65%); }
+.hero h1 { font-family:Bangers,Inter,sans-serif; font-weight:400; letter-spacing:.05em; }
+.hero-img img { transition:transform .3s; }
+.hero-img:hover img { transform:rotate(0deg) scale(1.02); }
+section h2 { font-family:Bangers,Inter,sans-serif; font-weight:400; letter-spacing:.06em; font-size:clamp(36px,6vw,58px); }
+.buy-box h2 { font-size:clamp(30px,5vw,44px); }
+.marquee { overflow:hidden; white-space:nowrap; background:var(--paper); color:var(--ink); border-top:4px solid var(--ink);
+  font-family:Bangers,Inter,sans-serif; font-size:22px; letter-spacing:1.5px; padding:6px 0; }
+.marquee div { display:inline-block; animation:mq 30s linear infinite; }
+@keyframes mq { to { transform:translateX(-50%); } }
+.pages img { transition:transform .2s, box-shadow .2s; }
+.pages img:hover { transform:translate(-4px,-4px) rotate(-1deg); box-shadow:10px 10px 0 var(--red); }
+.card { transition:transform .15s, box-shadow .15s; }
+.card:hover { transform:translate(-3px,-3px) rotate(-.8deg); box-shadow:9px 9px 0 var(--red); }
+.card.red:hover { box-shadow:9px 9px 0 var(--paper); }
+.card h3 { font-family:Bangers,Inter,sans-serif; font-weight:400; letter-spacing:.06em; font-size:30px; }
+.buy-box { transition:transform .2s; }
+.buy-box:hover { transform:translate(-3px,-3px); }
+footer .brand { font-size:40px; }
+@media (prefers-reduced-motion:reduce) { * { transition:none !important; animation:none !important; } html { scroll-behavior:auto; } }
 `;
 
 const page = (title: string, body: string) => `<!doctype html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title>
-<link rel="icon" href="/img/favicon.png"><link rel="stylesheet" href="/style.css"></head>
+<link rel="icon" href="/img/favicon.png"><meta name="robots" content="noindex"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css"></head>
 <body class="simple"><main class="box"><a href="/" class="brand">FENUA <span>MANGA</span></a>${body}</main></body></html>`;
 const html = (s: string, status = 200) => new Response(s, { status, headers: { "Content-Type": "text/html; charset=utf-8" } });
 
@@ -785,63 +830,108 @@ function mockupSvg(p: TProduct, colorPf: string, side: "front" | "back", w = 500
   const art = p.sides.includes(side) ? `<image href="/print/${designFor(p, c.pf)}/${side}.png?w=700&amp;v=${ASSET_V}" x="275" y="175" width="450" height="540"/>` : "";
   return `<svg viewBox="0 0 1000 1080" width="${w}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${p.name} ${c.fr} ${side === "front" ? "devant" : "dos"}"><path d="${TEE_PATH}" fill="${c.hex}" stroke="rgba(128,128,128,.35)" stroke-width="6" stroke-linejoin="round"/>${collar}${art}</svg>`;
 }
-const tlayout = (title: string, body: string) => `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${title}</title><meta name="description" content="T-shirts manga tahitiens, imprimés à la demande.">
+type TMeta = { noindex?: boolean; image?: string; desc?: string };
+const MARQUEE = "IMPRIMÉ À LA DEMANDE ✦ LIVRÉ À TAHITI & PARTOUT ✦ PAIEMENT SÉCURISÉ STRIPE ✦ 100 % FENUA ✦ ";
+const tlayout = (title: string, body: string, meta: TMeta = {}) => `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title><meta name="description" content="${meta.desc || "T-shirts manga tahitiens, imprimés à la demande."}">
+${meta.noindex ? `<meta name="robots" content="noindex">` : ""}<meta name="theme-color" content="#0a0a0a">
+<meta property="og:title" content="${title}"><meta property="og:image" content="${meta.image || `${TPUB}/img/og.jpg`}">
 <link rel="icon" href="/img/favicon.png">
-<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0a0a0a;--card:#1b1917;--ink:#f6efe6;--mute:#b8ad9f;--red:#e0141e;--gold:#ffe14d;--teal:${TEAL};--line:#2c2926}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);background-image:radial-gradient(#1a1a1a 18%,transparent 19%);background-size:22px 22px;color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.5}
-a{color:inherit}header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(15,14,13,.92);backdrop-filter:blur(8px);z-index:5}
-.logo{font-family:Bangers;font-size:24px;white-space:nowrap;letter-spacing:1px;text-decoration:none}.logo span{color:var(--red)}
-.navl{font-weight:800;text-decoration:none;margin-right:10px;white-space:nowrap}.cartbtn{white-space:nowrap;background:var(--red);color:#fff;border:0;border-radius:999px;padding:8px 14px;font-weight:800;text-decoration:none}
+:root{--bg:#0a0a0a;--card:#151413;--ink:#fbf8f1;--mute:#b8ad9f;--red:#e0141e;--gold:#ffe14d;--teal:${TEAL};--line:#2c2926}
+*{box-sizing:border-box}html{scroll-behavior:smooth;overflow-x:hidden;overflow-x:clip}
+body{margin:0;background:var(--bg);background-image:radial-gradient(#1a1a1a 18%,transparent 19%);background-size:22px 22px;color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.5;overflow-x:hidden;overflow-x:clip}
+a{color:inherit}::selection{background:var(--red);color:var(--ink)}
+:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-bottom:3px solid var(--red);position:sticky;top:0;background:rgba(10,10,10,.92);backdrop-filter:blur(8px);z-index:5}
+.logo{font-family:Bangers;font-size:28px;white-space:nowrap;letter-spacing:1.5px;text-decoration:none;line-height:1}.logo span{color:var(--red)}
+nav{display:flex;align-items:center;gap:4px}
+.navl{font-weight:800;text-decoration:none;white-space:nowrap;padding:6px 8px;font-size:15px;text-transform:uppercase;letter-spacing:.05em}
+.navl:hover{color:var(--gold)}
+.cartbtn{position:relative;white-space:nowrap;background:var(--red);color:var(--ink);border:3px solid var(--ink);padding:6px 12px;font-weight:900;text-decoration:none;box-shadow:3px 3px 0 var(--ink);text-transform:uppercase;font-size:14px;margin-left:6px;transition:transform .1s,box-shadow .1s}
+.cartbtn:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--ink)}
+#cc{display:inline-grid;place-items:center;min-width:22px;height:22px;margin-left:4px;padding:0 5px;background:var(--gold);color:#111;border:2px solid #111;font-size:12px}
+@media(max-width:520px){.navl.opt{display:none}}
+.marquee{overflow:hidden;background:var(--red);border-bottom:3px solid var(--ink);white-space:nowrap;font-family:Bangers;font-size:20px;letter-spacing:1.5px;padding:5px 0;color:var(--ink)}
+.marquee div{display:inline-block;animation:mq 26s linear infinite}
+@keyframes mq{to{transform:translateX(-50%)}}
 main{max-width:1080px;margin:0 auto;padding:16px}
-.hero{padding:36px 0 20px;text-align:center}.hero h1{font-family:Bangers;font-size:clamp(44px,10vw,88px);margin:0;line-height:.95;letter-spacing:1px}
-.hero h1 em{color:var(--red);font-style:normal}.hero p{color:var(--mute);max-width:560px;margin:12px auto 0}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:24px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;text-decoration:none;display:block}
-.card .img{background:radial-gradient(circle at 50% 40%,#3a3330,#1b1917 70%);display:flex;justify-content:center;padding:18px}
-.card .img svg{width:100%;max-width:300px;height:auto}.card .txt{padding:14px 16px 18px}
-.card h3{font-family:Bangers;font-size:28px;margin:0;letter-spacing:.5px}.price{color:var(--gold);font-weight:800}
-.dots{display:flex;gap:6px;margin-top:8px}.dots i{width:14px;height:14px;border-radius:50%;border:1px solid #555;display:inline-block}
-.mute{color:var(--mute)}.prod{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:12px}
-@media(max-width:760px){.prod{grid-template-columns:1fr}}
-.views{background:radial-gradient(circle at 50% 40%,#3a3330,#1b1917 70%);border-radius:18px;padding:16px;display:flex;justify-content:center}
-.views svg{width:100%;max-width:440px;height:auto}.tabs{display:flex;gap:8px;margin-top:10px}
-.pill{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:8px 14px;font-weight:600;cursor:pointer}
-.pill[aria-pressed=true]{background:var(--ink);color:#111;border-color:var(--ink)}
-.opts{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 16px}.swatch{width:38px;height:38px;border-radius:50%;border:2px solid var(--line);cursor:pointer}
-.swatch[aria-pressed=true]{outline:3px solid var(--gold);outline-offset:2px}
-.buy{width:100%;background:var(--red);color:#fff;border:0;border-radius:14px;padding:16px;font-size:18px;font-weight:800;cursor:pointer}
-.buy:disabled{opacity:.5}h2{font-family:Bangers;font-size:46px;margin:0;letter-spacing:.5px;line-height:1}
-.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
-footer{max-width:1080px;margin:40px auto 0;padding:24px 16px;border-top:1px solid var(--line);color:var(--mute);font-size:14px}
+.hero{position:relative;padding:48px 0 28px;text-align:center;isolation:isolate}
+.hero::before{content:"";position:absolute;inset:0 -40vw;z-index:-1;background:repeating-conic-gradient(from 0deg at 50% 60%,rgba(224,20,30,.13) 0 4deg,transparent 4deg 12deg);-webkit-mask:radial-gradient(circle at 50% 60%,transparent 12%,#000 60%);mask:radial-gradient(circle at 50% 60%,transparent 12%,#000 60%)}
+.kata{color:var(--red);font-weight:800;letter-spacing:.4em;font-size:15px}
+.hero h1{font-family:Bangers;font-size:clamp(54px,12vw,112px);margin:6px 0 0;line-height:.9;letter-spacing:2px;-webkit-text-stroke:3px #000;paint-order:stroke fill;text-shadow:5px 5px 0 var(--red)}
+.hero h1 em{color:var(--red);font-style:normal;text-shadow:5px 5px 0 var(--ink)}.hero p{color:var(--mute);max-width:560px;margin:16px auto 0;font-size:17px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;margin-top:28px}
+.card{position:relative;background:var(--card);border:4px solid var(--ink);box-shadow:8px 8px 0 var(--red);text-decoration:none;display:block;transition:transform .15s,box-shadow .15s}
+.card:hover{transform:translate(-4px,-4px) rotate(-.6deg);box-shadow:12px 12px 0 var(--red)}
+.card .img{background:radial-gradient(#2b2522 22%,transparent 23%) 0 0/14px 14px,radial-gradient(circle at 50% 40%,#3a3330,#151413 70%);display:flex;justify-content:center;padding:22px 18px;border-bottom:4px solid var(--ink)}
+.card .img svg{width:100%;max-width:300px;height:auto;transition:transform .25s}.card:hover .img svg{transform:scale(1.04)}
+.card .txt{padding:14px 16px 18px}
+.card h3{font-family:Bangers;font-size:30px;margin:0;letter-spacing:.8px;line-height:1.05}
+.tag{position:absolute;top:14px;right:-10px;background:var(--gold);color:#111;font-weight:900;font-size:17px;padding:6px 12px;border:3px solid #111;transform:rotate(4deg);box-shadow:3px 3px 0 #111}
+.price{color:var(--gold);font-weight:900}
+.dots{display:flex;gap:6px;margin-top:10px}.dots i{width:16px;height:16px;border:2px solid var(--ink);display:inline-block}
+.mute{color:var(--mute)}
+.crumb{display:inline-block;margin:6px 0 14px;font-weight:800;text-decoration:none;text-transform:uppercase;letter-spacing:.06em;font-size:14px;color:var(--mute)}.crumb:hover{color:var(--gold)}
+.prod{display:grid;grid-template-columns:1fr 1fr;gap:36px;margin-top:4px;align-items:start}
+.prod>div:first-child{position:sticky;top:84px}
+@media(max-width:760px){.prod{grid-template-columns:1fr;gap:24px}.prod>div:first-child{position:static}}
+.views{background:radial-gradient(#2b2522 22%,transparent 23%) 0 0/14px 14px,radial-gradient(circle at 50% 40%,#3a3330,#151413 70%);border:5px solid var(--ink);box-shadow:12px 12px 0 var(--red);padding:20px;display:flex;justify-content:center}
+.views svg{width:100%;max-width:440px;height:auto}.tabs{display:flex;gap:10px;margin-top:20px}
+.pill{border:3px solid var(--ink);background:var(--card);color:var(--ink);padding:8px 16px;font-weight:900;cursor:pointer;font-family:inherit;font-size:15px;box-shadow:3px 3px 0 var(--ink);transition:transform .1s,box-shadow .1s}
+.pill:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
+.pill[aria-pressed=true]{background:var(--red);color:var(--ink);box-shadow:3px 3px 0 var(--gold)}
+.label{font-weight:900;text-transform:uppercase;letter-spacing:.1em;font-size:13px;color:var(--mute)}.label b{color:var(--ink)}
+.opts{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 22px}
+.swatch{width:42px;height:42px;border:3px solid var(--ink);cursor:pointer;box-shadow:3px 3px 0 #000;transition:transform .1s}
+.swatch:hover{transform:translateY(-2px)}.swatch[aria-pressed=true]{outline:3px solid var(--gold);outline-offset:3px}
+.bigprice{display:inline-block;background:var(--gold);color:#111;font-weight:900;font-size:26px;padding:4px 14px;border:3px solid #111;box-shadow:4px 4px 0 var(--red);transform:rotate(-2deg);margin:14px 0 6px}
+.buy{width:100%;background:var(--red);color:var(--ink);border:4px solid var(--ink);padding:18px;font-size:22px;font-family:Bangers;letter-spacing:1.5px;cursor:pointer;box-shadow:7px 7px 0 var(--ink);transition:transform .1s,box-shadow .1s}
+.buy:hover:not(:disabled){transform:translate(-2px,-2px);box-shadow:9px 9px 0 var(--ink)}
+.buy:active:not(:disabled){transform:translate(4px,4px);box-shadow:3px 3px 0 var(--ink)}
+.buy:disabled{opacity:.45;cursor:not-allowed}
+h2{font-family:Bangers;font-size:clamp(40px,7vw,56px);margin:0;letter-spacing:1px;line-height:.95}
+.perks{list-style:none;padding:0;margin:22px 0 0;display:grid;gap:8px}
+.perks li{background:var(--card);border:2px solid var(--line);border-left:5px solid var(--red);padding:10px 12px;font-size:14px;color:#ddd}
+.private{display:inline-block;background:var(--ink);color:#111;font-weight:900;font-size:12px;letter-spacing:.2em;padding:3px 8px;margin-bottom:8px}
+.box{background:var(--card);border:4px solid var(--ink);box-shadow:10px 10px 0 var(--red);padding:6px 18px 18px;margin:18px 0}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:2px dashed var(--line)}
+.row .pill{padding:2px 10px;box-shadow:2px 2px 0 var(--ink)}
+#tot{font-size:16px;line-height:1.8}
+footer{max-width:1080px;margin:56px auto 0;padding:28px 16px 40px;border-top:4px solid var(--red);color:var(--mute);font-size:14px;text-align:center}
+footer .logo{display:inline-block;font-size:34px;color:var(--ink);margin-bottom:6px}
 .band{height:14px;background:repeating-linear-gradient(90deg,var(--red) 0 22px,#111 22px 44px);opacity:.9}
-.notice{background:#2a1a12;border:1px solid #5a3420;border-radius:12px;padding:12px 14px;color:#f3c9a8;margin:12px 0}
-select{width:100%;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:16px;font-family:inherit;margin:6px 0 14px}
-.dsec{margin-top:56px;padding-top:28px;border-top:2px solid var(--red)}
+.notice{background:var(--gold);color:#111;border:3px solid #111;box-shadow:5px 5px 0 var(--red);padding:12px 14px;margin:16px 0;font-weight:800}
+select{width:100%;background:var(--card);color:var(--ink);border:3px solid var(--ink);padding:12px;font-size:16px;font-family:inherit;font-weight:700;text-overflow:ellipsis;margin:6px 0 14px;box-shadow:4px 4px 0 var(--red)}
+.dsec{margin-top:72px;padding:28px 0 0;border-top:3px solid var(--ink);position:relative}
+.dsec::before{content:"";position:absolute;left:0;top:-3px;width:120px;height:3px;background:var(--red)}
 .dhead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.dhead h2{font-family:Inter,system-ui,sans-serif;font-weight:800;font-size:clamp(34px,7vw,56px);letter-spacing:.18em}
-.dhead h2 span{color:var(--red);font-size:.55em;letter-spacing:.1em;margin-left:10px}
-.dept{font-size:13px;letter-spacing:.5em;color:var(--mute)}
+.dhead h2{font-family:Inter,system-ui,sans-serif;font-weight:900;font-size:clamp(38px,8vw,64px);letter-spacing:.22em}
+.dhead h2 span{color:var(--red);font-size:.5em;letter-spacing:.1em;margin-left:10px}
+.dept{font-size:13px;letter-spacing:.5em;color:var(--mute);border:1px solid var(--line);padding:4px 10px}
+.dsec .card{border-width:2px;box-shadow:6px 6px 0 #2a2a2a}.dsec .card:hover{box-shadow:10px 10px 0 var(--red);transform:translate(-4px,-4px)}
+.dsec .card h3{font-family:Inter,system-ui,sans-serif;font-weight:900;font-size:19px;letter-spacing:.08em;text-transform:uppercase}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style><script>
 const getCart=()=>{try{return JSON.parse(localStorage.getItem('fm_cart')||'[]')}catch(e){return []}};
 const setCart=c=>{try{localStorage.setItem('fm_cart',JSON.stringify(c))}catch(e){};count()};
 function count(){const el=document.getElementById('cc');if(el)el.textContent=getCart().reduce((a,l)=>a+l.qty,0)}document.addEventListener('DOMContentLoaded',count);
-</script></head><body><header><a class="logo" href="/">FENUA <span>MANGA</span></a><span><a class="navl" href="/tshirts">T-shirts</a> <a class="cartbtn" href="/panier">Panier <span id="cc">0</span></a></span></header>
-<div class="band"></div><main>${body}</main>
-<footer>FENUA MANGA · Tahiti — T-shirts imprimés à la demande et livrés par notre partenaire d'impression. Paiement sécurisé par Stripe.<br><a href="/">Les mangas</a> · <a href="/livraison">Livraison & retours</a> · <a href="/soutenir">Soutenir</a></footer>
+</script></head><body><header><a class="logo" href="/">FENUA <span>MANGA</span></a><nav><a class="navl opt" href="/">Mangas</a><a class="navl" href="/tshirts">T-shirts</a><a class="navl opt" href="/tshirts#daytho">Daytho</a><a class="cartbtn" href="/panier">Panier<span id="cc">0</span></a></nav></header>
+<div class="marquee" aria-hidden="true"><div>${MARQUEE.repeat(6)}</div></div><main>${body}</main>
+<footer><a class="logo" href="/">FENUA <span>MANGA</span></a><br>Tahiti — T-shirts imprimés à la demande et livrés par notre partenaire d'impression. Paiement sécurisé par Stripe.<br><a href="/">Les mangas</a> · <a href="/tshirts">T-shirts</a> · <a href="/livraison">Livraison & retours</a> · <a href="/soutenir">Soutenir</a> · <a href="/liens">Liens</a></footer>
 </body></html>`;
 
 function card(p: TProduct) {
   const dots = p.colors.length > 2 ? `<div class="dots">${p.colors.map((c) => `<i style="background:${c.hex}" title="${c.fr}"></i>`).join("")}</div>` : "";
-  return `<a class="card" href="/tshirts/${p.id}"><div class="img">${mockupSvg(p, p.colors[0].pf, p.sides.includes("back") ? "back" : "front", 300)}</div>
-  <div class="txt"><h3>${p.name}</h3><div class="mute">${p.tagline}</div><div class="price">${teuro(p.price)}</div>${dots}</div></a>`;
+  return `<a class="card" href="/tshirts/${p.id}"><span class="tag">${teuro(p.price)}</span><div class="img">${mockupSvg(p, p.colors[0].pf, p.sides.includes("back") ? "back" : "front", 300)}</div>
+  <div class="txt"><h3>${p.name}</h3><div class="mute">${p.tagline}</div>${dots}</div></a>`;
 }
 function home() {
   const fenua = TPRODUCTS.filter((p) => !p.hidden && p.brand !== "daytho").map(card).join("");
   const daytho = TPRODUCTS.filter((p) => !p.hidden && p.brand === "daytho").map(card).join("");
-  return tlayout("T-shirts — FENUA MANGA", `<section class="hero"><h1>LES T-SHIRTS<br><em>FENUA MANGA</em></h1>
+  return tlayout("T-shirts — FENUA MANGA", `<section class="hero"><div class="kata">ティーシャツ</div><h1>LES T-SHIRTS<br><em>FENUA MANGA</em></h1>
   <p>Tirés de nos mangas. Imprimés à la commande, livrés chez toi.</p></section><div class="grid">${fenua}</div>
   <section class="dsec" id="daytho"><div class="dhead"><h2>DAYTHO<span>デイソ</span></h2><div class="dept">DTHO 987</div></div>
   <p class="mute">Streetwear techwear. Logo sur le cœur, personnages au dos. Noir, blanc, bleu marine, rouge, rose et vert.</p><div class="grid">${daytho}</div></section>`);
@@ -853,30 +943,31 @@ function productPage(p: TProduct) {
   for (const c of p.colors) for (const side of p.sides) views[`${c.pf}|${side}`] = mockupSvg(p, c.pf, side, 440);
   const startSide = p.sides.includes("back") ? "back" : p.sides[0];
   const tabs = p.sides.length > 1 ? `<div class="tabs">${p.sides.map((s) => `<button class="pill" aria-pressed="${s === startSide}" data-v="${s}">${s === "front" ? "Devant" : "Dos"}</button>`).join("")}</div>` : "";
-  return tlayout(`${p.name} — FENUA MANGA`, `<div class="prod"><div><div class="views" id="view">${views[`${p.colors[0].pf}|${startSide}`]}</div>${tabs}</div>
-  <div><h2>${p.name}</h2><div class="mute">${p.tagline}</div><p class="price" style="font-size:24px">${teuro(p.price)}${p.hidden ? " · livraison offerte" : ""}</p><p>${p.desc}</p>
-  <div class="mute">Couleur : <b id="cn">${p.colors[0].fr}</b></div><div class="opts">${sw}</div>
-  <div class="mute">Taille</div><div class="opts" id="sizes">${sz}</div>
+  const back = p.brand === "daytho" ? "/tshirts#daytho" : "/tshirts";
+  return tlayout(`${p.name} — FENUA MANGA`, `<a class="crumb" href="${back}">← Tous les t-shirts</a><div class="prod"><div><div class="views" id="view">${views[`${p.colors[0].pf}|${startSide}`]}</div>${tabs}</div>
+  <div>${p.hidden ? `<div class="private">PRIVÉ · TEST</div>` : ""}<h2>${p.name}</h2><div class="mute">${p.tagline}</div><div class="bigprice">${teuro(p.price)}${p.hidden ? " · livraison offerte" : ""}</div><p>${p.desc}</p>
+  <div class="label">Couleur : <b id="cn">${p.colors[0].fr}</b></div><div class="opts">${sw}</div>
+  <div class="label">Taille</div><div class="opts" id="sizes">${sz}</div>
   <button class="buy" id="add">Ajouter au panier</button>
-  <p class="mute" style="font-size:14px">Coton 100 % ringspun (Gildan 64000 Softstyle), doux et léger, coupe unisexe. Imprimé à la demande : expédition sous 2 à 5 jours ouvrés.</p></div></div>
+  <ul class="perks"><li>👕 Coton 100 % ringspun (Gildan 64000 Softstyle), doux et léger, coupe unisexe.</li><li>🖨️ Imprimé à la demande : expédition sous 2 à 5 jours ouvrés.</li><li>🔒 Paiement sécurisé par Stripe · <a href="/livraison">Livraison & retours</a></li></ul></div></div>
   <script>
   const V=${JSON.stringify(views)},C=${JSON.stringify(Object.fromEntries(p.colors.map((c) => [c.pf, c.fr])))};let c="${p.colors[0].pf}",s="${p.sizes[1]}",v="${startSide}";
   const draw=()=>document.getElementById('view').innerHTML=V[c+'|'+v];
   const pick=(sel,attr,fn)=>document.querySelectorAll(sel).forEach(b=>b.onclick=()=>{document.querySelectorAll(sel).forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');fn(b.dataset[attr]);});
   pick('.swatch','c',x=>{c=x;document.getElementById('cn').textContent=C[x];draw()});pick('#sizes .pill','s',x=>s=x);pick('.tabs .pill','v',x=>{v=x;draw()});
   document.getElementById('add').onclick=()=>{const cart=getCart();const f=cart.find(l=>l.product==='${p.id}'&&l.color===c&&l.size===s);if(f)f.qty++;else cart.push({product:'${p.id}',color:c,size:s,qty:1});setCart(cart);location.href='/panier'};
-  </script>`);
+  </script>`, { noindex: p.hidden, desc: `${p.name} · ${p.tagline}. ${teuro(p.price)}, imprimé à la demande.`, image: `${TPUB}/print/${p.design}/${p.sides.includes("back") ? "back" : "front"}.png?w=1200&v=${ASSET_V}` });
 }
 function cartPage() {
   const P = Object.fromEntries(TPRODUCTS.map((p) => [p.id, { name: p.name, price: p.price, hidden: !!p.hidden, colors: Object.fromEntries(p.colors.map((c) => [c.pf, c.fr])) }]));
   const Z = Object.fromEntries(Object.entries(ZONES).map(([k, z]) => [k, { label: z.label, cents: z.cents }]));
   const ready = !!env("STRIPE_SECRET_KEY") && !!env("PRINTFUL_API_KEY");
   const opts = Object.entries(ZONES).map(([k, z]) => `<option value="${k}">${z.label} · ${teuro(z.cents)}</option>`).join("");
-  return tlayout("Panier — FENUA MANGA", `<h2>Ton panier</h2><div id="lines"></div>
-  <div id="zonebox"><p class="mute" style="margin:18px 0 0">Livraison vers :</p><select id="zone">${opts}</select></div>
-  <p id="tot"></p>
+  return tlayout("Panier — FENUA MANGA", `<div style="max-width:720px;margin:0 auto"><div class="kata" style="margin-top:20px">カート</div><h2>Ton panier</h2><div class="box"><div id="lines"></div>
+  <div id="zonebox"><p class="label" style="margin:18px 0 0">Livraison vers</p><select id="zone">${opts}</select></div>
+  <p id="tot"></p></div>
   ${ready ? "" : `<div class="notice">Les t-shirts arrivent très bientôt : la commande ouvre dans quelques jours.</div>`}
-  <button class="buy" id="pay" ${ready ? "" : "disabled"}>Payer</button><p class="mute" style="font-size:14px">Adresse demandée à l'étape suivante.</p>
+  <button class="buy" id="pay" ${ready ? "" : "disabled"}>Payer</button><p class="mute" style="font-size:14px">🔒 Paiement sécurisé par Stripe. Adresse demandée à l'étape suivante.</p></div>
   <script>const P=${JSON.stringify(P)},Z=${JSON.stringify(Z)};const eur=c=>(c/100).toFixed(2).replace('.',',')+' €';
   const zs=document.getElementById('zone');try{const z=localStorage.getItem('fm_zone');if(z&&Z[z])zs.value=z}catch(e){}
   zs.onchange=()=>{try{localStorage.setItem('fm_zone',zs.value)}catch(e){};render()};
@@ -889,7 +980,7 @@ function cartPage() {
   render();
   document.getElementById('pay').onclick=async e=>{e.target.disabled=true;e.target.textContent='Redirection…';
   const r=await fetch('/tshirts/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cart:getCart(),zone:zs.value})});const j=await r.json();
-  if(j.url)location.href=j.url;else{alert(j.error||'Erreur');e.target.disabled=false;e.target.textContent='Payer'}};</script>`);
+  if(j.url)location.href=j.url;else{alert(j.error||'Erreur');e.target.disabled=false;e.target.textContent='Payer'}};</script>`, { noindex: true });
 }
 
 /* ===================== ROUTES T-SHIRTS ===================== */
@@ -902,7 +993,7 @@ async function tshirtRoute(req: Request, url: URL, p: string): Promise<Response 
     const prod = byId(p.slice(9)); return prod ? thtml(productPage(prod)) : null;
   }
   if (p === "/panier") return thtml(cartPage());
-  if (p === "/livraison") return thtml(tlayout("Livraison — FENUA MANGA", `<h2>Livraison & retours</h2>
+  if (p === "/livraison") return thtml(tlayout("Livraison — FENUA MANGA", `<div class="kata" style="margin-top:20px">配送</div><h2>Livraison & retours</h2>
   <p>Chaque t-shirt est imprimé à la commande par notre partenaire d'impression puis expédié directement chez toi. Fabrication : 2 à 5 jours ouvrés. Livraison : environ 3 à 8 jours en Europe, plus pour l'outre-mer et l'international.</p>
   <p>Frais de port par commande :</p><ul>${Object.values(ZONES).map((z) => `<li>${z.label} : ${teuro(z.cents)}</li>`).join("")}</ul>
   <p>Article abîmé ou erreur d'impression ? Écris-nous dans les 30 jours avec une photo : on le remplace gratuitement. Les articles étant faits sur mesure, les échanges de taille ne sont pas repris.</p>`));
@@ -943,7 +1034,7 @@ async function tshirtRoute(req: Request, url: URL, p: string): Promise<Response 
     const id = url.searchParams.get("session_id") || "";
     if (id) { try { await fulfill(id); } catch (e: any) { log(`Merci/fulfill : ${e.message}`); } }
     return thtml(tlayout("Merci — FENUA MANGA", `<div class="hero"><h1>MĀURU<em>URU !</em></h1><p>Ta commande est enregistrée. Tu vas recevoir un reçu par e-mail, et ton t-shirt part à l'impression.</p><p><a href="/tshirts">Retour aux t-shirts</a></p></div>
-    <script>try{localStorage.removeItem('fm_cart')}catch(e){};count()</script>`));
+    <script>try{localStorage.removeItem('fm_cart')}catch(e){};count()</script>`, { noindex: true }));
   }
   if (p === "/stripe/webhook" && req.method === "POST") {
     const raw = await req.text();
@@ -967,7 +1058,7 @@ async function tshirtRoute(req: Request, url: URL, p: string): Promise<Response 
     ].join("");
     const ev = events.map((e) => `<div class="row"><span class="mute">${e.at.slice(0, 16).replace("T", " ")}</span><span>${e.msg}</span></div>`).join("") || `<p class="mute">Rien pour l'instant.</p>`;
     const tests = TPRODUCTS.filter((pr) => pr.hidden).map((pr) => `<a href="/tshirts/${pr.id}">${pr.name}</a>`).join(" · ");
-    return thtml(tlayout("Admin t-shirts — FENUA MANGA", `<h2>Admin t-shirts</h2>${rows}<h3>T-shirts test (privés)</h3><p>${tests}</p><h3>Journal</h3>${ev}`));
+    return thtml(tlayout("Admin t-shirts — FENUA MANGA", `<h2>Admin t-shirts</h2>${rows}<h3>T-shirts test (privés)</h3><p>${tests}</p><h3>Journal</h3>${ev}`, { noindex: true }));
   }
   return null;
 }
@@ -999,6 +1090,12 @@ Bun.serve({
     const tr = await tshirtRoute(req, url, p);
     if (tr) return tr;
 
+    if (p === "/robots.txt") return new Response(`User-agent: *\nDisallow: /admin\nDisallow: /tshirts/admin\nDisallow: /panier\nDisallow: /merci\nDisallow: /telecharger\nSitemap: ${TPUB}/sitemap.xml\n`, { headers: { "Content-Type": "text/plain" } });
+    if (p === "/sitemap.xml") {
+      const urls = ["/", "/tshirts", "/liens", "/livraison", ...TPRODUCTS.filter((x) => !x.hidden).map((x) => `/tshirts/${x.id}`)];
+      return new Response(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map((u) => `<url><loc>${TPUB}${u}</loc></url>`).join("")}</urlset>`, { headers: { "Content-Type": "application/xml" } });
+    }
+    if (p === "/favicon.ico") return Response.redirect(`${origin}/img/favicon.png`, 301);
     if (p === "/" || p === "/index.html") return html(INDEX);
     if (p === "/liens" || p === "/liens.html") return html(LIENS);
     if (p === "/soutenir" || p === "/soutien") return Response.redirect("https://ko-fi.com/loshing57323", 302);
