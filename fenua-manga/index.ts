@@ -24,10 +24,23 @@ const PRODUCTS: Record<string, Product> = {
     pdf: `${DATA}/TOA-Tome1.pdf`,
     file: "TOA-Tome1-FenuaManga.pdf",
   },
+  "mana-t2": {
+    label: "MANA — Tome 2",
+    name: "MANA — Tome 2 : Le nom de Tumu (PDF)",
+    desc: "Manga tahitien, suite de MANA, 52 pages, format numérique à télécharger.",
+    price: Number(Bun.env.MANA2_PRICE_CENTS ?? 599),
+    pdf: `${DATA}/MANA-Tome2.pdf`,
+    file: "MANA-Tome2-FenuaManga.pdf",
+  },
 };
 const euros = (c: number) => (c / 100).toFixed(2).replace(".", ",") + " €";
 const MANA_P = euros(PRODUCTS["mana-t1"].price);
 const TOA_P = euros(PRODUCTS["toa-t1"].price);
+const MANA2_P = euros(PRODUCTS["mana-t2"].price);
+// Les blocs <!--T2-->…<!--/T2--> (Tome 2 de MANA) ne s'affichent que si son PDF est déposé
+const withT2 = async (s: string) => (await Bun.file(PRODUCTS["mana-t2"].pdf).exists())
+  ? s.replaceAll("<!--T2-->", "").replaceAll("<!--/T2-->", "")
+  : s.replace(/<!--T2-->[\s\S]*?<!--\/T2-->/g, "");
 const hideIfMissing = `onerror="this.style.display='none'"`;
 
 /* ===================== MONÉTISATION =====================
@@ -160,6 +173,7 @@ ${REVEAL}
       Le jour où le soleil disparaît, le tatau de Teiva s'embrase… et réveille <b>Tumu</b>, le dieu-requin.</p>
     <a href="#acheter" class="btn big">Lire MANA · <span class="price">${MANA_P}</span></a>
     <p class="small">16 pages · PDF à télécharger immédiatement après paiement</p>
+    <!--T2--><p style="margin-top:18px;"><span class="badge">NOUVEAU</span> <b>Le Tome 2 est sorti :</b> sept nuits pour sauver Papa Rui. <a href="#mana2" style="color:var(--red);font-weight:900;">Lire la suite →</a></p><!--/T2-->
   </div>
 </section>
 
@@ -221,6 +235,26 @@ ${REVEAL}
       <p class="small">Paiement sécurisé par carte via Stripe.</p>
     </div>
   </div>
+<!--T2-->
+  <div class="buy-box" id="mana2">
+    <img src="/img/mana2-01.jpg" alt="MANA Tome 2" ${hideIfMissing}>
+    <div>
+      <div class="badge dark">NOUVEAU</div>
+      <h2>MANA — Tome 2</h2>
+      <p>La suite directe du Tome 1. Papa Rui a disparu dans le gouffre : Teiva a sept nuits pour le ramener, jusqu'à Havaiki et au trône de Tumu.</p>
+      <ul>
+        <li>52 pages au format manga, 4 chapitres</li>
+        <li>PDF haute qualité, à lire sur téléphone, tablette ou ordinateur</li>
+        <li>Téléchargement immédiat</li>
+      </ul>
+      <form method="post" action="/acheter">
+        <input type="hidden" name="produit" value="mana-t2">
+        <button class="btn big" type="submit">Acheter · ${MANA2_P}</button>
+      </form>
+      <p class="small">Paiement sécurisé par carte via Stripe.</p>
+    </div>
+  </div>
+<!--/T2-->
 </section>
 
 <section id="tshirts" style="max-width:1080px;margin:0 auto;padding:48px 16px;text-align:center;border-top:4px solid var(--red);">
@@ -290,6 +324,8 @@ ${adHead}
 
   <a class="l main" href="/#toa">🦈 NOUVEAU · Lire TOA · Tome 1 (${TOA_P})</a>
   <a class="l" href="/#mana">📖 Lire MANA · Tome 1 (${MANA_P})</a>
+<!--T2-->  <a class="l main" href="/#mana2">🌊 NOUVEAU · Lire MANA · Tome 2 (${MANA2_P})</a>
+<!--/T2-->
   <a class="l" href="/tshirts">👕 Les t-shirts FENUA MANGA</a>
   <a class="l" href="/tshirts#daytho">🖤 DAYTHO · DTHO 987</a>
   <a class="l" href="https://ko-fi.com/loshing57323" rel="noopener">🤝 Soutenir FENUA MANGA (Ko-fi)</a>
@@ -304,7 +340,7 @@ ${adHead}
     <h2>🧭 Guide du lecteur</h2>
     <ol>
       <li><b>Regarde les épisodes</b> en vidéo sur TikTok ou YouTube (1 min chacun).</li>
-      <li><b>Lis les tomes complets</b> en PDF : TOA (44 pages) et MANA (16 pages).</li>
+      <li><b>Lis les tomes complets</b> en PDF : TOA (44 pages) et MANA (Tome 1, 16 pages<!--T2--> ; Tome 2, 52 pages<!--/T2-->).</li>
       <li><b>Paiement par carte</b>, sécurisé par Stripe. Le PDF se télécharge tout de suite.</li>
       <li><b>Abonne-toi</b> pour ne pas rater les prochains tomes et les nouvelles séries.</li>
     </ol>
@@ -477,12 +513,14 @@ async function paid(id: string | null) {
 const productOf = (s: any): Product => PRODUCTS[s?.metadata?.produit] ?? PRODUCTS["mana-t1"];
 
 // Fichiers acceptés par la page admin (nom du fichier envoyé)
-const ALLOWED = /^(MANA-Tome1\.pdf|TOA-Tome1\.pdf|page-0[1-9]\.jpg|page-1[0-6]\.jpg|toa-0[1-5]\.jpg|logo\.png|favicon\.png|og\.jpg|tshirt-[a-z0-9-]+\.(png|jpg))$/;
+const ALLOWED = /^(MANA-Tome1\.pdf|MANA-Tome2\.pdf|mana2-0[1-5]\.jpg|TOA-Tome1\.pdf|page-0[1-9]\.jpg|page-1[0-6]\.jpg|toa-0[1-5]\.jpg|logo\.png|favicon\.png|og\.jpg|tshirt-[a-z0-9-]+\.(png|jpg))$/;
 const destOf = (name: string) =>
-  name === "MANA-Tome1.pdf" ? PRODUCTS["mana-t1"].pdf : name === "TOA-Tome1.pdf" ? PRODUCTS["toa-t1"].pdf : `${DATA}/img/${name}`;
+  name === "MANA-Tome1.pdf" ? PRODUCTS["mana-t1"].pdf : name === "MANA-Tome2.pdf" ? PRODUCTS["mana-t2"].pdf : name === "TOA-Tome1.pdf" ? PRODUCTS["toa-t1"].pdf : `${DATA}/img/${name}`;
 
 // Emplacements nommés : le fichier est enregistré sous le bon nom, peu importe comment il s'appelle sur le téléphone
 const SLOTS: [string, string][] = [
+  ["MANA-Tome2.pdf", "MANA Tome 2 · le PDF complet"],
+  ["mana2-01.jpg", "MANA Tome 2 · couverture (page 1)"],
   ["TOA-Tome1.pdf", "TOA · le PDF complet"],
   ["toa-01.jpg", "TOA · couverture (page 1)"],
   ["toa-02.jpg", "TOA · extrait 1"],
@@ -498,7 +536,7 @@ const SLOTS: [string, string][] = [
   ["tshirt-daytho-fille.png", "DAYTHO · dos fille, t-shirts clairs"],
   ["tshirt-daytho-fille-sombre.png", "DAYTHO · dos fille, t-shirts foncés"],
 ];
-const CHECK = ["TOA-Tome1.pdf", "toa-01.jpg", "toa-02.jpg", "toa-03.jpg", "toa-04.jpg", "toa-05.jpg",
+const CHECK = ["MANA-Tome2.pdf", "mana2-01.jpg", "TOA-Tome1.pdf", "toa-01.jpg", "toa-02.jpg", "toa-03.jpg", "toa-04.jpg", "toa-05.jpg",
   "MANA-Tome1.pdf", "page-01.jpg", "page-04.jpg", "page-05.jpg", "page-06.jpg", "page-07.jpg", "tshirt-manu-combat.png", "tshirt-manu-debout.png",
   "tshirt-daytho-logo-noir.png", "tshirt-daytho-logo-blanc.png", "tshirt-daytho-logo-mono.png",
   "tshirt-daytho-garcon.png", "tshirt-daytho-garcon-sombre.png", "tshirt-daytho-garcon-rouge.png",
@@ -1346,8 +1384,8 @@ Bun.serve({
     }
     if (p === "/ads.txt") return ADSENSE ? new Response(`google.com, ${ADSENSE.replace("ca-", "")}, DIRECT, f08c47fec0942fa0\n`, { headers: { "Content-Type": "text/plain" } }) : new Response("Not found", { status: 404 });
     if (p === "/favicon.ico") return Response.redirect(`${origin}/img/favicon.png`, 301);
-    if (p === "/" || p === "/index.html") return html(indexPage());
-    if (p === "/liens" || p === "/liens.html") return html(liensPage());
+    if (p === "/" || p === "/index.html") return html(await withT2(indexPage()));
+    if (p === "/liens" || p === "/liens.html") return html(await withT2(liensPage()));
     if (p === "/soutenir" || p === "/soutien") return Response.redirect("https://ko-fi.com/loshing57323", 302);
     if (p === "/style.css") return new Response(CSS, { headers: { "Content-Type": "text/css; charset=utf-8", "Cache-Control": "public, max-age=600" } });
 
