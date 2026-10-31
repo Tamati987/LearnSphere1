@@ -43,7 +43,7 @@ const sponsorBox = () => {
   if (name && /^https:\/\//.test(url)) return `<a class="sponsor" href="${esc(url)}" target="_blank" rel="sponsored noopener"><span class="sp-tag">PARTENAIRE</span><b>${esc(name)}</b><span>${esc(cfg("SPONSOR_TEXT"))}</span></a>`;
   return `<a class="sponsor empty" href="/partenaires"><span class="sp-tag">ESPACE PARTENAIRE</span><b>Ton commerce ici</b><span>Fais connaître ta marque aux fans de manga du fenua →</span></a>`;
 };
-const SPONSOR_CSS = `.sponsor{display:grid;gap:4px;max-width:720px;margin:28px auto;padding:18px 20px;background:#fff;color:#0a0a0a;border:4px solid #0a0a0a;box-shadow:8px 8px 0 #ffe14d;text-decoration:none;text-align:center;transition:transform .1s,box-shadow .1s}
+const SPONSOR_CSS = `.sponsor{display:grid;gap:4px;max-width:720px;margin:28px auto;padding:18px 20px;background:#fff;color:#0a0a0a;border:3px solid #0a0a0a;border-radius:18px;box-shadow:8px 8px 0 #ffe14d;text-decoration:none;text-align:center;transition:transform .1s,box-shadow .1s}
 .sponsor:hover{transform:translate(-2px,-2px);box-shadow:10px 10px 0 #ffe14d}.sponsor b{font-size:20px}.sponsor span{color:#4a4550}
 .sponsor.empty{border-style:dashed;background:#fffdf7}.sp-tag{font-size:11px;font-weight:900;letter-spacing:.25em;color:#ff2a36!important}
 .adzone{max-width:760px;margin:28px auto;padding:0 16px;text-align:center}.adlabel{font-size:11px;letter-spacing:.2em;color:#8a8490;margin-bottom:4px}`;
@@ -64,6 +64,7 @@ const INDEX = `<!doctype html>
 <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 ${adHead}
+<script>document.documentElement.classList.add('js');addEventListener('DOMContentLoaded',()=>{const els=document.querySelectorAll('.rv');if(!('IntersectionObserver' in window)){els.forEach(e=>e.classList.add('in'));return}const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{rootMargin:'0px 0px -8% 0px'});els.forEach((e,i)=>{e.style.transitionDelay=(i%3)*70+'ms';io.observe(e)})});</script>
 </head>
 <body>
 
@@ -108,10 +109,10 @@ ${adHead}
 <section class="chars">
   <h2>Les personnages de TOA</h2>
   <div class="cards">
-    <div class="card"><h3>Manu</h3><p>16 ans, de Faa'a. On l'appelle le « toa vide »… jusqu'au jour où son tatau s'éveille.</p></div>
-    <div class="card"><h3>Kahu</h3><p>Son meilleur ami. Peureux, drôle, et il connaît tous les combattants par cœur.</p></div>
-    <div class="card"><h3>Vaimiti</h3><p>La raie manta de Bora Bora. Rivale redoutable… ou future alliée ?</p></div>
-    <div class="card red"><h3>Maʻo</h3><p>Le requin-tigre. Le totem le plus dangereux du Pacifique.</p></div>
+    <div class="card rv"><h3>Manu</h3><p>16 ans, de Faa'a. On l'appelle le « toa vide »… jusqu'au jour où son tatau s'éveille.</p></div>
+    <div class="card rv"><h3>Kahu</h3><p>Son meilleur ami. Peureux, drôle, et il connaît tous les combattants par cœur.</p></div>
+    <div class="card rv"><h3>Vaimiti</h3><p>La raie manta de Bora Bora. Rivale redoutable… ou future alliée ?</p></div>
+    <div class="card red rv"><h3>Maʻo</h3><p>Le requin-tigre. Le totem le plus dangereux du Pacifique.</p></div>
   </div>
 </section>
 
@@ -141,16 +142,16 @@ ${adHead}
 <section class="chars">
   <h2>Les personnages de MANA</h2>
   <div class="cards">
-    <div class="card"><h3>Teiva</h3><p>Jeune rameur de va'a. Le tatau de son grand-père s'éveille en lui.</p></div>
-    <div class="card"><h3>Hinatea</h3><p>Gardienne mystérieuse. L'eau obéit à chacun de ses gestes.</p></div>
-    <div class="card red"><h3>Tumu</h3><p>Le dieu-requin. Un sourire trop large… des dents trop pointues.</p></div>
-    <div class="card"><h3>Papa Rui</h3><p>Le grand-père. Il connaît le secret du mana.</p></div>
+    <div class="card rv"><h3>Teiva</h3><p>Jeune rameur de va'a. Le tatau de son grand-père s'éveille en lui.</p></div>
+    <div class="card rv"><h3>Hinatea</h3><p>Gardienne mystérieuse. L'eau obéit à chacun de ses gestes.</p></div>
+    <div class="card red rv"><h3>Tumu</h3><p>Le dieu-requin. Un sourire trop large… des dents trop pointues.</p></div>
+    <div class="card rv"><h3>Papa Rui</h3><p>Le grand-père. Il connaît le secret du mana.</p></div>
   </div>
 </section>
 
 <section id="acheter" class="buy">
   <h2>Acheter</h2>
-  <div class="buy-box">
+  <div class="buy-box rv">
     <img src="/img/toa-01.jpg" alt="TOA Tome 1" ${hideIfMissing}>
     <div>
       <div class="badge dark">NOUVEAU</div>
@@ -169,7 +170,7 @@ ${adHead}
     </div>
   </div>
 
-  <div class="buy-box">
+  <div class="buy-box rv">
     <img src="/img/page-01.jpg" alt="MANA Tome 1" ${hideIfMissing}>
     <div>
       <h2>MANA — Tome 1</h2>
@@ -416,7 +417,20 @@ body { background-color:#fffdf7; color:var(--ink);
 .marquee { background:var(--ink); color:var(--paper); }
 footer { color:#4a4550; }
 .links a.l.main { border-color:var(--ink); box-shadow:6px 6px 0 var(--ink); }
-@media (prefers-reduced-motion:reduce) { * { transition:none !important; animation:none !important; } html { scroll-behavior:auto; } }
+/* ---- Moderne : coins arrondis, bordures plus fines, apparitions ---- */
+.btn { border-radius:14px; border-width:3px; }
+.small-btn { border-radius:12px; }
+.top { box-shadow:0 1px 0 rgba(0,0,0,.06), 0 8px 24px -16px rgba(0,0,0,.25); backdrop-filter:blur(14px) saturate(1.4); }
+.hero-img img { border-width:4px; border-radius:14px; }
+.pages img { border-width:3px; border-radius:12px; }
+.card { border-width:3px; border-radius:18px; }
+.buy-box { border-width:3px; border-radius:24px; }
+.buy-box img { border-width:3px; border-radius:12px; }
+.badge { border-radius:999px; }
+.strip { border-width:3px; }
+.js .rv { opacity:0; transform:translateY(18px); transition:opacity .6s ease, transform .6s cubic-bezier(.2,.8,.2,1); }
+.js .rv.in { opacity:1; transform:none; }
+@media (prefers-reduced-motion:reduce) { * { transition:none !important; animation:none !important; } .js .rv { opacity:1; transform:none; } html { scroll-behavior:auto; } }
 `;
 
 const page = (title: string, body: string) => `<!doctype html><html lang="fr"><head><meta charset="utf-8">
@@ -968,9 +982,28 @@ header{background:rgba(255,253,247,.92)}
 .card .img,.views{background:radial-gradient(rgba(0,0,0,.06) 22%,transparent 23%) 0 0/14px 14px,radial-gradient(circle at 50% 40%,#ffffff,#efe9df 72%)}
 .perks li{color:#2b2730}.dsec .card{box-shadow:6px 6px 0 #d8d1c4}
 .price{color:#c98a00}
+/* Moderne */
+header{box-shadow:0 1px 0 rgba(0,0,0,.06),0 8px 24px -16px rgba(0,0,0,.25);backdrop-filter:blur(14px) saturate(1.4)}
+.cartbtn{border-radius:12px;border-width:2px}#cc{border-radius:999px}
+.card{border-width:3px;border-radius:20px;overflow:hidden}.card .img{border-bottom-width:3px}
+.tag{border-radius:999px;right:12px;top:12px;border-width:2px}
+.views{border-width:3px;border-radius:24px}
+.pill{border-radius:12px;border-width:2px}.swatch{border-radius:12px;border-width:2px}
+.buy{border-radius:16px;border-width:3px}
+.bigprice{border-radius:12px;border-width:2px}
+.box{border-width:3px;border-radius:22px}
+.perks li{border-radius:12px}
+select{border-radius:12px;border-width:2px}
+.private,.dept{border-radius:999px}
+.notice{border-radius:14px}
+.dsec .card{border-radius:16px}
+.js .rv{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.8,.2,1)}
+.js .rv.in{opacity:1;transform:none}
+@media(max-width:760px){#add{position:sticky;bottom:12px;z-index:4;box-shadow:0 10px 30px -8px rgba(0,0,0,.45),5px 5px 0 var(--ink)}}
 ${SPONSOR_CSS}
-@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}.js .rv{opacity:1;transform:none}}
 </style><script>
+document.documentElement.classList.add('js');addEventListener('DOMContentLoaded',()=>{const els=document.querySelectorAll('.rv');if(!('IntersectionObserver' in window)){els.forEach(e=>e.classList.add('in'));return}const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{rootMargin:'0px 0px -8% 0px'});els.forEach((e,i)=>{e.style.transitionDelay=(i%3)*70+'ms';io.observe(e)})});
 const getCart=()=>{try{return JSON.parse(localStorage.getItem('fm_cart')||'[]')}catch(e){return []}};
 const setCart=c=>{try{localStorage.setItem('fm_cart',JSON.stringify(c))}catch(e){};count()};
 function count(){const el=document.getElementById('cc');if(el)el.textContent=getCart().reduce((a,l)=>a+l.qty,0)}document.addEventListener('DOMContentLoaded',count);
@@ -981,7 +1014,7 @@ function count(){const el=document.getElementById('cc');if(el)el.textContent=get
 
 function card(p: TProduct) {
   const dots = p.colors.length > 2 ? `<div class="dots">${p.colors.map((c) => `<i style="background:${c.hex}" title="${c.fr}"></i>`).join("")}</div>` : "";
-  return `<a class="card" href="/tshirts/${p.id}"><span class="tag">${teuro(p.price)}</span><div class="img">${mockupSvg(p, p.colors[0].pf, p.sides.includes("back") ? "back" : "front", 300)}</div>
+  return `<a class="card rv" href="/tshirts/${p.id}"><span class="tag">${teuro(p.price)}</span><div class="img">${mockupSvg(p, p.colors[0].pf, p.sides.includes("back") ? "back" : "front", 300)}</div>
   <div class="txt"><h3>${p.name}</h3><div class="mute">${p.tagline}</div>${dots}</div></a>`;
 }
 function home() {
