@@ -39,12 +39,16 @@ const ADSENSE = /^ca-pub-\d{10,20}$/.test(cfg("ADSENSE_CLIENT")) ? cfg("ADSENSE_
 // Balise de vérification du site pour Google : le script publicitaire, lui, n'est chargé qu'après consentement
 const adHead = ADSENSE ? `<meta name="google-adsense-account" content="${ADSENSE}">` : "";
 const adSlot = ADSENSE ? `<div class="adzone"><div class="adlabel">Publicité</div><ins class="adsbygoogle" style="display:block" data-ad-client="${ADSENSE}" data-ad-format="auto" data-full-width-responsive="true"></ins></div>` : "";
-// Bandeau cookies : sans accord, aucun script Google n'est chargé. Choix gardé dans le navigateur du visiteur.
+// Bandeau cookies : Google exige le consentement dans l'EEE, au Royaume-Uni et en Suisse (dont les DROM français).
+// Le fuseau horaire du visiteur sert à repérer ces régions ; s'il est inconnu, on demande par prudence.
+// Ailleurs (Polynésie, Pacifique, Amériques…) les pubs se chargent directement, sauf refus enregistré.
 const consentBox = ADSENSE ? `<div id="ck" class="ck" hidden role="dialog" aria-live="polite" aria-label="Cookies"><p>🍪 Des publicités Google aident à financer FENUA MANGA. Avec ton accord, Google utilise des cookies pour les afficher et les personnaliser. <a href="/mentions-legales#cookies">En savoir plus</a></p><div class="ck-b"><button type="button" data-c="0">Refuser</button><button type="button" data-c="1">Accepter</button></div></div>
 <script>(()=>{const K='fm_consent',box=document.getElementById('ck');let v=null;try{v=localStorage.getItem(K)}catch(e){}
 const load=()=>{if(window.__fmAds)return;window.__fmAds=1;const s=document.createElement('script');s.async=true;s.crossOrigin='anonymous';s.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE}';document.head.appendChild(s);document.querySelectorAll('ins.adsbygoogle').forEach(()=>(window.adsbygoogle=window.adsbygoogle||[]).push({}))};
 box.querySelectorAll('button').forEach(b=>b.onclick=()=>{const c=b.dataset.c;try{localStorage.setItem(K,c)}catch(e){}box.hidden=true;if(c==='1')load();else if(window.__fmAds)location.reload()});
-window.fmCookies=()=>{box.hidden=false};if(v==='1')load();else if(v!=='0')box.hidden=false})()</script>` : "";
+let tz='';try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone||''}catch(e){}
+const ask=!tz||/^(Europe\\/|Arctic\\/|Atlantic\\/(Canary|Madeira|Azores|Reykjavik)|Indian\\/(Reunion|Mayotte)|America\\/(Guadeloupe|Martinique|Cayenne|Marigot|St_Barthelemy)|Africa\\/Ceuta|Asia\\/(Nicosia|Famagusta))/.test(tz);
+window.fmCookies=()=>{box.hidden=false};if(v==='1')load();else if(v!=='0'){if(ask)box.hidden=false;else load()}})()</script>` : "";
 const sponsorBox = () => {
   const name = cfg("SPONSOR_NAME"), url = cfg("SPONSOR_URL");
   if (name && /^https:\/\//.test(url)) return `<a class="sponsor" href="${esc(url)}" target="_blank" rel="sponsored noopener"><span class="sp-tag">PARTENAIRE</span><b>${esc(name)}</b><span>${esc(cfg("SPONSOR_TEXT"))}</span></a>`;
@@ -1083,7 +1087,8 @@ async function readLeads() {
 function legalPage() {
   const v = (k: string) => esc(cfg(k));
   const ed = [v("LEGAL_NAME") || "FENUA MANGA", v("LEGAL_ADDRESS"), v("LEGAL_ID") && `N° d'entreprise : ${v("LEGAL_ID")}`, v("LEGAL_EMAIL") && `Contact : <a href="mailto:${v("LEGAL_EMAIL")}">${v("LEGAL_EMAIL")}</a>`].filter(Boolean).join("<br>");
-  const ads = ADSENSE ? `<p>Des publicités Google AdSense sont affichées sur l'accueil et la page Liens. Elles ne sont chargées que si tu cliques sur « Accepter » dans le bandeau cookies. Google peut alors déposer des cookies pour afficher, mesurer et personnaliser les annonces (<a href="https://policies.google.com/technologies/ads?hl=fr" rel="noopener">en savoir plus</a>). Si tu refuses, aucun script publicitaire n'est chargé.</p>
+  const ads = ADSENSE ? `<p>Des publicités Google AdSense sont affichées sur l'accueil et la page Liens. Google, en tant que fournisseur tiers, utilise des cookies pour diffuser des annonces, notamment en fonction de tes visites sur ce site et sur d'autres sites. <a href="https://policies.google.com/technologies/partner-sites?hl=fr" rel="noopener">Comment Google utilise les données des sites partenaires</a> · <a href="https://policies.google.com/technologies/ads?hl=fr" rel="noopener">Publicité et cookies Google</a>.</p>
+  <p>Dans l'Espace économique européen (dont la France métropolitaine et les départements d'outre-mer), au Royaume-Uni et en Suisse, ces publicités ne sont chargées que si tu cliques sur « Accepter » dans le bandeau cookies. Ailleurs, en Polynésie française par exemple, elles s'affichent directement. Partout, tu peux les refuser avec le bouton ci-dessous : aucun script publicitaire n'est alors chargé. Tu peux aussi désactiver la publicité personnalisée dans les <a href="https://adssettings.google.com" rel="noopener">paramètres des annonces Google</a>.</p>
   <p><button class="buy" type="button" style="width:auto;padding:12px 22px" onclick="fmCookies()">Modifier mon choix cookies</button></p>` : `<p>Aucune publicité ni aucun cookie publicitaire n'est utilisé pour le moment.</p>`;
   return tlayout("Mentions légales — FENUA MANGA", `<div style="max-width:760px;margin:0 auto"><div class="kata" style="margin-top:20px">法的情報</div><h2>Mentions légales</h2>
   <div class="box"><h3>Éditeur</h3><p>${ed}</p>
