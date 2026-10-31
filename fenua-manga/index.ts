@@ -42,7 +42,7 @@ const adSlot = ADSENSE ? `<div class="adzone"><div class="adlabel">Publicité</d
 // Bandeau cookies : Google exige le consentement dans l'EEE, au Royaume-Uni et en Suisse (dont les DROM français).
 // Le fuseau horaire du visiteur sert à repérer ces régions ; s'il est inconnu, on demande par prudence.
 // Ailleurs (Polynésie, Pacifique, Amériques…) les pubs se chargent directement, sauf refus enregistré.
-const consentBox = ADSENSE ? `<div id="ck" class="ck" hidden role="dialog" aria-live="polite" aria-label="Cookies"><p>🍪 Des publicités Google aident à financer FENUA MANGA. Avec ton accord, Google utilise des cookies pour les afficher et les personnaliser. <a href="/mentions-legales#cookies">En savoir plus</a></p><div class="ck-b"><button type="button" data-c="0">Refuser</button><button type="button" data-c="1">Accepter</button></div></div>
+const consentBox = ADSENSE ? `<div id="ck" class="ck" hidden role="dialog" aria-live="polite" aria-label="Cookies"><p>Ce site utilise des cookies pour afficher des publicités Google qui financent FENUA MANGA. <a href="/mentions-legales#cookies">Voir plus</a></p><div class="ck-b"><button type="button" data-c="1">J'accepte</button><button type="button" data-c="0">Refuser</button></div></div>
 <script>(()=>{const K='fm_consent',box=document.getElementById('ck');let v=null;try{v=localStorage.getItem(K)}catch(e){}
 const load=()=>{if(window.__fmAds)return;window.__fmAds=1;const s=document.createElement('script');s.async=true;s.crossOrigin='anonymous';s.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE}';document.head.appendChild(s);document.querySelectorAll('ins.adsbygoogle').forEach(()=>(window.adsbygoogle=window.adsbygoogle||[]).push({}))};
 box.querySelectorAll('button').forEach(b=>b.onclick=()=>{const c=b.dataset.c;try{localStorage.setItem(K,c)}catch(e){}box.hidden=true;if(c==='1')load();else if(window.__fmAds)location.reload()});
@@ -58,10 +58,13 @@ const SPONSOR_CSS = `.sponsor{display:grid;gap:4px;max-width:720px;margin:28px a
 .sponsor:hover{transform:translate(-2px,-2px);box-shadow:10px 10px 0 #ffe14d}.sponsor b{font-size:20px}.sponsor span{color:#4a4550}
 .sponsor.empty{border-style:dashed;background:#fffdf7}.sp-tag{font-size:11px;font-weight:900;letter-spacing:.25em;color:#ff2a36!important}
 .adzone{max-width:760px;margin:28px auto;padding:0 16px;text-align:center}.adlabel{font-size:11px;letter-spacing:.2em;color:#8a8490;margin-bottom:4px}
-.ck{position:fixed;left:12px;right:12px;bottom:12px;z-index:50;max-width:560px;margin:0 auto;background:#fff;color:#0a0a0a;border:3px solid #0a0a0a;border-radius:18px;box-shadow:6px 6px 0 #ff2a36;padding:14px 16px;font-size:14px;line-height:1.45}
-.ck[hidden]{display:none}.ck p{margin:0 0 10px}.ck a{color:#0a0a0a}.ck-b{display:flex;gap:10px;justify-content:flex-end}
-.ck button{font:inherit;font-weight:900;padding:9px 16px;border-radius:12px;border:2px solid #0a0a0a;background:#fff;color:#0a0a0a;cursor:pointer}
-.ck button[data-c="1"]{background:#ff2a36;color:#fff}`;
+.ck{position:fixed;left:0;right:0;bottom:0;z-index:50;background:#000;color:#fff;padding:22px 20px calc(20px + env(safe-area-inset-bottom));font-size:17px;line-height:1.6;box-shadow:0 -8px 30px rgba(0,0,0,.25)}
+.ck[hidden]{display:none}.ck p{max-width:760px;margin:0 auto 16px}.ck a{color:#bbb;text-decoration:none;margin-left:4px}.ck a:hover{color:#fff}
+.ck-b{max-width:760px;margin:0 auto;display:grid;gap:10px}
+.ck button{font:inherit;font-weight:600;padding:12px;background:transparent;cursor:pointer;border-radius:0}
+.ck button[data-c="1"]{border:2px solid #ff2a36;color:#ff2a36}.ck button[data-c="1"]:hover{background:#ff2a36;color:#fff}
+.ck button[data-c="0"]{border:2px solid #555;color:#ccc}.ck button[data-c="0"]:hover{border-color:#fff;color:#fff}
+@media(min-width:700px){.ck-b{grid-template-columns:1fr 1fr}}`;
 
 // Apparition en fondu des blocs .rv au défilement
 const REVEAL = `<script>document.documentElement.classList.add('js');addEventListener('DOMContentLoaded',()=>{const els=document.querySelectorAll('.rv');if(!('IntersectionObserver' in window)){els.forEach(e=>e.classList.add('in'));return}const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{rootMargin:'0px 0px -8% 0px'});els.forEach((e,i)=>{e.style.transitionDelay=(i%3)*70+'ms';io.observe(e)})});</script>`;
