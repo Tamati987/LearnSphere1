@@ -49,7 +49,20 @@ box.querySelectorAll('button').forEach(b=>b.onclick=()=>{const c=b.dataset.c;try
 let tz='';try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone||''}catch(e){}
 const ask=!tz||/^(Europe\\/|Arctic\\/|Atlantic\\/(Canary|Madeira|Azores|Reykjavik)|Indian\\/(Reunion|Mayotte)|America\\/(Guadeloupe|Martinique|Cayenne|Marigot|St_Barthelemy)|Africa\\/Ceuta|Asia\\/(Nicosia|Famagusta))/.test(tz);
 window.fmCookies=()=>{box.hidden=false};if(v==='1')load();else if(v!=='0'){if(ask)box.hidden=false;else load()}})()</script>` : "";
+// Encarts achetés en ligne : /data/sponsors.json. status « live » = publié, « review » = en attente de vérification, « removed » = retiré.
+type Sponsor = { id: string; name: string; url: string; text: string; email: string; start: string; end: string; status: "live" | "review" | "removed"; reason?: string };
+const SPONSORS_FILE = `${DATA}/sponsors.json`;
+let sponsors: Sponsor[] = [];
+Bun.file(SPONSORS_FILE).json().then((x) => { if (Array.isArray(x)) sponsors = x; }).catch(() => {});
+const saveSponsors = () => Bun.write(SPONSORS_FILE, JSON.stringify(sponsors, null, 1), { createPath: true });
+const SPONSOR_DAYS = Number(cfg("SPONSOR_DAYS")) || 30;
+const SPONSOR_PRICE = Number(cfg("SPONSOR_PRICE_CENTS")) || 3000;
+const liveSponsor = () => { const now = new Date().toISOString(); return sponsors.find((x) => x.status === "live" && x.start <= now && now < x.end); };
+// Prochaine date libre : la fin du dernier encart publié ou en attente, sinon maintenant
+const nextFreeDate = () => sponsors.filter((x) => x.status !== "removed").reduce((d, x) => (x.end > d ? x.end : d), new Date().toISOString());
 const sponsorBox = () => {
+  const paid = liveSponsor();
+  if (paid) return `<a class="sponsor" href="${esc(paid.url)}" target="_blank" rel="sponsored noopener"><span class="sp-tag">PARTENAIRE</span><b>${esc(paid.name)}</b><span>${esc(paid.text)}</span></a>`;
   const name = cfg("SPONSOR_NAME"), url = cfg("SPONSOR_URL");
   if (name && /^https:\/\//.test(url)) return `<a class="sponsor" href="${esc(url)}" target="_blank" rel="sponsored noopener"><span class="sp-tag">PARTENAIRE</span><b>${esc(name)}</b><span>${esc(cfg("SPONSOR_TEXT"))}</span></a>`;
   return `<a class="sponsor empty" href="/partenaires"><span class="sp-tag">ESPACE PARTENAIRE</span><b>Ton commerce ici</b><span>Fais connaître ta marque aux fans de manga du fenua →</span></a>`;
@@ -69,7 +82,7 @@ const SPONSOR_CSS = `.sponsor{display:grid;gap:4px;max-width:720px;margin:28px a
 // Apparition en fondu des blocs .rv au défilement
 const REVEAL = `<script>document.documentElement.classList.add('js');addEventListener('DOMContentLoaded',()=>{const els=document.querySelectorAll('.rv');if(!('IntersectionObserver' in window)){els.forEach(e=>e.classList.add('in'));return}const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{rootMargin:'0px 0px -8% 0px'});els.forEach((e,i)=>{e.style.transitionDelay=(i%3)*70+'ms';io.observe(e)})});</script>`;
 
-const INDEX = `<!doctype html>
+const indexPage = () => `<!doctype html>
 <html lang="fr">
 <head>
 <meta charset="utf-8">
@@ -239,7 +252,7 @@ ${consentBox}
 </html>
 `;
 
-const LIENS = `<!doctype html>
+const liensPage = () => `<!doctype html>
 <html lang="fr">
 <head>
 <meta charset="utf-8">
@@ -1063,6 +1076,50 @@ function cartPage() {
 }
 
 /* ===================== PARTENAIRES ===================== */
+/* Contrôle des annonces : règles simples (refus immédiat) puis avis de Claude (doute = mise en attente). */
+const SHORTENERS = /^(bit\.ly|tinyurl\.com|t\.co|goo\.gl|cutt\.ly|is\.gd|rb\.gy|shorturl\.at|ow\.ly|buff\.ly|tiny\.cc|s\.id|lnkd\.in)$/i;
+const BANNED = /(casino|pari|paris sportif|\bbet|poker|porn|sexe?|xxx|escort|adulte|viagra|cialis|crypto|bitcoin|forex|trading|investissement garanti|pr[eê]t rapide|cr[eé]dit facile|hack|cheat|cracks?|t[ée]l[ée]chargement gratuit|arme|drogue|cannabis|vape|alcool|tabac|loterie|gagner de l'argent)/i;
+function checkAdRules(name: string, url: string, text: string): string | null {
+  if (!name || name.length > 60) return "Indique le nom de ton commerce (60 caractères max).";
+  if (text.length > 90) return "La phrase doit faire 90 caractères maximum.";
+  let u: URL; try { u = new URL(url); } catch { return "Le lien n'est pas valide."; }
+  if (u.protocol !== "https:") return "Le lien doit commencer par https://";
+  if (/^[\d.]+$/.test(u.hostname) || u.hostname.includes(":")) return "Le lien doit être un vrai nom de site, pas une adresse IP.";
+  if (u.hostname.split(".").some((part) => part.startsWith("xn--"))) return "Ce type d'adresse n'est pas accepté.";
+  if (SHORTENERS.test(u.hostname)) return "Les liens raccourcis ne sont pas acceptés : mets le lien complet.";
+  if (u.username || u.password || url.length > 200) return "Ce lien n'est pas accepté.";
+  if (BANNED.test(`${name} ${text} ${url}`)) return "Ce type de publicité n'est pas accepté sur FENUA MANGA (site tout public).";
+  return null;
+}
+// Avis de Claude sur l'annonce (le site n'ouvre pas la page du lien). Sans clé ou en cas d'erreur : vérification manuelle.
+async function aiReview(name: string, url: string, text: string): Promise<{ ok: boolean; reason: string }> {
+  const key = cfg("ANTHROPIC_API_KEY");
+  if (!key) return { ok: false, reason: "vérification automatique indisponible" };
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST", headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({ model: "claude-haiku-5-5", max_tokens: 150, messages: [{ role: "user", content:
+        `Tu modères les encarts publicitaires d'un site de mangas tahitiens tout public (ados inclus). Réponds UNIQUEMENT en JSON {"ok":true|false,"raison":"…"}.\nRefuse : contenu adulte, jeux d'argent, alcool/tabac/drogue, arnaques, crypto/finance douteuse, haine, imitation d'une marque connue, lien qui semble trompeur ou malveillant.\nAccepte : commerces, associations, créateurs, événements normaux.\nNom : ${JSON.stringify(name)}\nLien : ${JSON.stringify(url)}\nPhrase : ${JSON.stringify(text)}` }] }),
+    });
+    const j: any = await r.json();
+    const out = JSON.parse(String(j?.content?.[0]?.text || "").match(/\{[\s\S]*\}/)?.[0] || "{}");
+    return typeof out.ok === "boolean" ? { ok: out.ok, reason: String(out.raison || "") } : { ok: false, reason: "réponse illisible" };
+  } catch (e: any) { return { ok: false, reason: `erreur vérification : ${e.message}` }; }
+}
+// Après paiement confirmé : crée l'encart (une seule fois par paiement), publié si le contrôle passe, sinon en attente
+async function activateSponsor(sessionId: string) {
+  if (sponsors.some((x) => x.id === sessionId)) return;
+  const s = await tstripe("GET", `/checkout/sessions/${sessionId}`);
+  if (s.payment_status !== "paid" || s.metadata?.shop !== "fenua-manga-sponsor") return;
+  const m = s.metadata, start = nextFreeDate();
+  const end = new Date(new Date(start).getTime() + SPONSOR_DAYS * 864e5).toISOString();
+  const review = await aiReview(m.name, m.url, m.text || "");
+  sponsors.push({ id: sessionId, name: m.name, url: m.url, text: m.text || "", email: s.customer_details?.email || "", start, end, status: review.ok ? "live" : "review", reason: review.reason });
+  await saveSponsors();
+  log(`Encart partenaire payé : ${m.name} (${review.ok ? "publié" : "en attente : " + review.reason})`);
+}
+const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "Pacific/Tahiti" });
+
 const LEADS = `${DATA}/partenaires.jsonl`;
 const leadHits = new Map<string, number[]>();
 function partnersPage(msg = "") {
@@ -1070,6 +1127,16 @@ function partnersPage(msg = "") {
   <p>FENUA MANGA, ce sont des mangas 100 % tahitiens, des épisodes vidéo sur TikTok et YouTube, et une boutique de t-shirts. Un public jeune, fan de manga et de culture du fenua.</p>
   <ul class="perks"><li>📣 Ton logo et ton lien sur le site (accueil, page Liens, boutique)</li><li>🎬 Une mention dans un épisode vidéo</li><li>🤝 Une offre sur mesure : un mois, un tome, un événement</li></ul>
   ${msg}
+  <h3 style="margin-top:28px">Réserve ton encart en ligne</h3>
+  <p><b>${teuro(SPONSOR_PRICE)} pour ${SPONSOR_DAYS} jours</b> sur l'accueil, la page Liens et la boutique. ${nextFreeDate() > new Date().toISOString() ? `Prochaine place libre : <b>${fmtDate(nextFreeDate())}</b>.` : "Place libre dès maintenant."}</p>
+  <form class="box" method="post" action="/partenaires/payer" style="display:grid;gap:10px">
+    <label class="label">Nom affiché<input name="name" required maxlength="60" style="width:100%;padding:10px;font:inherit;border:3px solid var(--ink)"></label>
+    <label class="label">Lien (site, Instagram, Facebook…)<input name="url" type="url" required placeholder="https://" maxlength="200" style="width:100%;padding:10px;font:inherit;border:3px solid var(--ink)"></label>
+    <label class="label">Ta phrase (90 caractères max)<input name="text" maxlength="90" style="width:100%;padding:10px;font:inherit;border:3px solid var(--ink)"></label>
+    <p class="mute" style="font-size:13px;margin:0">Chaque annonce est vérifiée automatiquement : pas de contenu adulte, jeux d'argent, alcool, arnaques ni liens raccourcis. En cas de doute, elle est relue avant publication ; si elle est refusée, tu es remboursé.</p>
+    <button class="buy" type="submit">Payer ${teuro(SPONSOR_PRICE)} et réserver</button>
+  </form>
+  <h3 style="margin-top:28px">Une offre sur mesure ?</h3>
   <form class="box" method="post" action="/partenaires" style="display:grid;gap:10px">
     <label class="label">Ton nom<input name="nom" required maxlength="80" style="width:100%;padding:10px;font:inherit;border:3px solid var(--ink)"></label>
     <label class="label">Ton commerce / ta marque<input name="marque" maxlength="120" style="width:100%;padding:10px;font:inherit;border:3px solid var(--ink)"></label>
@@ -1113,11 +1180,36 @@ const tjson = (o: any, status = 200) => new Response(JSON.stringify(o), { status
 async function tshirtRoute(req: Request, url: URL, p: string): Promise<Response | null> {
   if (p === "/tshirts" || p === "/t-shirts") return thtml(home());
   if (p === "/daytho") return new Response(null, { status: 302, headers: { Location: "/tshirts#daytho" } });
-  if (p.startsWith("/tshirts/") && req.method === "GET" && !["/tshirts/merci", "/tshirts/admin"].includes(p)) {
+  if (p.startsWith("/tshirts/") && req.method === "GET" && !["/tshirts/merci", "/tshirts/admin", "/tshirts/admin/encart"].includes(p)) {
     const prod = byId(p.slice(9)); return prod ? thtml(productPage(prod)) : null;
   }
   if (p === "/panier") return thtml(cartPage());
   if (p === "/partenaires" && req.method === "GET") return thtml(partnersPage());
+  if (p === "/partenaires/payer" && req.method === "POST") {
+    const form = await req.formData().catch(() => null);
+    const get = (k: string) => String(form?.get(k) ?? "").trim();
+    const name = get("name"), url = get("url"), text = get("text");
+    const err = checkAdRules(name, url, text);
+    if (err) return thtml(partnersPage(`<div class="notice">${esc(err)}</div>`), 400);
+    if (!env("STRIPE_SECRET_KEY")) return thtml(partnersPage(`<div class="notice">Le paiement en ligne n'est pas encore activé.</div>`), 503);
+    try {
+      const s = await tstripe("POST", "/checkout/sessions", {
+        mode: "payment", locale: "fr", success_url: `${TPUB}/partenaires/merci?session_id={CHECKOUT_SESSION_ID}`, cancel_url: `${TPUB}/partenaires`,
+        line_items: [{ quantity: 1, price_data: { currency: "eur", unit_amount: SPONSOR_PRICE, product_data: { name: `Encart partenaire FENUA MANGA — ${SPONSOR_DAYS} jours`, description: name } } }],
+        metadata: { shop: "fenua-manga-sponsor", name, url, text },
+      });
+      return Response.redirect(s.url, 303);
+    } catch (e: any) { log(`Partenaire/checkout : ${e.message}`); return thtml(partnersPage(`<div class="notice">Le paiement n'a pas pu démarrer, réessaie dans un instant.</div>`), 500); }
+  }
+  if (p === "/partenaires/merci") {
+    const id = url.searchParams.get("session_id") || "";
+    if (/^cs_(test|live)_[A-Za-z0-9]+$/.test(id)) { try { await activateSponsor(id); } catch (e: any) { log(`Partenaire/merci : ${e.message}`); } }
+    const sp = sponsors.find((x) => x.id === id);
+    const msg = !sp ? "Paiement en cours de confirmation : recharge cette page dans quelques secondes."
+      : sp.status === "live" ? `Ton encart est validé ! Il est visible du <b>${fmtDate(sp.start)}</b> au <b>${fmtDate(sp.end)}</b>.`
+      : "Merci ! Ton annonce est en cours de vérification avant publication. Si elle n'est pas acceptée, tu seras remboursé.";
+    return thtml(tlayout("Merci — FENUA MANGA", `<div class="hero"><h1>MĀURU<em>URU !</em></h1><p>${msg}</p><p><a href="/">Retour au site</a></p></div>`, { noindex: true }));
+  }
   if (p === "/partenaires" && req.method === "POST") {
     const form = await req.formData().catch(() => null);
     const get = (k: string, max: number) => String(form?.get(k) ?? "").trim().slice(0, max);
@@ -1186,7 +1278,17 @@ async function tshirtRoute(req: Request, url: URL, p: string): Promise<Response 
     if (["checkout.session.completed", "checkout.session.async_payment_succeeded"].includes(ev.type) && ev.data.object.metadata?.shop === "fenua-manga") {
       try { await fulfill(ev.data.object.id); } catch (e: any) { log(`Webhook/fulfill : ${e.message}`); return new Response("retry", { status: 500 }); }
     }
+    if (["checkout.session.completed", "checkout.session.async_payment_succeeded"].includes(ev.type) && ev.data.object.metadata?.shop === "fenua-manga-sponsor") {
+      try { await activateSponsor(ev.data.object.id); } catch (e: any) { log(`Webhook/encart : ${e.message}`); return new Response("retry", { status: 500 }); }
+    }
     return new Response("ok");
+  }
+  if (p === "/tshirts/admin/encart") {
+    if (!env("OWNER_KEY") || url.searchParams.get("key") !== env("OWNER_KEY")) return thtml("Accès refusé", 403);
+    const sp = sponsors.find((x) => x.id === url.searchParams.get("id"));
+    const action = url.searchParams.get("action");
+    if (sp && (action === "valider" || action === "retirer")) { sp.status = action === "valider" ? "live" : "removed"; await saveSponsors(); log(`Encart ${sp.name} : ${action}`); }
+    return new Response(null, { status: 303, headers: { Location: `/tshirts/admin?key=${encodeURIComponent(env("OWNER_KEY"))}` } });
   }
   if (p === "/tshirts/admin") {
     if (!env("OWNER_KEY") || url.searchParams.get("key") !== env("OWNER_KEY")) return thtml("Accès refusé", 403);
@@ -1201,9 +1303,11 @@ async function tshirtRoute(req: Request, url: URL, p: string): Promise<Response 
     const ev = events.map((e) => `<div class="row"><span class="mute">${e.at.slice(0, 16).replace("T", " ")}</span><span>${esc(e.msg)}</span></div>`).join("") || `<p class="mute">Rien pour l'instant.</p>`;
     const tests = TPRODUCTS.filter((pr) => pr.hidden).map((pr) => `<a href="/tshirts/${pr.id}">${pr.name}</a>`).join(" · ");
     const leads = (await readLeads()).map((l: any) => `<div class="row"><span class="mute">${esc(String(l.at).slice(0, 16).replace("T", " "))}</span><span><b>${esc(l.marque || l.nom)}</b> · ${esc(l.nom)} · ${esc(l.contact)}<br>${esc(l.message || "")}</span></div>`).join("") || `<p class="mute">Aucune demande pour l'instant.</p>`;
+    const act = (sp: Sponsor, a: string, label: string) => `<a href="/tshirts/admin/encart?key=${encodeURIComponent(env("OWNER_KEY"))}&id=${encodeURIComponent(sp.id)}&action=${a}">${label}</a>`;
+    const sponsorRows = sponsors.slice().reverse().map((sp) => `<div class="row"><span><b>${esc(sp.name)}</b> · <a href="${esc(sp.url)}" rel="noopener nofollow">${esc(sp.url)}</a><br>${esc(sp.text)}<br><span class="mute">${fmtDate(sp.start)} → ${fmtDate(sp.end)} · ${esc(sp.email)}${sp.reason ? ` · contrôle : ${esc(sp.reason)}` : ""}</span></span><span>${sp.status === "live" ? "✅ publié" : sp.status === "review" ? "⏳ à vérifier" : "🚫 retiré"}<br>${sp.status !== "live" ? act(sp, "valider", "Valider") : ""} ${sp.status !== "removed" ? act(sp, "retirer", "Retirer") : ""}</span></div>`).join("") || `<p class="mute">Aucun encart payé pour l'instant.</p>`;
     const legalMissing = ["LEGAL_NAME", "LEGAL_ADDRESS", "LEGAL_EMAIL"].filter((k) => !cfg(k));
     const money = `<div class="row"><b>Mentions légales</b><span>${legalMissing.length ? `⚠️ à compléter : ${legalMissing.join(", ")}` : "✅ complètes"}</span></div><div class="row"><b>Publicité AdSense</b><span>${ADSENSE ? `✅ active (${ADSENSE})` : "⏸️ inactive : ajouter ADSENSE_CLIENT"}</span></div><div class="row"><b>Encart partenaire</b><span>${cfg("SPONSOR_NAME") ? `✅ ${esc(cfg("SPONSOR_NAME"))}` : "⏸️ libre (« Ton commerce ici »)"}</span></div>`;
-    return thtml(tlayout("Admin t-shirts — FENUA MANGA", `<h2>Admin t-shirts</h2>${rows}${money}<h3>Demandes partenaires</h3>${leads}<h3>T-shirts test (privés)</h3><p>${tests}</p><h3>Journal</h3>${ev}`, { noindex: true }));
+    return thtml(tlayout("Admin t-shirts — FENUA MANGA", `<h2>Admin t-shirts</h2>${rows}${money}<h3>Encarts payés</h3>${sponsorRows}<h3>Demandes partenaires</h3>${leads}<h3>T-shirts test (privés)</h3><p>${tests}</p><h3>Journal</h3>${ev}`, { noindex: true }));
   }
   return null;
 }
@@ -1242,8 +1346,8 @@ Bun.serve({
     }
     if (p === "/ads.txt") return ADSENSE ? new Response(`google.com, ${ADSENSE.replace("ca-", "")}, DIRECT, f08c47fec0942fa0\n`, { headers: { "Content-Type": "text/plain" } }) : new Response("Not found", { status: 404 });
     if (p === "/favicon.ico") return Response.redirect(`${origin}/img/favicon.png`, 301);
-    if (p === "/" || p === "/index.html") return html(INDEX);
-    if (p === "/liens" || p === "/liens.html") return html(LIENS);
+    if (p === "/" || p === "/index.html") return html(indexPage());
+    if (p === "/liens" || p === "/liens.html") return html(liensPage());
     if (p === "/soutenir" || p === "/soutien") return Response.redirect("https://ko-fi.com/loshing57323", 302);
     if (p === "/style.css") return new Response(CSS, { headers: { "Content-Type": "text/css; charset=utf-8", "Cache-Control": "public, max-age=600" } });
 
