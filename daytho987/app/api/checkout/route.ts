@@ -57,7 +57,7 @@ export async function POST(request: Request) {
               },
             ]
           : undefined,
-      metadata: { cart: encodeCart(lines) },
+      metadata: encodeCart(lines),
       locale: "fr",
       success_url: `${origin}/merci?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/#shop`,

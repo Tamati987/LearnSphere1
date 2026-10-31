@@ -15,17 +15,27 @@ export const SHIPPING_COUNTRIES: Stripe.Checkout.SessionCreateParams.ShippingAdd
 ];
 
 // Les articles du panier voyagent dans les métadonnées Stripe sous une forme
-// compacte : "productId|taille|quantité;..." (500 caractères max par valeur).
+// compacte : "productId|taille|quantité;...". Stripe limite chaque valeur à
+// 500 caractères : la chaîne est donc découpée en cart_0, cart_1, ...
 export type CartLine = { productId: string; size: string; quantity: number };
 
-export const encodeCart = (lines: CartLine[]) =>
-  lines.map((l) => `${l.productId}|${l.size}|${l.quantity}`).join(";");
+const CHUNK = 450;
 
-export const decodeCart = (raw: string): CartLine[] =>
-  raw
+export function encodeCart(lines: CartLine[]): Record<string, string> {
+  const raw = lines.map((l) => `${l.productId}|${l.size}|${l.quantity}`).join(";");
+  const meta: Record<string, string> = {};
+  for (let i = 0; i * CHUNK < raw.length; i++) meta[`cart_${i}`] = raw.slice(i * CHUNK, (i + 1) * CHUNK);
+  return meta;
+}
+
+export function decodeCart(metadata: Record<string, string> | null | undefined): CartLine[] {
+  let raw = "";
+  for (let i = 0; metadata?.[`cart_${i}`] !== undefined; i++) raw += metadata[`cart_${i}`];
+  return raw
     .split(";")
     .filter(Boolean)
     .map((s) => {
       const [productId, size, quantity] = s.split("|");
       return { productId, size, quantity: Number(quantity) };
     });
+}

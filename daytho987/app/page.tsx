@@ -1,5 +1,5 @@
 import { ArrowRight, Zap } from "lucide-react";
-import { products } from "@/lib/products";
+import { products, collections } from "@/lib/products";
 import { ProductCard } from "@/components/ProductCard";
 
 export default function Home() {
@@ -31,21 +31,46 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Product Grid */}
-      <section id="shop" className="py-24 px-4 max-w-7xl mx-auto relative z-10">
-        <div className="flex justify-between items-end mb-12 border-b border-daytho-gray pb-4">
-          <h3 className="font-display text-4xl md:text-5xl uppercase border-l-4 border-daytho-red pl-4">
-            Derniers <span className="text-daytho-red">Drops</span>
-          </h3>
-          <span className="text-sm text-gray-500 font-mono hidden md:block">[ DAYTHO.SYSTEM.ONLINE ]</span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+      {/* Shop : une section par collection */}
+      <div id="shop" className="scroll-mt-20">
+        {/* Accès rapide aux collections */}
+        <nav className="max-w-7xl mx-auto px-4 pt-16 grid grid-cols-2 gap-4" aria-label="Collections">
+          {collections.map((c) => (
+            <a
+              key={c.id}
+              href={`#${c.id}`}
+              className="group border border-daytho-gray hover:border-daytho-red p-6 md:p-10 text-center transition-colors bg-black/40"
+            >
+              <span className="block text-xs font-mono text-gray-500 mb-2">{c.tag}</span>
+              <span className="font-display text-3xl md:text-5xl uppercase group-hover:text-daytho-red transition-colors">
+                {c.title}
+              </span>
+            </a>
           ))}
-        </div>
-      </section>
+        </nav>
+
+        {collections.map((c) => {
+          const items = products.filter((p) => p.collection === c.id);
+          return (
+            <section key={c.id} id={c.id} className="scroll-mt-20 py-20 px-4 max-w-7xl mx-auto relative z-10">
+              <div className="flex justify-between items-end mb-12 border-b border-daytho-gray pb-4">
+                <h3 className="font-display text-4xl md:text-5xl uppercase border-l-4 border-daytho-red pl-4">
+                  {c.title} <span className="text-daytho-red">{c.accent}</span>
+                </h3>
+                <span className="text-sm text-gray-500 font-mono hidden md:block">
+                  {c.tag} · {items.length} PIÈCES
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {items.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            </section>
+          );
+        })}
+      </div>
 
       {/* Section Manifesto */}
       <section className="py-20 bg-daytho-red/5 border-y border-daytho-red/20">

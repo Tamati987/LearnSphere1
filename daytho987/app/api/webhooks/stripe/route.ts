@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { stripe, decodeCart } from "@/lib/stripe";
-import { findVariant } from "@/lib/products";
+import { findVariant, isOrderable } from "@/lib/products";
 import { createOrder } from "@/lib/printful";
 
 // Stripe appelle cette route après un paiement réussi.
@@ -39,9 +39,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Adresse manquante" }, { status: 500 });
   }
 
-  const items = decodeCart(session.metadata?.cart ?? "").flatMap((line) => {
+  const items = decodeCart(session.metadata).flatMap((line) => {
     const found = findVariant(line.productId, line.size);
-    if (!found) return [];
+    if (!found || !isOrderable(found.variant)) {
+      console.error(`Article non relié à Printful ignoré (${line.productId} ${line.size}) — session ${session.id}`);
+      return [];
+    }
     return [{
       sync_variant_id: found.variant.printfulSyncVariantId,
       quantity: line.quantity,

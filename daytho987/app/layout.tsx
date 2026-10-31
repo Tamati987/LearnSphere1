@@ -32,8 +32,9 @@ export default function RootLayout({
             </h1>
           </a>
           <nav className="hidden md:flex space-x-8 text-sm font-semibold tracking-wider">
-            <a href="#shop" className="hover:text-daytho-red transition-colors">SHOP</a>
-            <a href="#" className="hover:text-daytho-red transition-colors">COLLECTIONS</a>
+            <a href="/#shop" className="hover:text-daytho-red transition-colors">SHOP</a>
+            <a href="/#garcons" className="hover:text-daytho-red transition-colors">GARÇONS</a>
+            <a href="/#filles" className="hover:text-daytho-red transition-colors">FILLES</a>
             <a href="#" className="hover:text-daytho-red transition-colors">LOOKBOOK</a>
             <a href="#" className="hover:text-daytho-red transition-colors">CONTACT</a>
           </nav>
