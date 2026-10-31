@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Oswald } from "next/font/google";
+import Image from "next/image";
 import "./globals.css";
 import { ShoppingCart } from "lucide-react";
 
@@ -21,9 +22,12 @@ export default function RootLayout({
       <body className={`${inter.variable} ${oswald.variable} font-sans bg-daytho-black text-daytho-white antialiased min-h-screen flex flex-col`}>
         {/* Header */}
         <header className="border-b border-daytho-red/30 p-4 flex justify-between items-center sticky top-0 bg-daytho-black/90 backdrop-blur-md z-50">
-          <h1 className="font-display text-2xl font-bold tracking-widest text-daytho-white uppercase">
-            DAYTHO<span className="text-daytho-red"> 987</span>
-          </h1>
+          <a href="/" className="flex items-center gap-3">
+            <Image src="/logo-daytho.png" alt="Logo DAYTHO" width={40} height={40} className="rounded-full" priority />
+            <h1 className="font-display text-2xl font-bold tracking-widest text-daytho-white uppercase">
+              DAYTHO<span className="text-daytho-red"> 987</span>
+            </h1>
+          </a>
           <nav className="hidden md:flex space-x-8 text-sm font-semibold tracking-wider">
             <a href="#shop" className="hover:text-daytho-red transition-colors">SHOP</a>
             <a href="#" className="hover:text-daytho-red transition-colors">COLLECTIONS</a>
