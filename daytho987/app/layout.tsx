@@ -22,10 +22,10 @@ export default function RootLayout({
       <body className={`${inter.variable} ${oswald.variable} font-sans bg-daytho-black text-daytho-white antialiased min-h-screen flex flex-col`}>
         {/* Header */}
         <header className="border-b border-daytho-red/30 p-4 flex justify-between items-center sticky top-0 bg-daytho-black/90 backdrop-blur-md z-50">
-          <a href="/" className="flex items-center gap-3">
-            <Image src="/logo-daytho.png" alt="Logo DAYTHO" width={40} height={40} className="rounded-full" priority />
-            <h1 className="font-display text-2xl font-bold tracking-widest text-daytho-white uppercase">
-              DAYTHO<span className="text-daytho-red"> 987</span>
+          <a href="/" className="flex items-center">
+            <h1>
+              <span className="sr-only">DAYTHO 987</span>
+              <Image src="/logo-daytho.png" alt="DAYTHO 987" width={1113} height={207} className="h-9 w-auto" priority />
             </h1>
           </a>
           <nav className="hidden md:flex space-x-8 text-sm font-semibold tracking-wider">
