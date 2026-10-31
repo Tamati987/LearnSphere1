@@ -1,0 +1,1086 @@
+// FENUA MANGA — boutique de mangas tahitiens + t-shirts Printful (Railway Function, Bun)
+import { Resvg } from "@resvg/resvg-js";
+import { createHmac, createHash, timingSafeEqual } from "node:crypto";
+// Variables : STRIPE_SECRET_KEY, PRICE_CENTS (MANA, 499), TOA_PRICE_CENTS (599), OWNER_KEY, DATA_DIR (/data), PUBLIC_URL
+const STRIPE_KEY = Bun.env.STRIPE_SECRET_KEY ?? "";
+const OWNER_KEY = Bun.env.OWNER_KEY ?? "";
+const DATA = (Bun.env.DATA_DIR ?? "/data").replace(/\/$/, "");
+
+type Product = { label: string; name: string; desc: string; price: number; pdf: string; file: string };
+const PRODUCTS: Record<string, Product> = {
+  "mana-t1": {
+    label: "MANA — Tome 1",
+    name: "MANA — Tome 1 : L'éclipse (PDF)",
+    desc: "Manga tahitien, 16 pages, format numérique à télécharger.",
+    price: Number(Bun.env.PRICE_CENTS ?? 499),
+    pdf: `${DATA}/MANA-Tome1.pdf`,
+    file: "MANA-Tome1-FenuaManga.pdf",
+  },
+  "toa-t1": {
+    label: "TOA — Tome 1",
+    name: "TOA — Tome 1 (PDF)",
+    desc: "Manga de combat tahitien, 44 pages, format numérique à télécharger.",
+    price: Number(Bun.env.TOA_PRICE_CENTS ?? 599),
+    pdf: `${DATA}/TOA-Tome1.pdf`,
+    file: "TOA-Tome1-FenuaManga.pdf",
+  },
+};
+const euros = (c: number) => (c / 100).toFixed(2).replace(".", ",") + " €";
+const MANA_P = euros(PRODUCTS["mana-t1"].price);
+const TOA_P = euros(PRODUCTS["toa-t1"].price);
+const hideIfMissing = `onerror="this.style.display='none'"`;
+
+const INDEX = `<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FENUA MANGA — Le fenua en manga</title>
+<meta name="description" content="Illustrations et mangas 100 % tahitiens. TOA, Tome 1 et MANA, Tome 1 : L'éclipse, à télécharger en PDF.">
+<meta property="og:title" content="FENUA MANGA — TOA et MANA">
+<meta property="og:description" content="Des mangas 100 % tahitiens à télécharger en PDF.">
+<meta property="og:image" content="/img/og.jpg">
+<link rel="icon" href="/img/favicon.png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<header class="top">
+  <a href="/" class="brand">FENUA <span>MANGA</span></a>
+  <span><a href="/tshirts" style="font-weight:900;text-decoration:none;margin-right:12px">T-shirts</a><a href="#acheter" class="btn small-btn">Acheter</a></span>
+</header>
+
+<section class="hero" id="toa">
+  <div class="hero-img"><img src="/img/toa-01.jpg" alt="Couverture de TOA, Tome 1" ${hideIfMissing}></div>
+  <div class="hero-txt">
+    <div class="badge">NOUVEAU</div>
+    <div class="kata">トア</div>
+    <h1>TOA</h1>
+    <p class="sub">Tome 1 · Le toa vide</p>
+    <p class="pitch">À Faa'a, Manu, 16 ans, porte un tatau qui ne s'est jamais réveillé.
+      Pour sauver le fare de sa famille, il doit gagner le Tournoi des Toa à Taputapuātea…
+      et dompter <b>Maʻo</b>, le requin-tigre qui dévore aussi son porteur.</p>
+    <a href="#acheter" class="btn big">Lire TOA · <span class="price">${TOA_P}</span></a>
+    <p class="small">44 pages · PDF à télécharger immédiatement après paiement</p>
+  </div>
+</section>
+
+<section class="strip">
+  <div><b>100 %</b> tahitien</div>
+  <div><b>2</b> mangas</div>
+  <div><b>PDF</b> instantané</div>
+  <div><b>Paiement</b> sécurisé</div>
+</section>
+
+<section class="preview">
+  <h2>Feuillette TOA</h2>
+  <div class="pages">
+    <img src="/img/toa-02.jpg" alt="TOA, extrait 1" loading="lazy" ${hideIfMissing}>
+    <img src="/img/toa-03.jpg" alt="TOA, extrait 2" loading="lazy" ${hideIfMissing}>
+    <img src="/img/toa-04.jpg" alt="TOA, extrait 3" loading="lazy" ${hideIfMissing}>
+    <img src="/img/toa-05.jpg" alt="TOA, extrait 4" loading="lazy" ${hideIfMissing}>
+  </div>
+</section>
+
+<section class="chars">
+  <h2>Les personnages de TOA</h2>
+  <div class="cards">
+    <div class="card"><h3>Manu</h3><p>16 ans, de Faa'a. On l'appelle le « toa vide »… jusqu'au jour où son tatau s'éveille.</p></div>
+    <div class="card"><h3>Kahu</h3><p>Son meilleur ami. Peureux, drôle, et il connaît tous les combattants par cœur.</p></div>
+    <div class="card"><h3>Vaimiti</h3><p>La raie manta de Bora Bora. Rivale redoutable… ou future alliée ?</p></div>
+    <div class="card red"><h3>Maʻo</h3><p>Le requin-tigre. Le totem le plus dangereux du Pacifique.</p></div>
+  </div>
+</section>
+
+<section class="hero second" id="mana">
+  <div class="hero-img"><img src="/img/page-01.jpg" alt="Couverture de MANA, Tome 1" ${hideIfMissing}></div>
+  <div class="hero-txt">
+    <div class="kata">フェヌア・マンガ</div>
+    <h1>MANA</h1>
+    <p class="sub">Tome 1 · L'éclipse</p>
+    <p class="pitch">À Tahiti, on raconte qu'un pouvoir plus ancien que les îles dort dans l'océan.
+      Le jour où le soleil disparaît, le tatau de Teiva s'embrase… et réveille <b>Tumu</b>, le dieu-requin.</p>
+    <a href="#acheter" class="btn big">Lire MANA · <span class="price">${MANA_P}</span></a>
+    <p class="small">16 pages · PDF à télécharger immédiatement après paiement</p>
+  </div>
+</section>
+
+<section class="preview">
+  <h2>Feuillette MANA</h2>
+  <div class="pages">
+    <img src="/img/page-04.jpg" alt="Page 4" loading="lazy" ${hideIfMissing}>
+    <img src="/img/page-05.jpg" alt="Page 5" loading="lazy" ${hideIfMissing}>
+    <img src="/img/page-06.jpg" alt="Page 6" loading="lazy" ${hideIfMissing}>
+    <img src="/img/page-07.jpg" alt="Page 7" loading="lazy" ${hideIfMissing}>
+  </div>
+</section>
+
+<section class="chars">
+  <h2>Les personnages de MANA</h2>
+  <div class="cards">
+    <div class="card"><h3>Teiva</h3><p>Jeune rameur de va'a. Le tatau de son grand-père s'éveille en lui.</p></div>
+    <div class="card"><h3>Hinatea</h3><p>Gardienne mystérieuse. L'eau obéit à chacun de ses gestes.</p></div>
+    <div class="card red"><h3>Tumu</h3><p>Le dieu-requin. Un sourire trop large… des dents trop pointues.</p></div>
+    <div class="card"><h3>Papa Rui</h3><p>Le grand-père. Il connaît le secret du mana.</p></div>
+  </div>
+</section>
+
+<section id="acheter" class="buy">
+  <h2>Acheter</h2>
+  <div class="buy-box">
+    <img src="/img/toa-01.jpg" alt="TOA Tome 1" ${hideIfMissing}>
+    <div>
+      <div class="badge dark">NOUVEAU</div>
+      <h2>TOA — Tome 1</h2>
+      <p>4 chapitres : « Le toa vide », « L'esprit qui dort », « Le tournoi des Toa », « Le prix du requin »</p>
+      <ul>
+        <li>44 pages au format manga</li>
+        <li>PDF haute qualité, à lire sur téléphone, tablette ou ordinateur</li>
+        <li>Téléchargement immédiat</li>
+      </ul>
+      <form method="post" action="/acheter">
+        <input type="hidden" name="produit" value="toa-t1">
+        <button class="btn big" type="submit">Acheter · ${TOA_P}</button>
+      </form>
+      <p class="small">Paiement sécurisé par carte via Stripe.</p>
+    </div>
+  </div>
+
+  <div class="buy-box">
+    <img src="/img/page-01.jpg" alt="MANA Tome 1" ${hideIfMissing}>
+    <div>
+      <h2>MANA — Tome 1</h2>
+      <p>Chapitre 1 « L'éclipse » + Chapitre 2 « Tumu »</p>
+      <ul>
+        <li>16 pages au format manga</li>
+        <li>PDF haute qualité, à lire sur téléphone, tablette ou ordinateur</li>
+        <li>Téléchargement immédiat</li>
+      </ul>
+      <form method="post" action="/acheter">
+        <input type="hidden" name="produit" value="mana-t1">
+        <button class="btn big" type="submit">Acheter · ${MANA_P}</button>
+      </form>
+      <p class="small">Paiement sécurisé par carte via Stripe.</p>
+    </div>
+  </div>
+</section>
+
+<section id="tshirts" style="max-width:1080px;margin:0 auto;padding:48px 16px;text-align:center;border-top:4px solid var(--red);">
+  <div class="badge">NOUVEAU</div>
+  <h2>👕 Les t-shirts FENUA MANGA</h2>
+  <p style="margin:12px auto 22px;max-width:560px;">Le logo devant, Manu et son tatau dans le dos. Imprimés à la commande, livrés chez toi.</p>
+  <a href="/tshirts"><img src="/print/toa/back.png?w=600" alt="T-shirt TOA, dos" style="max-width:240px;margin:0 auto 22px;" ${hideIfMissing}></a>
+  <a class="btn big" href="/tshirts">Voir les t-shirts</a>
+</section>
+
+<section id="soutenir" style="max-width:720px;margin:0 auto;padding:48px 16px;text-align:center;">
+  <h2>🤝 Rejoignez les soutiens</h2>
+  <p style="margin:12px 0 6px;">Votre soutien finance les prochains épisodes et de meilleurs outils (voix, animation, musique) pour des vidéos encore plus fortes.</p>
+  <p class="small" style="margin-bottom:22px;">Les soutiens reçoivent les épisodes en avance, leur nom au générique et un vote pour choisir la prochaine histoire.</p>
+  <a class="btn big" href="https://ko-fi.com/loshing57323" target="_blank" rel="noopener">Soutenir FENUA MANGA sur Ko-fi</a>
+</section>
+
+<footer>
+  <div class="brand">FENUA <span>MANGA</span></div>
+  <p>Le fenua en manga · <a href="https://www.tiktok.com/@fenuamanga" rel="noopener">TikTok</a> · <a href="https://www.youtube.com/@fenuamanga" rel="noopener">YouTube</a> · <a href="/tshirts">T-shirts</a> · <a href="https://ko-fi.com/loshing57323" rel="noopener">Soutenir</a> · <a href="/liens.html">Tous les liens</a></p>
+  <p class="small">Histoires et personnages originaux © 2026 Fenua Manga. Illustrations créées avec l'aide de l'IA.</p>
+</footer>
+
+</body>
+</html>
+`;
+
+const LIENS = `<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FENUA MANGA — Liens</title>
+<link rel="icon" href="/img/favicon.png">
+<link rel="stylesheet" href="/style.css">
+<style>
+  .links { max-width:440px; margin:0 auto; padding:40px 16px 56px; text-align:center; }
+  .links img.logo { width:120px; height:120px; border-radius:50%; margin:0 auto 14px; border:4px solid var(--paper); box-shadow:0 0 0 4px var(--red); }
+  .links h1 { font-size:30px; font-weight:900; }
+  .links h1 span { color:var(--red); }
+  .links p.bio { color:#ccc; margin:6px 0 26px; }
+  .links a.l { display:block; margin:0 0 16px; padding:16px; background:var(--paper); color:var(--ink); font-weight:900; font-size:17px;
+    text-decoration:none; border:4px solid var(--ink); box-shadow:6px 6px 0 var(--red); }
+  .links a.l.main { background:var(--red); color:var(--paper); border-color:var(--paper); box-shadow:6px 6px 0 var(--paper); }
+  .guide { text-align:left; background:#141414; border:3px solid #2a2a2a; padding:18px; margin-top:28px; }
+  .guide h2 { font-size:20px; text-align:left; margin-bottom:10px; }
+  .guide ol { margin-left:20px; color:#ddd; }
+  .guide li { margin-bottom:8px; }
+</style>
+</head>
+<body>
+<main class="links">
+  <img class="logo" src="/img/logo.png" alt="FENUA MANGA" ${hideIfMissing}>
+  <h1>FENUA <span>MANGA</span></h1>
+  <p class="bio">Illustrations manga 100 % tahitiennes 🌺</p>
+
+  <a class="l main" href="/#toa">🦈 NOUVEAU · Lire TOA · Tome 1 (${TOA_P})</a>
+  <a class="l" href="/#mana">📖 Lire MANA · Tome 1 (${MANA_P})</a>
+  <a class="l" href="/tshirts">👕 Les t-shirts FENUA MANGA</a>
+  <a class="l" href="/tshirts#daytho">🖤 DAYTHO · DTHO 987</a>
+  <a class="l" href="https://ko-fi.com/loshing57323" rel="noopener">🤝 Soutenir FENUA MANGA (Ko-fi)</a>
+  <a class="l" href="/">🌐 Le site FENUA MANGA</a>
+  <a class="l" href="#guide">🧭 Guide : par où commencer ?</a>
+  <a class="l" href="https://www.tiktok.com/@fenuamanga" rel="noopener">🎬 TikTok · @fenuamanga</a>
+  <a class="l" href="https://www.youtube.com/@fenuamanga" rel="noopener">▶️ YouTube · @fenuamanga</a>
+
+  <section class="guide" id="guide">
+    <h2>🧭 Guide du lecteur</h2>
+    <ol>
+      <li><b>Regarde les épisodes</b> en vidéo sur TikTok ou YouTube (1 min chacun).</li>
+      <li><b>Lis les tomes complets</b> en PDF : TOA (44 pages) et MANA (16 pages).</li>
+      <li><b>Paiement par carte</b>, sécurisé par Stripe. Le PDF se télécharge tout de suite.</li>
+      <li><b>Abonne-toi</b> pour ne pas rater les prochains tomes et les nouvelles séries.</li>
+    </ol>
+  </section>
+</main>
+</body>
+</html>
+`;
+
+const CSS = `:root { --ink:#0a0a0a; --paper:#fbf8f1; --red:#e0141e; --grey:#9a9a9a; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { background:var(--ink); color:var(--paper); font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; line-height:1.5;
+  background-image:radial-gradient(#1a1a1a 18%, transparent 19%); background-size:22px 22px; }
+img { max-width:100%; display:block; }
+a { color:inherit; }
+
+.brand { font-weight:900; font-size:22px; letter-spacing:.02em; text-decoration:none; color:var(--paper); }
+.brand span { color:var(--red); }
+
+.top { position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; padding:12px 16px;
+  background:rgba(10,10,10,.92); border-bottom:3px solid var(--red); backdrop-filter:blur(6px); }
+
+.btn { display:inline-block; background:var(--red); color:var(--paper); font-weight:900; text-decoration:none; border:3px solid var(--paper);
+  padding:14px 26px; font-size:18px; letter-spacing:.03em; box-shadow:6px 6px 0 var(--paper); cursor:pointer; font-family:inherit;
+  transition:transform .1s, box-shadow .1s; }
+.btn:active { transform:translate(4px,4px); box-shadow:2px 2px 0 var(--paper); }
+.btn.big { font-size:21px; padding:16px 30px; }
+.small-btn { padding:8px 14px; font-size:15px; box-shadow:3px 3px 0 var(--paper); }
+.price { color:#ffe14d; }
+.small { font-size:13px; color:var(--grey); margin-top:10px; }
+.badge { display:inline-block; background:#ffe14d; color:var(--ink); font-weight:900; font-size:14px; letter-spacing:.12em; padding:4px 10px; margin-bottom:10px; transform:rotate(-2deg); }
+.badge.dark { background:var(--ink); color:#ffe14d; }
+
+.hero { display:grid; grid-template-columns:minmax(0,420px) minmax(0,1fr); gap:40px; align-items:center; max-width:1080px; margin:0 auto; padding:48px 16px; }
+.hero.second { border-top:4px solid var(--red); margin-top:24px; }
+.hero-img img { border:6px solid var(--paper); box-shadow:14px 14px 0 var(--red); transform:rotate(-2deg); }
+.kata { font-size:18px; color:var(--red); letter-spacing:.3em; font-weight:700; }
+.hero h1 { font-size:clamp(72px,14vw,150px); font-weight:900; line-height:.9; color:var(--red); letter-spacing:.03em;
+  -webkit-text-stroke:5px var(--ink); paint-order:stroke fill; text-shadow:6px 6px 0 var(--paper), 10px 10px 0 #000; }
+.sub { font-size:22px; font-weight:800; letter-spacing:.12em; margin:14px 0 18px; text-transform:uppercase; }
+.pitch { font-size:18px; max-width:520px; margin-bottom:28px; color:#ddd; }
+.pitch b { color:var(--red); }
+
+.strip { display:grid; grid-template-columns:repeat(4,1fr); background:var(--red); border-top:4px solid var(--paper); border-bottom:4px solid var(--paper); }
+.strip div { padding:16px 8px; text-align:center; font-size:15px; text-transform:uppercase; letter-spacing:.06em; }
+.strip b { display:block; font-size:24px; font-weight:900; }
+
+section h2 { font-size:clamp(28px,5vw,42px); font-weight:900; text-align:center; margin-bottom:28px; text-transform:uppercase; }
+.preview, .chars { max-width:1080px; margin:0 auto; padding:56px 16px; }
+.pages { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+.pages img { border:4px solid var(--paper); box-shadow:6px 6px 0 var(--red); }
+
+.cards { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+.card { background:var(--paper); color:var(--ink); border:4px solid var(--ink); box-shadow:6px 6px 0 var(--red); padding:18px; }
+.card h3 { font-size:24px; font-weight:900; margin-bottom:6px; }
+.card.red { background:var(--red); color:var(--paper); box-shadow:6px 6px 0 var(--paper); }
+
+.buy { padding:56px 16px 72px; }
+.buy-box { max-width:860px; margin:0 auto 40px; display:grid; grid-template-columns:220px minmax(0,1fr); gap:32px; align-items:center;
+  background:var(--paper); color:var(--ink); border:5px solid var(--ink); box-shadow:12px 12px 0 var(--red); padding:28px; }
+.buy-box img { border:4px solid var(--ink); }
+.buy-box h2 { text-align:left; margin-bottom:6px; }
+.buy-box ul { margin:14px 0 22px 20px; }
+.buy-box .btn { border-color:var(--ink); box-shadow:6px 6px 0 var(--ink); }
+.buy-box .small { color:#666; }
+
+footer { text-align:center; padding:40px 16px; border-top:4px solid var(--red); color:#ccc; }
+footer p { margin-top:8px; }
+
+/* Pages simples (merci, erreurs, admin) */
+body.simple { display:flex; min-height:100vh; align-items:center; justify-content:center; padding:16px; }
+.box { max-width:520px; width:100%; background:var(--paper); color:var(--ink); border:5px solid var(--ink); box-shadow:12px 12px 0 var(--red); padding:32px; text-align:center; }
+.box .brand { color:var(--ink); display:block; margin-bottom:18px; }
+.box h1 { font-size:34px; font-weight:900; margin-bottom:12px; }
+.box p { margin-bottom:18px; }
+.box .btn { border-color:var(--ink); box-shadow:6px 6px 0 var(--ink); margin-bottom:12px; }
+.box label { display:block; text-align:left; font-weight:800; margin-top:14px; }
+.box input[type=file] { width:100%; margin-top:4px; }
+.box h2 { font-size:22px; margin:22px 0 4px; text-align:left; }
+
+@media (max-width:760px) {
+  .hero { grid-template-columns:1fr; gap:28px; padding:28px 16px; text-align:center; }
+  .hero-img { max-width:300px; margin:0 auto; }
+  .pitch { margin-left:auto; margin-right:auto; }
+  .strip { grid-template-columns:repeat(2,1fr); }
+  .pages { grid-template-columns:repeat(2,1fr); }
+  .cards { grid-template-columns:1fr 1fr; }
+  .buy-box { grid-template-columns:1fr; text-align:center; }
+  .buy-box img { max-width:200px; margin:0 auto; }
+  .buy-box h2 { text-align:center; }
+  .buy-box ul { text-align:left; display:inline-block; }
+}
+`;
+
+const page = (title: string, body: string) => `<!doctype html><html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title>
+<link rel="icon" href="/img/favicon.png"><link rel="stylesheet" href="/style.css"></head>
+<body class="simple"><main class="box"><a href="/" class="brand">FENUA <span>MANGA</span></a>${body}</main></body></html>`;
+const html = (s: string, status = 200) => new Response(s, { status, headers: { "Content-Type": "text/html; charset=utf-8" } });
+
+async function stripe(path: string, body?: URLSearchParams) {
+  const res = await fetch(`https://api.stripe.com/v1/${path}`, {
+    method: body ? "POST" : "GET",
+    headers: { Authorization: `Bearer ${STRIPE_KEY}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  const data: any = await res.json();
+  if (!res.ok) throw new Error(data?.error?.message ?? `Stripe ${res.status}`);
+  return data;
+}
+async function paid(id: string | null) {
+  if (!id || !/^cs_(test|live)_[A-Za-z0-9]+$/.test(id)) return null;
+  try { const s = await stripe(`checkout/sessions/${id}`); return s.payment_status === "paid" ? s : null; } catch { return null; }
+}
+const productOf = (s: any): Product => PRODUCTS[s?.metadata?.produit] ?? PRODUCTS["mana-t1"];
+
+// Fichiers acceptés par la page admin (nom du fichier envoyé)
+const ALLOWED = /^(MANA-Tome1\.pdf|TOA-Tome1\.pdf|page-0[1-9]\.jpg|page-1[0-6]\.jpg|toa-0[1-5]\.jpg|logo\.png|favicon\.png|og\.jpg|tshirt-[a-z0-9-]+\.(png|jpg))$/;
+const destOf = (name: string) =>
+  name === "MANA-Tome1.pdf" ? PRODUCTS["mana-t1"].pdf : name === "TOA-Tome1.pdf" ? PRODUCTS["toa-t1"].pdf : `${DATA}/img/${name}`;
+
+// Emplacements nommés : le fichier est enregistré sous le bon nom, peu importe comment il s'appelle sur le téléphone
+const SLOTS: [string, string][] = [
+  ["TOA-Tome1.pdf", "TOA · le PDF complet"],
+  ["toa-01.jpg", "TOA · couverture (page 1)"],
+  ["toa-02.jpg", "TOA · extrait 1"],
+  ["toa-03.jpg", "TOA · extrait 2"],
+  ["toa-04.jpg", "TOA · extrait 3"],
+  ["toa-05.jpg", "TOA · extrait 4"],
+  ["tshirt-manu-combat.png", "T-shirt TOA · Manu en garde (PNG détouré)"],
+  ["tshirt-manu-debout.png", "T-shirt Le Toa vide · Manu debout (PNG détouré)"],
+  ["tshirt-daytho-logo-noir.png", "DAYTHO · logo encre noire (PNG transparent)"],
+  ["tshirt-daytho-logo-blanc.png", "DAYTHO · logo encre blanche (PNG transparent)"],
+  ["tshirt-daytho-garcon.png", "DAYTHO · dos garçon, t-shirts clairs"],
+  ["tshirt-daytho-garcon-sombre.png", "DAYTHO · dos garçon, t-shirts foncés"],
+  ["tshirt-daytho-fille.png", "DAYTHO · dos fille, t-shirts clairs"],
+  ["tshirt-daytho-fille-sombre.png", "DAYTHO · dos fille, t-shirts foncés"],
+];
+const CHECK = ["TOA-Tome1.pdf", "toa-01.jpg", "toa-02.jpg", "toa-03.jpg", "toa-04.jpg", "toa-05.jpg",
+  "MANA-Tome1.pdf", "page-01.jpg", "page-04.jpg", "page-05.jpg", "page-06.jpg", "page-07.jpg", "tshirt-manu-combat.png", "tshirt-manu-debout.png",
+  "tshirt-daytho-logo-noir.png", "tshirt-daytho-logo-blanc.png", "tshirt-daytho-logo-mono.png",
+  "tshirt-daytho-garcon.png", "tshirt-daytho-garcon-sombre.png", "tshirt-daytho-garcon-rouge.png",
+  "tshirt-daytho-fille.png", "tshirt-daytho-fille-sombre.png", "tshirt-daytho-fille-rouge.png"];
+
+const adminForm = (msg = "", status = "") => page("Admin", `<h1>Dépôt des fichiers</h1>${msg}
+<form method="post" enctype="multipart/form-data">
+  <h2>Fichiers</h2>
+  ${SLOTS.map(([n, l]) => `<label>${l}<input type="file" name="slot:${n}" accept="${n.endsWith(".pdf") ? "application/pdf" : "image/*"}"></label>`).join("\n  ")}
+  <h2>Autres fichiers</h2>
+  <label>Fichiers déjà bien nommés (MANA-Tome1.pdf, page-01.jpg…)<input type="file" name="f" multiple></label>
+  <p></p>
+  <button class="btn" type="submit">Envoyer</button>
+</form>
+<p class="small">${status}</p>`);
+
+// Import automatique au démarrage : IMPORT_FILES = {"TOA-Tome1.pdf":"https://…", "toa-01.jpg":"https://…"}
+async function importFiles() {
+  let list: Record<string, string> = {};
+  try { list = JSON.parse(Bun.env.IMPORT_FILES ?? "{}"); } catch { console.error("IMPORT_FILES invalide"); return; }
+  for (const [name, src] of Object.entries(list)) {
+    if (!ALLOWED.test(name) || !/^https:\/\//.test(src)) continue;
+    try {
+      const r = await fetch(src);
+      if (!r.ok) { console.error("import", name, r.status); continue; }
+      const buf = await r.arrayBuffer();
+      await Bun.write(destOf(name), buf, { createPath: true });
+      console.log("import OK", name, buf.byteLength);
+      if (name.startsWith("tshirt-")) { assetCache.delete(name); pngCache.clear(); }
+    } catch (e) { console.error("import", name, e); }
+  }
+}
+
+/* ======================================================================
+   T-SHIRTS FENUA MANGA — Printful + Stripe (designs vectoriels dessinés par Claude)
+   Variables : PRINTFUL_API_KEY, PRINTFUL_STORE_ID (option), PRINTFUL_AUTO_CONFIRM, STRIPE_WEBHOOK_SECRET
+   ====================================================================== */
+const env = (k: string) => (Bun.env[k] || "").trim();
+const TPUB = (env("PUBLIC_URL") || `https://${env("RAILWAY_PUBLIC_DOMAIN")}`).replace(/\/$/, "");
+// Version des visuels : à augmenter quand une image change, pour que navigateurs et Printful ne gardent pas l'ancienne
+const ASSET_V = "3";
+/* ===================== DESIGNS (vectoriels, 4500x5400 = 15"x18" @300 DPI) ===================== */
+const W = 4500, H = 5400;
+const TEAL = "#2A9D8F";
+const rd = (n: number) => Math.round(n * 10) / 10;
+const svg = (body: string) => `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${body}</svg>`;
+// Logo poitrine : un design pleine page réduit et placé sur le cœur (à droite vu de face)
+const chest = (body: string) => svg(`<g transform="translate(2780 420) scale(0.3)">${body}</g>`);
+
+// Logo FENUA MANGA (badge rond) dans une boîte 1000x1000
+const LRED = "#E0141E", LINK = "#0A0A0A", PAPER = "#FBF8F1";
+function spikes(n: number) {
+  let d = "";
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2, w = (Math.PI / n) * 0.5, rin = i % 2 ? 395 : 430 - (i % 3) * 12;
+    const P = (ang: number, r: number) => `${rd(500 + Math.cos(ang) * r)},${rd(500 + Math.sin(ang) * r)}`;
+    d += `M${P(a - w, 520)}L${P(a, rin)}L${P(a + w, 520)}Z`;
+  }
+  return `<path d="${d}" fill="${LINK}"/>`;
+}
+function logoBadge() {
+  return `<defs><clipPath id="lc"><circle cx="500" cy="500" r="500"/></clipPath>
+  <pattern id="dots" width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="8" cy="8" r="2.6" fill="#2a2a2a"/></pattern></defs>
+  <g clip-path="url(#lc)"><circle cx="500" cy="500" r="500" fill="${LRED}"/>${spikes(72)}</g>
+  <circle cx="500" cy="500" r="362" fill="${PAPER}"/><circle cx="500" cy="500" r="344" fill="${LINK}"/><circle cx="500" cy="500" r="344" fill="url(#dots)"/>
+  <circle cx="500" cy="500" r="497" fill="none" stroke="${LINK}" stroke-width="8"/>
+  <text x="500" y="262" font-family="Noto Sans JP" font-weight="500" font-size="62" letter-spacing="22" text-anchor="middle" fill="${LRED}">フェヌア</text>
+  <g transform="rotate(-7 500 520)">
+   <text x="510" y="492" font-family="Archivo Black" font-size="138" text-anchor="middle" fill="${LRED}">FENUA</text>
+   <text x="500" y="482" font-family="Archivo Black" font-size="138" text-anchor="middle" fill="${PAPER}">FENUA</text>
+   <text x="510" y="640" font-family="Archivo Black" font-size="138" text-anchor="middle" fill="${PAPER}">MANGA</text>
+   <text x="500" y="630" font-family="Archivo Black" font-size="138" text-anchor="middle" fill="${LRED}">MANGA</text>
+  </g>`;
+}
+// Logo MANA remasterisé : éclipse, aileron de requin, motif niho mano, マナ
+function nihoBand(x0: number, x1: number, y: number, h: number, n: number, col: string) {
+  const w = (x1 - x0) / n; let d = "";
+  for (let i = 0; i < n; i++) { const a = x0 + i * w; d += `M${rd(a)},${y + h}L${rd(a + w / 2)},${y}L${rd(a + w)},${y + h}Z`; }
+  return `<path d="${d}" fill="${col}"/>`;
+}
+function manaBody() {
+  const cx = 2250, cy = 1500;
+  let rays = "";
+  for (let i = 0; i < 48; i++) { const a = (i / 48) * Math.PI * 2, w = 0.03, r1 = 1060, r2 = i % 2 ? 1280 : 1380; const P = (t: number, r: number) => `${rd(cx + Math.cos(t) * r)},${rd(cy + Math.sin(t) * r)}`; rays += `M${P(a - w, r1)}L${P(a, r2)}L${P(a + w, r1)}Z`; }
+  return `<path d="${rays}" fill="${LRED}"/>
+  <circle cx="${cx}" cy="${cy}" r="1000" fill="${LRED}"/>
+  <circle cx="${cx}" cy="${cy}" r="900" fill="${LINK}" stroke="${PAPER}" stroke-width="40"/>
+  <defs><clipPath id="ec"><circle cx="2250" cy="1500" r="880"/></clipPath></defs><g clip-path="url(#ec)"><path d="M1600,2000 C1850,1550 2100,1050 2550,820 C2420,1250 2560,1700 2950,2000 Z" fill="${PAPER}" stroke="${LINK}" stroke-width="30"/><path d="M1300,2000 Q1500,1900 1700,2000 T2100,2000 T2500,2000 T2900,2000 T3300,2000 L3300,2500 L1300,2500 Z" fill="${LRED}"/></g>
+  <text x="2250" y="3350" font-family="Archivo Black" font-size="1150" text-anchor="middle" fill="${LINK}" stroke="${LINK}" stroke-width="120" stroke-linejoin="round" letter-spacing="40">MANA</text>
+  <text x="2250" y="3350" font-family="Archivo Black" font-size="1150" text-anchor="middle" fill="${PAPER}" stroke="${LRED}" stroke-width="36" stroke-linejoin="round" paint-order="stroke" letter-spacing="40">MANA</text>
+  <rect x="450" y="3600" width="3600" height="260" fill="${LINK}" stroke="${PAPER}" stroke-width="20"/>
+  ${nihoBand(470, 4030, 3640, 180, 26, LRED)}
+  <text x="2250" y="4500" font-family="Noto Sans JP" font-weight="900" font-size="440" text-anchor="middle" fill="${LRED}" stroke="${LINK}" stroke-width="40" paint-order="stroke" letter-spacing="120">マナ</text>
+  <text x="2250" y="5050" font-family="Archivo Black" font-size="230" text-anchor="middle" fill="${PAPER}" stroke="${LINK}" stroke-width="30" paint-order="stroke" letter-spacing="60">FENUA MANGA · TAHITI</text>`;
+}
+// Image envoyée par la page admin (ex. tshirt-manu.png), en data URI pour le rendu
+const assetCache = new Map<string, string>();
+async function asset(name: string) {
+  if (assetCache.has(name)) return assetCache.get(name)!;
+  for (const n of [name, name.replace(/\.png$/, ".jpg")]) {
+    const f = Bun.file(`${DATA}/img/${n}`);
+    if (await f.exists()) {
+      const buf = Buffer.from(await f.arrayBuffer());
+      const mime = buf[0] === 0x89 ? "image/png" : "image/jpeg";
+      const uri = `data:${mime};base64,${buf.toString("base64")}`;
+      assetCache.set(name, uri);
+      return uri;
+    }
+  }
+  return null;
+}
+// Personnage détouré (PNG transparent 1080x1920) en grand au dos, titre en bas
+async function cutoutBack(file: string, title: string) {
+  const img = await asset(file);
+  if (!img) return null;
+  const ih = 4950, iw = Math.round((ih * 1080) / 1920), ix = Math.round((W - iw) / 2);
+  return svg(`<image href="${img}" x="${ix}" y="-60" width="${iw}" height="${ih}" preserveAspectRatio="xMidYMid meet"/>
+    <text x="2250" y="5330" font-family="Archivo Black" font-size="300" text-anchor="middle" fill="${PAPER}" stroke="${LINK}" stroke-width="30" paint-order="stroke" letter-spacing="30">${title}</text>`);
+}
+// Image PNG transparente placée dans une boîte de la toile d'impression
+async function imageIn(file: string, x: number, y: number, w: number, h: number, align = "xMidYMin") {
+  const img = await asset(file);
+  if (!img) return null;
+  return svg(`<image href="${img}" x="${x}" y="${y}" width="${w}" height="${h}" preserveAspectRatio="${align} meet"/>`);
+}
+// DAYTHO : logo sur le cœur (boîte 1350x330 côté droit vu de face), dessin pleine hauteur au dos.
+// Trois versions de chaque visuel : « clair » (encre noire, t-shirts clairs), « sombre » (traits blancs, t-shirts foncés),
+// « rouge » (comme sombre, mais les détails rouges passent en blanc pour rester visibles sur un t-shirt rouge).
+type Ink = "noir" | "blanc" | "mono";
+const daythoChest = (ink: Ink) => () => imageIn(`tshirt-daytho-logo-${ink}.png`, 2780, 480, 1350, 330, "xMaxYMin");
+const daythoBack = (file: string) => () => imageIn(file, 0, 0, W, H, "xMidYMin");
+const daythoSet = (who: "garcon" | "fille") => ({
+  [`daytho-${who}`]: { front: daythoChest("noir"), back: daythoBack(`tshirt-daytho-${who}.png`) },
+  [`daytho-${who}-sombre`]: { front: daythoChest("blanc"), back: daythoBack(`tshirt-daytho-${who}-sombre.png`) },
+  [`daytho-${who}-rouge`]: { front: daythoChest("mono"), back: daythoBack(`tshirt-daytho-${who}-rouge.png`) },
+});
+
+const DESIGNS: Record<string, Record<string, () => string | null | Promise<string | null>>> = {
+  toa: {
+    front: () => svg(`<g transform="translate(2780 420) scale(1.25)">${logoBadge()}</g>`),
+    back: () => cutoutBack("tshirt-manu-combat.png", "TOA"),
+  },
+  toavide: {
+    front: () => svg(`<g transform="translate(2780 420) scale(1.25)">${logoBadge()}</g>`),
+    back: () => cutoutBack("tshirt-manu-debout.png", "LE TOA VIDE"),
+  },
+  classic: {
+    front: () => svg(`<g transform="translate(450 300) scale(3.6)">${logoBadge()}</g>`),
+  },
+  manalogo: { front: () => chest(manaBody()) },
+  "daytho-logo-noir": { front: daythoChest("noir") },
+  "daytho-logo-blanc": { front: daythoChest("blanc") },
+  "daytho-logo-mono": { front: daythoChest("mono") },
+  ...daythoSet("garcon"),
+  ...daythoSet("fille"),
+};
+
+/* ===================== CATALOGUE ===================== */
+// Printful #12 = Gildan 64000 Softstyle (t-shirt unisexe le moins cher du catalogue, 34 couleurs)
+const TEE = 12;
+type Color = { pf: string; fr: string; hex: string; design?: string };
+type TProduct = { id: string; name: string; tagline: string; desc: string; price: number; design: string; sides: ("front" | "back")[]; printfulProduct: number; colors: Color[]; sizes: string[]; hidden?: boolean; brand?: "fenua" | "daytho" };
+const TEE_COLORS: Color[] = [{ pf: "Black", fr: "Noir", hex: "#1b1b1b" }, { pf: "White", fr: "Blanc", hex: "#f4f4f2" }];
+const WHITE_ONLY: Color[] = [TEE_COLORS[1]];
+// Couleurs DAYTHO : chaque couleur de t-shirt reçoit la version du visuel qui ressort dessus
+type Tone = "clair" | "sombre" | "rouge";
+const DAYTHO_TEES: { pf: string; fr: string; hex: string; tone: Tone }[] = [
+  { pf: "Black", fr: "Noir", hex: "#1b1b1b", tone: "sombre" },
+  { pf: "White", fr: "Blanc", hex: "#f4f4f2", tone: "clair" },
+  { pf: "Navy", fr: "Bleu marine", hex: "#263046", tone: "sombre" },
+  { pf: "Red", fr: "Rouge", hex: "#b8202b", tone: "rouge" },
+  { pf: "Heliconia", fr: "Rose", hex: "#d94a86", tone: "sombre" },
+  { pf: "Military Green", fr: "Vert", hex: "#5a6145", tone: "sombre" },
+];
+const LOGO_INK: Record<Tone, string> = { clair: "daytho-logo-noir", sombre: "daytho-logo-blanc", rouge: "daytho-logo-mono" };
+const daythoColors = (base: string | null, exclude: string[] = []): Color[] =>
+  DAYTHO_TEES.filter((t) => !exclude.includes(t.pf)).map((t) => ({ pf: t.pf, fr: t.fr, hex: t.hex,
+    design: base ? (t.tone === "clair" ? base : `${base}-${t.tone}`) : LOGO_INK[t.tone] }));
+const SIZES = ["S", "M", "L", "XL", "2XL"];
+const TPRODUCTS: TProduct[] = [
+  { id: "toa", name: "T-shirt TOA", tagline: "Manu, prêt au combat", desc: "Le logo FENUA MANGA sur le cœur, et dans le dos Manu, le gamin de Faa'a, en garde avec son tatau qui s'embrase. Détouré, sans fond : seul le personnage est imprimé.", price: 3490, design: "toa", sides: ["front", "back"], printfulProduct: TEE, colors: TEE_COLORS, sizes: SIZES },
+  { id: "toavide", name: "T-shirt Le Toa vide", tagline: "Manu avant l'éveil", desc: "Le logo FENUA MANGA sur le cœur, et dans le dos Manu, poings serrés, tel qu'on le découvre au début de TOA. Détouré, sans fond. Les tons sombres du dessin ressortent sur le blanc.", price: 3490, design: "toavide", sides: ["front", "back"], printfulProduct: TEE, colors: WHITE_ONLY, sizes: SIZES },
+  { id: "classic", name: "T-shirt Fenua Manga", tagline: "Le logo original", desc: "Le logo FENUA MANGA en grand sur la poitrine, façon couverture de manga.", price: 2990, design: "classic", sides: ["front"], printfulProduct: TEE, colors: TEE_COLORS, sizes: SIZES },
+  // DAYTHO · DTHO 987 (streetwear techwear)
+  { id: "daytho-fille", brand: "daytho", name: "DAYTHO · DTHO 987 — Fille", tagline: "Masque rouge, regard froid", desc: "Le logo DAYTHO sur le cœur, et dans le dos la fille au masque rouge, assise, dans son cadre techwear デイソ. Dessin remasterisé en haute définition, adapté à chaque couleur : traits blancs sur les t-shirts foncés, encre noire sur le blanc.", price: 3490, design: "daytho-fille", sides: ["front", "back"], printfulProduct: TEE, colors: daythoColors("daytho-fille"), sizes: SIZES },
+  { id: "daytho-garcon", brand: "daytho", name: "DAYTHO · DTHO 987 — Garçon", tagline: "Le poing levé", desc: "Le logo DAYTHO sur le cœur, et dans le dos le garçon à capuche, poing levé, dans son cadre techwear デイソ. Dessin remasterisé en haute définition, adapté à chaque couleur : traits blancs sur les t-shirts foncés, encre noire sur le blanc.", price: 3490, design: "daytho-garcon", sides: ["front", "back"], printfulProduct: TEE, colors: daythoColors("daytho-garcon", ["Heliconia"]), sizes: SIZES },
+  { id: "daytho-logo", brand: "daytho", name: "DAYTHO · Logo", tagline: "DTHO 987, sobre", desc: "Juste le logo DAYTHO デイソ sur le cœur. L'encre s'adapte à la couleur : blanche sur les t-shirts foncés, noire sur le blanc.", price: 2990, design: "daytho-logo-noir", sides: ["front"], printfulProduct: TEE, colors: daythoColors(null), sizes: SIZES },
+  // T-shirts test (cachés de la boutique, accessibles par lien direct)
+  { id: "test-mana", name: "TEST · T-shirt MANA", tagline: "Commande test (privée)", desc: "T-shirt test : logo MANA remasterisé sur le cœur. Sert à vérifier le circuit complet (paiement, Printful, livraison).", price: 100, design: "manalogo", sides: ["front"], printfulProduct: TEE, colors: TEE_COLORS, sizes: SIZES, hidden: true },
+  { id: "test-daytho", name: "TEST · T-shirt DAYTHO", tagline: "Commande test (privée)", desc: "T-shirt test : logo DAYTHO DTHO 987 sur le cœur. Sert à vérifier le circuit complet (paiement, Printful, livraison).", price: 100, design: "daytho-logo-noir", sides: ["front"], printfulProduct: TEE, colors: daythoColors(null), sizes: SIZES, hidden: true },
+];
+const byId = (id: string) => TPRODUCTS.find((p) => p.id === id);
+// Design à imprimer pour une couleur donnée (certains visuels changent d'encre selon le t-shirt)
+const designFor = (p: TProduct, colorPf: string) => p.colors.find((c) => c.pf === colorPf)?.design || p.design;
+const teuro = (c: number) => (c / 100).toFixed(2).replace(".", ",") + " €";
+// Zones de livraison : le client choisit sa zone dans le panier, Stripe n'accepte ensuite que les pays de cette zone
+type Zone = { label: string; cents: number; countries: string[] };
+const ZONES: Record<string, Zone> = {
+  outremer: { label: "Tahiti, outre-mer & Pacifique", cents: 1190, countries: ["PF", "NC", "WF", "RE", "GP", "MQ", "GF", "YT", "PM", "BL", "MF", "AU", "NZ", "JP"] },
+  europe: { label: "Europe & Amérique du Nord", cents: 790, countries: ["FR", "BE", "CH", "LU", "MC", "DE", "ES", "IT", "NL", "PT", "AT", "IE", "GB", "US", "CA"] },
+};
+const SHIPPING_CENTS = ZONES.europe.cents;
+
+/* ===================== RENDU PNG ===================== */
+const FONT_SRC = {
+  bangers: "https://cdn.jsdelivr.net/npm/@expo-google-fonts/bangers@0.4.1/400Regular/Bangers_400Regular.ttf",
+  noto: "https://cdn.jsdelivr.net/npm/@expo-google-fonts/noto-sans-jp@0.4.4/900Black/NotoSansJP_900Black.ttf",
+  noto500: "https://cdn.jsdelivr.net/npm/@expo-google-fonts/noto-sans-jp@0.4.4/500Medium/NotoSansJP_500Medium.ttf",
+  archivo: "https://cdn.jsdelivr.net/npm/@expo-google-fonts/archivo-black@0.4.1/400Regular/ArchivoBlack_400Regular.ttf",
+};
+let fontFiles: string[] | null = null;
+async function fonts() {
+  if (fontFiles) return fontFiles;
+  const out: string[] = [];
+  for (const [name, url] of Object.entries(FONT_SRC)) {
+    const path = `/tmp/fm-${name}.ttf`;
+    if (!(await Bun.file(path).exists())) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`police ${name}: ${res.status}`);
+      await Bun.write(path, await res.arrayBuffer());
+    }
+    out.push(path);
+  }
+  return (fontFiles = out);
+}
+const pngCache = new Map<string, Uint8Array>();
+async function renderPng(design: string, side: string, width?: number) {
+  const key = `${design}/${side}/${width || "full"}`;
+  const hit = pngCache.get(key);
+  if (hit) return hit;
+  const fn = DESIGNS[design]?.[side];
+  if (!fn) return null;
+  const doc = await fn();
+  if (!doc) return null;
+  const png = new Resvg(doc, { fitTo: width ? { mode: "width", value: width } : { mode: "original" }, font: { fontFiles: await fonts(), loadSystemFonts: false, defaultFontFamily: "Bangers" } }).render().asPng();
+  pngCache.set(key, png);
+  return png;
+}
+// Logo, icône et image de partage générés si les fichiers n'ont pas été déposés
+async function brandImage(name: string) {
+  const key = `brand/${name}`;
+  if (pngCache.has(key)) return pngCache.get(key)!;
+  let doc = "", width = 0;
+  if (name === "logo.png" || name === "favicon.png") {
+    doc = `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000">${logoBadge()}</svg>`;
+    width = name === "logo.png" ? 512 : 64;
+  } else if (name === "og.jpg") {
+    doc = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="${LINK}"/>
+      <g transform="translate(60 65) scale(0.5)">${logoBadge()}</g>
+      <text x="640" y="250" font-family="Archivo Black" font-size="92" fill="${PAPER}">FENUA</text>
+      <text x="640" y="350" font-family="Archivo Black" font-size="92" fill="${LRED}">MANGA</text>
+      <text x="642" y="430" font-family="Archivo Black" font-size="34" fill="${PAPER}">TOA · MANA · T-SHIRTS</text>
+      <text x="642" y="480" font-family="Noto Sans JP" font-weight="500" font-size="28" fill="#9a9a9a">Le fenua en manga</text></svg>`;
+    width = 1200;
+  } else return null;
+  const png = new Resvg(doc, { fitTo: { mode: "width", value: width }, font: { fontFiles: await fonts(), loadSystemFonts: false } }).render().asPng();
+  pngCache.set(key, png);
+  return png;
+}
+
+/* ===================== STRIPE ===================== */
+function formEncode(obj: any, prefix = "", out: string[] = []) {
+  for (const [k, v] of Object.entries(obj)) {
+    if (v === undefined || v === null) continue;
+    const key = prefix ? `${prefix}[${k}]` : k;
+    if (typeof v === "object") formEncode(v, key, out);
+    else out.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(v))}`);
+  }
+  return out.join("&");
+}
+async function tstripe(method: string, path: string, body?: any) {
+  const res = await fetch(`https://api.stripe.com/v1${path}`, {
+    method, headers: { Authorization: `Bearer ${env("STRIPE_SECRET_KEY")}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body: body ? formEncode(body) : undefined,
+  });
+  const json: any = await res.json();
+  if (!res.ok) throw new Error(`Stripe ${res.status}: ${json?.error?.message}`);
+  return json;
+}
+function verifyStripeSig(raw: string, header: string, secret: string) {
+  const parts = Object.fromEntries(header.split(",").map((p) => p.split("=") as [string, string]));
+  const t = parts.t; if (!t) return false;
+  const sigs = header.split(",").filter((p) => p.startsWith("v1=")).map((p) => p.slice(3));
+  const expected = createHmac("sha256", secret).update(`${t}.${raw}`).digest("hex");
+  const ok = sigs.some((s) => s.length === expected.length && timingSafeEqual(Buffer.from(s), Buffer.from(expected)));
+  return ok && Math.abs(Date.now() / 1000 - Number(t)) < 600;
+}
+
+/* ===================== PRINTFUL ===================== */
+let pfStore: string | null = null;
+async function printfulStoreId() {
+  if (env("PRINTFUL_STORE_ID")) return env("PRINTFUL_STORE_ID");
+  if (pfStore !== null) return pfStore;
+  try {
+    const r = await fetch("https://api.printful.com/stores", { headers: { Authorization: `Bearer ${env("PRINTFUL_API_KEY")}` } });
+    const j: any = await r.json().catch(() => ({}));
+    const list = Array.isArray(j?.result) ? j.result : [];
+    pfStore = list.length ? String(list[0].id) : "";
+    log(`Printful magasins : ${list.map((x: any) => `${x.name} (${x.id}, ${x.type})`).join(", ") || `aucun (${r.status})`}`);
+  } catch (e: any) { pfStore = ""; log(`Printful magasins : ${e.message}`); }
+  return pfStore;
+}
+async function printful(method: string, path: string, body?: any) {
+  const headers: Record<string, string> = { Authorization: `Bearer ${env("PRINTFUL_API_KEY")}`, "Content-Type": "application/json" };
+  const sid = path.startsWith("/stores") ? "" : await printfulStoreId();
+  if (sid) headers["X-PF-Store-Id"] = sid;
+  const res = await fetch(`https://api.printful.com${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const json: any = await res.json().catch(() => ({}));
+  return { ok: res.ok, status: res.status, json };
+}
+type CatalogInfo = { variants: Map<string, number>; placements: string[] };
+const catalogCache = new Map<number, CatalogInfo>();
+async function catalog(productId: number): Promise<CatalogInfo> {
+  const c = catalogCache.get(productId);
+  if (c) return c;
+  const r = await printful("GET", `/products/${productId}`);
+  if (!r.ok) throw new Error(`Printful catalogue ${productId}: ${r.status} ${r.json?.error?.message || r.json?.result || ""}`);
+  const variants = new Map<string, number>();
+  for (const v of r.json.result.variants) variants.set(`${v.color}|${v.size}`, v.id);
+  const placements = (r.json.result.product.files || []).map((f: any) => f.type);
+  const info = { variants, placements };
+  catalogCache.set(productId, info);
+  return info;
+}
+function placementFor(side: string, placements: string[]) {
+  if (side === "front") return placements.includes("front_large") ? "front_large" : "front";
+  return side;
+}
+const printFiles = (p: TProduct, colorPf: string, placements: string[]) =>
+  p.sides.map((side) => ({ type: placementFor(side, placements), url: `${TPUB}/print/${designFor(p, colorPf)}/${side}.png?v=${ASSET_V}` }));
+// Coût réel Printful d'un t-shirt livré à une adresse type
+const DEST = {
+  Tahiti: { name: "Test", address1: "Lotissement Atima", city: "Mahina", country_code: "PF", zip: "98709" },
+  France: { name: "Test", address1: "10 rue de Rivoli", city: "Paris", country_code: "FR", zip: "75004" },
+};
+async function estimate(p: TProduct, where: keyof typeof DEST, color = p.colors[0].pf) {
+  const cat = await catalog(p.printfulProduct);
+  const variant_id = cat.variants.get(`${color}|M`);
+  const r = await printful("POST", "/orders/estimate-costs", {
+    recipient: DEST[where],
+    items: [{ variant_id, quantity: 1, files: printFiles(p, color, cat.placements) }],
+  });
+  if (!r.ok) return `${p.id} ${color} → ${where} : erreur ${r.status} ${r.json?.error?.message || JSON.stringify(r.json).slice(0, 200)}`;
+  const c = r.json.result?.costs || {};
+  return `${p.id} ${color} → ${where} : t-shirt ${c.subtotal} + livraison ${c.shipping} + taxes ${c.tax ?? 0}/${c.vat ?? 0} = TOTAL ${c.total} ${c.currency}`;
+}
+
+/* ===================== COMMANDES ===================== */
+type Line = { product: string; color: string; size: string; qty: number };
+const events: { at: string; msg: string }[] = [];
+const log = (msg: string) => { events.unshift({ at: new Date().toISOString(), msg }); events.length = Math.min(events.length, 100); console.log(msg); };
+const done = new Set<string>();
+
+function parseCart(s: string): Line[] {
+  return s.split(";").filter(Boolean).map((x) => { const [product, color, size, qty] = x.split("|"); return { product, color, size, qty: Number(qty) || 1 }; });
+}
+async function fulfill(sessionId: string) {
+  if (done.has(sessionId)) return "déjà traitée";
+  const s = await tstripe("GET", `/checkout/sessions/${sessionId}?expand[]=customer_details`);
+  if (s.payment_status !== "paid") return "pas encore payée";
+  const lines = parseCart(s.metadata?.cart || "");
+  const ship = s.collected_information?.shipping_details || s.shipping_details;
+  const addr = ship?.address || s.customer_details?.address;
+  const items = [];
+  for (const l of lines) {
+    const p = byId(l.product); if (!p) continue;
+    const cat = await catalog(p.printfulProduct);
+    const variant_id = cat.variants.get(`${l.color}|${l.size}`);
+    if (!variant_id) throw new Error(`variante introuvable ${p.id} ${l.color} ${l.size}`);
+    items.push({
+      variant_id, quantity: l.qty, name: `${p.name} — ${l.color} ${l.size}`, retail_price: (p.price / 100).toFixed(2),
+      files: printFiles(p, l.color, cat.placements),
+    });
+  }
+  const external_id = "fm" + createHash("sha256").update(sessionId).digest("hex").slice(0, 28);
+  const order = {
+    external_id, shipping: "STANDARD",
+    recipient: {
+      name: ship?.name || s.customer_details?.name, address1: addr?.line1, address2: addr?.line2 || undefined, city: addr?.city,
+      state_code: addr?.state || undefined, country_code: addr?.country, zip: addr?.postal_code, email: s.customer_details?.email, phone: s.customer_details?.phone || undefined,
+    },
+    items, retail_costs: { currency: "EUR", shipping: (Number(s.total_details?.amount_shipping ?? SHIPPING_CENTS) / 100).toFixed(2) },
+  };
+  const confirm = env("PRINTFUL_AUTO_CONFIRM") === "true";
+  const r = await printful("POST", `/orders${confirm ? "?confirm=true" : ""}`, order);
+  if (!r.ok && !/external.?id/i.test(JSON.stringify(r.json))) throw new Error(`Printful commande ${r.status}: ${r.json?.error?.message || JSON.stringify(r.json).slice(0, 300)}`);
+  done.add(sessionId);
+  log(`Commande Printful ${r.ok ? (confirm ? "envoyée en production" : "créée en brouillon") : "déjà existante"} — ${order.recipient.name}, ${items.length} article(s), session ${sessionId.slice(-8)}`);
+  return "ok";
+}
+
+async function ensureWebhook() {
+  if (!env("STRIPE_SECRET_KEY") || env("STRIPE_WEBHOOK_SECRET") || TPUB.includes("localhost")) return;
+  try {
+    const url = `${TPUB}/stripe/webhook`;
+    const list = await tstripe("GET", "/webhook_endpoints?limit=100");
+    if (list.data.some((w: any) => w.url === url)) { log("Webhook Stripe déjà enregistré, mais STRIPE_WEBHOOK_SECRET manque."); return; }
+    const w = await tstripe("POST", "/webhook_endpoints", { url, enabled_events: ["checkout.session.completed", "checkout.session.async_payment_succeeded"], description: "FENUA MANGA boutique" });
+    console.log(`WEBHOOK_CREATED STRIPE_WEBHOOK_SECRET=${w.secret}`);
+    log("Webhook Stripe créé : ajouter STRIPE_WEBHOOK_SECRET dans les variables Railway.");
+  } catch (e: any) { log(`Webhook Stripe : ${e.message}`); }
+}
+
+/* ===================== PAGES ===================== */
+const TEE_PATH = "M340,60 C380,110 620,110 660,60 L880,150 L960,380 L820,430 L790,330 L790,1040 L210,1040 L210,330 L180,430 L40,380 L120,150 Z";
+function mockupSvg(p: TProduct, colorPf: string, side: "front" | "back", w = 500) {
+  const c = p.colors.find((x) => x.pf === colorPf) || p.colors[0];
+  const collar = side === "front" ? `<path d="M340,60 C380,140 620,140 660,60" fill="none" stroke="rgba(0,0,0,.25)" stroke-width="10"/>` : `<path d="M340,60 C380,95 620,95 660,60" fill="none" stroke="rgba(0,0,0,.25)" stroke-width="10"/>`;
+  const art = p.sides.includes(side) ? `<image href="/print/${designFor(p, c.pf)}/${side}.png?w=700&amp;v=${ASSET_V}" x="275" y="175" width="450" height="540"/>` : "";
+  return `<svg viewBox="0 0 1000 1080" width="${w}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${p.name} ${c.fr} ${side === "front" ? "devant" : "dos"}"><path d="${TEE_PATH}" fill="${c.hex}" stroke="rgba(128,128,128,.35)" stroke-width="6" stroke-linejoin="round"/>${collar}${art}</svg>`;
+}
+const tlayout = (title: string, body: string) => `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title><meta name="description" content="T-shirts manga tahitiens, imprimés à la demande.">
+<link rel="icon" href="/img/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0a;--card:#1b1917;--ink:#f6efe6;--mute:#b8ad9f;--red:#e0141e;--gold:#ffe14d;--teal:${TEAL};--line:#2c2926}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);background-image:radial-gradient(#1a1a1a 18%,transparent 19%);background-size:22px 22px;color:var(--ink);font-family:Inter,system-ui,sans-serif;line-height:1.5}
+a{color:inherit}header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(15,14,13,.92);backdrop-filter:blur(8px);z-index:5}
+.logo{font-family:Bangers;font-size:24px;white-space:nowrap;letter-spacing:1px;text-decoration:none}.logo span{color:var(--red)}
+.navl{font-weight:800;text-decoration:none;margin-right:10px;white-space:nowrap}.cartbtn{white-space:nowrap;background:var(--red);color:#fff;border:0;border-radius:999px;padding:8px 14px;font-weight:800;text-decoration:none}
+main{max-width:1080px;margin:0 auto;padding:16px}
+.hero{padding:36px 0 20px;text-align:center}.hero h1{font-family:Bangers;font-size:clamp(44px,10vw,88px);margin:0;line-height:.95;letter-spacing:1px}
+.hero h1 em{color:var(--red);font-style:normal}.hero p{color:var(--mute);max-width:560px;margin:12px auto 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:24px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;text-decoration:none;display:block}
+.card .img{background:radial-gradient(circle at 50% 40%,#3a3330,#1b1917 70%);display:flex;justify-content:center;padding:18px}
+.card .img svg{width:100%;max-width:300px;height:auto}.card .txt{padding:14px 16px 18px}
+.card h3{font-family:Bangers;font-size:28px;margin:0;letter-spacing:.5px}.price{color:var(--gold);font-weight:800}
+.dots{display:flex;gap:6px;margin-top:8px}.dots i{width:14px;height:14px;border-radius:50%;border:1px solid #555;display:inline-block}
+.mute{color:var(--mute)}.prod{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:12px}
+@media(max-width:760px){.prod{grid-template-columns:1fr}}
+.views{background:radial-gradient(circle at 50% 40%,#3a3330,#1b1917 70%);border-radius:18px;padding:16px;display:flex;justify-content:center}
+.views svg{width:100%;max-width:440px;height:auto}.tabs{display:flex;gap:8px;margin-top:10px}
+.pill{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:8px 14px;font-weight:600;cursor:pointer}
+.pill[aria-pressed=true]{background:var(--ink);color:#111;border-color:var(--ink)}
+.opts{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 16px}.swatch{width:38px;height:38px;border-radius:50%;border:2px solid var(--line);cursor:pointer}
+.swatch[aria-pressed=true]{outline:3px solid var(--gold);outline-offset:2px}
+.buy{width:100%;background:var(--red);color:#fff;border:0;border-radius:14px;padding:16px;font-size:18px;font-weight:800;cursor:pointer}
+.buy:disabled{opacity:.5}h2{font-family:Bangers;font-size:46px;margin:0;letter-spacing:.5px;line-height:1}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+footer{max-width:1080px;margin:40px auto 0;padding:24px 16px;border-top:1px solid var(--line);color:var(--mute);font-size:14px}
+.band{height:14px;background:repeating-linear-gradient(90deg,var(--red) 0 22px,#111 22px 44px);opacity:.9}
+.notice{background:#2a1a12;border:1px solid #5a3420;border-radius:12px;padding:12px 14px;color:#f3c9a8;margin:12px 0}
+select{width:100%;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:16px;font-family:inherit;margin:6px 0 14px}
+.dsec{margin-top:56px;padding-top:28px;border-top:2px solid var(--red)}
+.dhead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.dhead h2{font-family:Inter,system-ui,sans-serif;font-weight:800;font-size:clamp(34px,7vw,56px);letter-spacing:.18em}
+.dhead h2 span{color:var(--red);font-size:.55em;letter-spacing:.1em;margin-left:10px}
+.dept{font-size:13px;letter-spacing:.5em;color:var(--mute)}
+</style><script>
+const getCart=()=>{try{return JSON.parse(localStorage.getItem('fm_cart')||'[]')}catch(e){return []}};
+const setCart=c=>{try{localStorage.setItem('fm_cart',JSON.stringify(c))}catch(e){};count()};
+function count(){const el=document.getElementById('cc');if(el)el.textContent=getCart().reduce((a,l)=>a+l.qty,0)}document.addEventListener('DOMContentLoaded',count);
+</script></head><body><header><a class="logo" href="/">FENUA <span>MANGA</span></a><span><a class="navl" href="/tshirts">T-shirts</a> <a class="cartbtn" href="/panier">Panier <span id="cc">0</span></a></span></header>
+<div class="band"></div><main>${body}</main>
+<footer>FENUA MANGA · Tahiti — T-shirts imprimés à la demande et livrés par notre partenaire d'impression. Paiement sécurisé par Stripe.<br><a href="/">Les mangas</a> · <a href="/livraison">Livraison & retours</a> · <a href="/soutenir">Soutenir</a></footer>
+</body></html>`;
+
+function card(p: TProduct) {
+  const dots = p.colors.length > 2 ? `<div class="dots">${p.colors.map((c) => `<i style="background:${c.hex}" title="${c.fr}"></i>`).join("")}</div>` : "";
+  return `<a class="card" href="/tshirts/${p.id}"><div class="img">${mockupSvg(p, p.colors[0].pf, p.sides.includes("back") ? "back" : "front", 300)}</div>
+  <div class="txt"><h3>${p.name}</h3><div class="mute">${p.tagline}</div><div class="price">${teuro(p.price)}</div>${dots}</div></a>`;
+}
+function home() {
+  const fenua = TPRODUCTS.filter((p) => !p.hidden && p.brand !== "daytho").map(card).join("");
+  const daytho = TPRODUCTS.filter((p) => !p.hidden && p.brand === "daytho").map(card).join("");
+  return tlayout("T-shirts — FENUA MANGA", `<section class="hero"><h1>LES T-SHIRTS<br><em>FENUA MANGA</em></h1>
+  <p>Tirés de nos mangas. Imprimés à la commande, livrés chez toi.</p></section><div class="grid">${fenua}</div>
+  <section class="dsec" id="daytho"><div class="dhead"><h2>DAYTHO<span>デイソ</span></h2><div class="dept">DTHO 987</div></div>
+  <p class="mute">Streetwear techwear. Logo sur le cœur, personnages au dos. Noir, blanc, bleu marine, rouge, rose et vert.</p><div class="grid">${daytho}</div></section>`);
+}
+function productPage(p: TProduct) {
+  const sw = p.colors.map((c, i) => `<button class="swatch" title="${c.fr}" aria-label="${c.fr}" aria-pressed="${i === 0}" data-c="${c.pf}" style="background:${c.hex}"></button>`).join("");
+  const sz = p.sizes.map((s, i) => `<button class="pill" aria-pressed="${i === 1}" data-s="${s}">${s}</button>`).join("");
+  const views: Record<string, string> = {};
+  for (const c of p.colors) for (const side of p.sides) views[`${c.pf}|${side}`] = mockupSvg(p, c.pf, side, 440);
+  const startSide = p.sides.includes("back") ? "back" : p.sides[0];
+  const tabs = p.sides.length > 1 ? `<div class="tabs">${p.sides.map((s) => `<button class="pill" aria-pressed="${s === startSide}" data-v="${s}">${s === "front" ? "Devant" : "Dos"}</button>`).join("")}</div>` : "";
+  return tlayout(`${p.name} — FENUA MANGA`, `<div class="prod"><div><div class="views" id="view">${views[`${p.colors[0].pf}|${startSide}`]}</div>${tabs}</div>
+  <div><h2>${p.name}</h2><div class="mute">${p.tagline}</div><p class="price" style="font-size:24px">${teuro(p.price)}${p.hidden ? " · livraison offerte" : ""}</p><p>${p.desc}</p>
+  <div class="mute">Couleur : <b id="cn">${p.colors[0].fr}</b></div><div class="opts">${sw}</div>
+  <div class="mute">Taille</div><div class="opts" id="sizes">${sz}</div>
+  <button class="buy" id="add">Ajouter au panier</button>
+  <p class="mute" style="font-size:14px">Coton 100 % ringspun (Gildan 64000 Softstyle), doux et léger, coupe unisexe. Imprimé à la demande : expédition sous 2 à 5 jours ouvrés.</p></div></div>
+  <script>
+  const V=${JSON.stringify(views)},C=${JSON.stringify(Object.fromEntries(p.colors.map((c) => [c.pf, c.fr])))};let c="${p.colors[0].pf}",s="${p.sizes[1]}",v="${startSide}";
+  const draw=()=>document.getElementById('view').innerHTML=V[c+'|'+v];
+  const pick=(sel,attr,fn)=>document.querySelectorAll(sel).forEach(b=>b.onclick=()=>{document.querySelectorAll(sel).forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');fn(b.dataset[attr]);});
+  pick('.swatch','c',x=>{c=x;document.getElementById('cn').textContent=C[x];draw()});pick('#sizes .pill','s',x=>s=x);pick('.tabs .pill','v',x=>{v=x;draw()});
+  document.getElementById('add').onclick=()=>{const cart=getCart();const f=cart.find(l=>l.product==='${p.id}'&&l.color===c&&l.size===s);if(f)f.qty++;else cart.push({product:'${p.id}',color:c,size:s,qty:1});setCart(cart);location.href='/panier'};
+  </script>`);
+}
+function cartPage() {
+  const P = Object.fromEntries(TPRODUCTS.map((p) => [p.id, { name: p.name, price: p.price, hidden: !!p.hidden, colors: Object.fromEntries(p.colors.map((c) => [c.pf, c.fr])) }]));
+  const Z = Object.fromEntries(Object.entries(ZONES).map(([k, z]) => [k, { label: z.label, cents: z.cents }]));
+  const ready = !!env("STRIPE_SECRET_KEY") && !!env("PRINTFUL_API_KEY");
+  const opts = Object.entries(ZONES).map(([k, z]) => `<option value="${k}">${z.label} · ${teuro(z.cents)}</option>`).join("");
+  return tlayout("Panier — FENUA MANGA", `<h2>Ton panier</h2><div id="lines"></div>
+  <div id="zonebox"><p class="mute" style="margin:18px 0 0">Livraison vers :</p><select id="zone">${opts}</select></div>
+  <p id="tot"></p>
+  ${ready ? "" : `<div class="notice">Les t-shirts arrivent très bientôt : la commande ouvre dans quelques jours.</div>`}
+  <button class="buy" id="pay" ${ready ? "" : "disabled"}>Payer</button><p class="mute" style="font-size:14px">Adresse demandée à l'étape suivante.</p>
+  <script>const P=${JSON.stringify(P)},Z=${JSON.stringify(Z)};const eur=c=>(c/100).toFixed(2).replace('.',',')+' €';
+  const zs=document.getElementById('zone');try{const z=localStorage.getItem('fm_zone');if(z&&Z[z])zs.value=z}catch(e){}
+  zs.onchange=()=>{try{localStorage.setItem('fm_zone',zs.value)}catch(e){};render()};
+  function render(){const cart=getCart().filter(l=>P[l.product]&&P[l.product].colors[l.color]);const el=document.getElementById('lines');
+  if(!cart.length){el.innerHTML='<p class="mute">Ton panier est vide. <a href="/tshirts">Voir les t-shirts</a></p>';document.getElementById('pay').disabled=true;document.getElementById('tot').textContent='';return}
+  el.innerHTML=cart.map((l,i)=>'<div class="row"><div><b>'+P[l.product].name+'</b><div class="mute">'+P[l.product].colors[l.color]+' · '+l.size+'</div></div><div><button class="pill" data-i="'+i+'" data-d="-1">−</button> '+l.qty+' <button class="pill" data-i="'+i+'" data-d="1">+</button></div><div class="price">'+eur(P[l.product].price*l.qty)+'</div></div>').join('');
+  const sub=cart.reduce((a,l)=>a+P[l.product].price*l.qty,0),free=cart.every(l=>P[l.product].hidden),ship=free?0:Z[zs.value].cents;
+  document.getElementById('tot').innerHTML='Sous-total : '+eur(sub)+'<br>Livraison : '+(ship?eur(ship):'offerte')+'<br><b style="font-size:20px">Total : '+eur(sub+ship)+'</b>';
+  el.querySelectorAll('button').forEach(b=>b.onclick=()=>{const c=getCart().filter(l=>P[l.product]&&P[l.product].colors[l.color]);c[b.dataset.i].qty+=Number(b.dataset.d);setCart(c.filter(l=>l.qty>0));render()})}
+  render();
+  document.getElementById('pay').onclick=async e=>{e.target.disabled=true;e.target.textContent='Redirection…';
+  const r=await fetch('/tshirts/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cart:getCart(),zone:zs.value})});const j=await r.json();
+  if(j.url)location.href=j.url;else{alert(j.error||'Erreur');e.target.disabled=false;e.target.textContent='Payer'}};</script>`);
+}
+
+/* ===================== ROUTES T-SHIRTS ===================== */
+const thtml = (s: string, status = 200) => new Response(s, { status, headers: { "Content-Type": "text/html; charset=utf-8" } });
+const tjson = (o: any, status = 200) => new Response(JSON.stringify(o), { status, headers: { "Content-Type": "application/json" } });
+async function tshirtRoute(req: Request, url: URL, p: string): Promise<Response | null> {
+  if (p === "/tshirts" || p === "/t-shirts") return thtml(home());
+  if (p === "/daytho") return new Response(null, { status: 302, headers: { Location: "/tshirts#daytho" } });
+  if (p.startsWith("/tshirts/") && req.method === "GET" && !["/tshirts/merci", "/tshirts/admin"].includes(p)) {
+    const prod = byId(p.slice(9)); return prod ? thtml(productPage(prod)) : null;
+  }
+  if (p === "/panier") return thtml(cartPage());
+  if (p === "/livraison") return thtml(tlayout("Livraison — FENUA MANGA", `<h2>Livraison & retours</h2>
+  <p>Chaque t-shirt est imprimé à la commande par notre partenaire d'impression puis expédié directement chez toi. Fabrication : 2 à 5 jours ouvrés. Livraison : environ 3 à 8 jours en Europe, plus pour l'outre-mer et l'international.</p>
+  <p>Frais de port par commande :</p><ul>${Object.values(ZONES).map((z) => `<li>${z.label} : ${teuro(z.cents)}</li>`).join("")}</ul>
+  <p>Article abîmé ou erreur d'impression ? Écris-nous dans les 30 jours avec une photo : on le remplace gratuitement. Les articles étant faits sur mesure, les échanges de taille ne sont pas repris.</p>`));
+  if (p.startsWith("/print/")) {
+    const [, , design, file] = p.split("/");
+    const w = Number(url.searchParams.get("w")) || undefined;
+    const png = await renderPng(design, (file || "").replace(/\.png$/, ""), w ? Math.min(Math.max(w, 32), W) : undefined);
+    if (!png) return new Response("Not found", { status: 404 });
+    return new Response(png, { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=86400" } });
+  }
+  if (p === "/tshirts/checkout" && req.method === "POST") {
+    if (!env("STRIPE_SECRET_KEY")) return tjson({ error: "Paiement pas encore activé." }, 503);
+    if (!env("PRINTFUL_API_KEY")) return tjson({ error: "Les t-shirts arrivent très bientôt !" }, 503);
+    const body: any = await req.json().catch(() => ({}));
+    const rawLines: Line[] = Array.isArray(body) ? body : Array.isArray(body?.cart) ? body.cart : [];
+    const zone = ZONES[body?.zone] ? body.zone : "outremer";
+    const lines = rawLines.filter((l) => { const pr = byId(l.product); return pr && pr.colors.some((x) => x.pf === l.color) && pr.sizes.includes(l.size) && l.qty > 0 && l.qty <= 20; });
+    if (!lines.length) return tjson({ error: "Panier vide." }, 400);
+    for (const l of lines) { const pr = byId(l.product)!; for (const side of pr.sides) if (!(await renderPng(designFor(pr, l.color), side, 64))) return tjson({ error: `${pr.name} arrive très bientôt !` }, 503); }
+    const cart = lines.map((l) => `${l.product}|${l.color}|${l.size}|${Math.floor(l.qty)}`).join(";");
+    if (cart.length > 490) return tjson({ error: "Panier trop grand, fais deux commandes." }, 400);
+    const free = lines.every((l) => byId(l.product)!.hidden);
+    const shipCents = free ? 0 : ZONES[zone].cents;
+    const countries = free ? Object.values(ZONES).flatMap((z) => z.countries) : ZONES[zone].countries;
+    try {
+      const s = await tstripe("POST", "/checkout/sessions", {
+        mode: "payment", locale: "fr", success_url: `${TPUB}/tshirts/merci?session_id={CHECKOUT_SESSION_ID}`, cancel_url: `${TPUB}/panier`,
+        line_items: lines.map((l) => { const pr = byId(l.product)!; const col = pr.colors.find((x) => x.pf === l.color)!;
+          return { quantity: Math.floor(l.qty), price_data: { currency: "eur", unit_amount: pr.price, product_data: { name: `${pr.name} — ${col.fr} ${l.size}`, images: [`${TPUB}/print/${designFor(pr, l.color)}/${pr.sides.includes("back") ? "back" : "front"}.png?w=600&v=${ASSET_V}`] } } }; }),
+        shipping_address_collection: { allowed_countries: countries }, phone_number_collection: { enabled: true },
+        shipping_options: [{ shipping_rate_data: { type: "fixed_amount", display_name: free ? "Livraison offerte" : `Livraison · ${ZONES[zone].label}`, fixed_amount: { amount: shipCents, currency: "eur" } } }],
+        metadata: { cart, shop: "fenua-manga", zone },
+      });
+      return tjson({ url: s.url });
+    } catch (e: any) { log(`Checkout : ${e.message}`); return tjson({ error: "Le paiement n'a pas pu démarrer, réessaie dans un instant." }, 500); }
+  }
+  if (p === "/tshirts/merci") {
+    const id = url.searchParams.get("session_id") || "";
+    if (id) { try { await fulfill(id); } catch (e: any) { log(`Merci/fulfill : ${e.message}`); } }
+    return thtml(tlayout("Merci — FENUA MANGA", `<div class="hero"><h1>MĀURU<em>URU !</em></h1><p>Ta commande est enregistrée. Tu vas recevoir un reçu par e-mail, et ton t-shirt part à l'impression.</p><p><a href="/tshirts">Retour aux t-shirts</a></p></div>
+    <script>try{localStorage.removeItem('fm_cart')}catch(e){};count()</script>`));
+  }
+  if (p === "/stripe/webhook" && req.method === "POST") {
+    const raw = await req.text();
+    const secret = env("STRIPE_WEBHOOK_SECRET");
+    if (!secret || !verifyStripeSig(raw, req.headers.get("stripe-signature") || "", secret)) return new Response("bad signature", { status: 400 });
+    const ev = JSON.parse(raw);
+    if (["checkout.session.completed", "checkout.session.async_payment_succeeded"].includes(ev.type) && ev.data.object.metadata?.shop === "fenua-manga") {
+      try { await fulfill(ev.data.object.id); } catch (e: any) { log(`Webhook/fulfill : ${e.message}`); return new Response("retry", { status: 500 }); }
+    }
+    return new Response("ok");
+  }
+  if (p === "/tshirts/admin") {
+    if (!env("OWNER_KEY") || url.searchParams.get("key") !== env("OWNER_KEY")) return thtml("Accès refusé", 403);
+    const check = async (name: string, fn: () => Promise<string>) => { try { return `<div class="row"><b>${name}</b><span>✅ ${await fn()}</span></div>`; } catch (e: any) { return `<div class="row"><b>${name}</b><span>❌ ${e.message}</span></div>`; } };
+    const k = env("STRIPE_SECRET_KEY");
+    const rows = [
+      await check("Stripe", async () => { if (!k) throw new Error("clé manquante"); await tstripe("GET", "/balance"); return `connecté (${/_live_/.test(k) ? "LIVE" : "test"})`; }),
+      await check("Webhook Stripe", async () => { if (!env("STRIPE_WEBHOOK_SECRET")) throw new Error("secret manquant"); return "configuré"; }),
+      await check("Printful", async () => { if (!env("PRINTFUL_API_KEY")) throw new Error("clé manquante"); const cat = await catalog(TEE); return `connecté · Gildan 64000 · ${cat.variants.size} variantes`; }),
+      await check("Mode commandes", async () => (env("PRINTFUL_AUTO_CONFIRM") === "true" ? "envoi automatique en production" : "brouillon (à confirmer dans Printful)")),
+    ].join("");
+    const ev = events.map((e) => `<div class="row"><span class="mute">${e.at.slice(0, 16).replace("T", " ")}</span><span>${e.msg}</span></div>`).join("") || `<p class="mute">Rien pour l'instant.</p>`;
+    const tests = TPRODUCTS.filter((pr) => pr.hidden).map((pr) => `<a href="/tshirts/${pr.id}">${pr.name}</a>`).join(" · ");
+    return thtml(tlayout("Admin t-shirts — FENUA MANGA", `<h2>Admin t-shirts</h2>${rows}<h3>T-shirts test (privés)</h3><p>${tests}</p><h3>Journal</h3>${ev}`));
+  }
+  return null;
+}
+ensureWebhook();
+(async () => {
+  if (!env("PRINTFUL_API_KEY")) return;
+  try {
+    await printfulStoreId();
+    const cat = await catalog(TEE);
+    const miss = TPRODUCTS.flatMap((p) => p.colors.flatMap((c) => p.sizes.filter((z) => !cat.variants.has(`${c.pf}|${z}`)).map((z) => `${p.id} ${c.pf} ${z}`)));
+    log(`Printful OK (Gildan 64000) : ${cat.variants.size} variantes${miss.length ? `, MANQUANTES : ${miss.join(", ")}` : ", toutes les tailles/couleurs trouvées"}`);
+  } catch (e: any) { log(`Printful ERREUR : ${e.message}`); }
+})();
+fonts().catch((e) => console.error("polices:", e.message));
+
+importFiles().then(async () => {
+  const missing: string[] = [];
+  for (const n of CHECK) if (!(await Bun.file(destOf(n)).exists())) missing.push(n);
+  console.log(`Fichiers manquants : ${missing.join(", ") || "aucun"}`);
+});
+
+Bun.serve({
+  port: Number(Bun.env.PORT ?? 3000),
+  maxRequestBodySize: 150 * 1024 * 1024,
+  async fetch(req) {
+    const url = new URL(req.url);
+    const origin = Bun.env.PUBLIC_URL ?? `https://${req.headers.get("host")}`;
+    const p = url.pathname;
+    const tr = await tshirtRoute(req, url, p);
+    if (tr) return tr;
+
+    if (p === "/" || p === "/index.html") return html(INDEX);
+    if (p === "/liens" || p === "/liens.html") return html(LIENS);
+    if (p === "/soutenir" || p === "/soutien") return Response.redirect("https://ko-fi.com/loshing57323", 302);
+    if (p === "/style.css") return new Response(CSS, { headers: { "Content-Type": "text/css; charset=utf-8", "Cache-Control": "public, max-age=600" } });
+
+    if (p.startsWith("/img/")) {
+      const name = p.slice(5);
+      if (!ALLOWED.test(name) || name.endsWith(".pdf")) return new Response("Not found", { status: 404 });
+      const f = Bun.file(`${DATA}/img/${name}`);
+      if (await f.exists()) return new Response(f, { headers: { "Cache-Control": "public, max-age=3600" } });
+      const gen = await brandImage(name);
+      if (gen) return new Response(gen, { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=3600" } });
+      return new Response("Not found", { status: 404 });
+    }
+
+    if (p === "/admin") {
+      if (!OWNER_KEY || url.searchParams.get("key") !== OWNER_KEY) return html(page("Accès refusé", "<h1>Accès refusé</h1>"), 403);
+      let msg = "";
+      if (req.method === "POST") {
+        const form = await req.formData();
+        const saved: string[] = [];
+        for (const [field, v] of form.entries()) {
+          if (typeof v === "string" || !(v as File).size) continue;
+          let name = "";
+          if (field.startsWith("slot:")) name = field.slice(5);
+          else if (field === "f") name = (v as File).name;
+          if (!ALLOWED.test(name)) continue;
+          await Bun.write(destOf(name), v as Blob, { createPath: true });
+          saved.push(name);
+        }
+        if (saved.some((n) => n.startsWith("tshirt-"))) { assetCache.clear(); pngCache.clear(); }
+        msg = `<p><b>Enregistré :</b> ${saved.join(", ") || "aucun fichier reconnu"}</p>`;
+      }
+      const have: string[] = [];
+      for (const n of CHECK) have.push(`${(await Bun.file(destOf(n)).exists()) ? "✅" : "❌"} ${n}`);
+      return html(adminForm(msg, have.join("<br>")));
+    }
+
+    if (p === "/acheter" && req.method === "POST") {
+      const form = await req.formData().catch(() => null);
+      const id = String(form?.get("produit") ?? "mana-t1");
+      const prod = PRODUCTS[id];
+      if (!prod) return html(page("Introuvable", "<h1>Produit introuvable</h1>"), 404);
+      if (!STRIPE_KEY) return html(page("Bientôt", "<h1>Paiement bientôt disponible</h1><p>Māuruuru !</p>"), 503);
+      if (!(await Bun.file(prod.pdf).exists()))
+        return html(page("Bientôt", `<h1>Bientôt disponible</h1><p>${prod.label} arrive très vite sur la boutique. Māuruuru !</p><a class="btn" href="/">Retour</a>`), 503);
+      const body = new URLSearchParams({
+        mode: "payment",
+        "line_items[0][quantity]": "1",
+        "line_items[0][price_data][currency]": "eur",
+        "line_items[0][price_data][unit_amount]": String(prod.price),
+        "line_items[0][price_data][product_data][name]": prod.name,
+        "line_items[0][price_data][product_data][description]": prod.desc,
+        "metadata[produit]": id,
+        locale: "fr",
+        success_url: `${origin}/merci?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/#acheter`,
+      });
+      try { const s = await stripe("checkout/sessions", body); return Response.redirect(s.url, 303); }
+      catch (e) { console.error("checkout", e); return html(page("Erreur", "<h1>Oups…</h1><p>Le paiement n'a pas pu démarrer. Réessaie dans un instant.</p>"), 502); }
+    }
+
+    if (p === "/merci") {
+      const id = url.searchParams.get("session_id");
+      const s = await paid(id);
+      if (!s) return html(page("Paiement non confirmé", "<h1>Paiement non confirmé</h1><p>Si tu viens de payer, attends quelques secondes puis recharge la page.</p>"), 402);
+      const prod = productOf(s);
+      return html(page("Māuruuru !", `<h1>Māuruuru ! 🌺</h1><p>Ton paiement est confirmé. Voici ton manga :</p>
+        <a class="btn" href="/telecharger?session_id=${encodeURIComponent(id!)}">⬇️ Télécharger ${prod.label}</a>
+        <p class="small">Garde cette page : le lien reste valable pour retélécharger ton fichier.</p>`));
+    }
+
+    if (p === "/telecharger") {
+      const s = await paid(url.searchParams.get("session_id"));
+      if (!s) return html(page("Accès refusé", "<h1>Accès refusé</h1><p>Ce lien n'est pas associé à un paiement confirmé.</p>"), 403);
+      const prod = productOf(s);
+      const f = Bun.file(prod.pdf);
+      if (!(await f.exists())) return html(page("Bientôt", "<h1>Fichier en préparation</h1><p>Écris-nous, on t'envoie ton manga très vite.</p>"), 503);
+      return new Response(f, { headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${prod.file}"` } });
+    }
+
+    return html(page("Introuvable", "<h1>Page introuvable</h1>"), 404);
+  },
+});
+console.log("FENUA MANGA en ligne");
