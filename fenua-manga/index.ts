@@ -30,6 +30,24 @@ const MANA_P = euros(PRODUCTS["mana-t1"].price);
 const TOA_P = euros(PRODUCTS["toa-t1"].price);
 const hideIfMissing = `onerror="this.style.display='none'"`;
 
+/* ===================== MONÉTISATION =====================
+   ADSENSE_CLIENT : identifiant AdSense (ca-pub-…). Vide = aucune pub, rien n'est chargé.
+   SPONSOR_NAME, SPONSOR_URL, SPONSOR_TEXT : encart partenaire payé. Vide = « Ton commerce ici ». */
+const cfg = (k: string) => (Bun.env[k] || "").trim();
+const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+const ADSENSE = /^ca-pub-\d{10,20}$/.test(cfg("ADSENSE_CLIENT")) ? cfg("ADSENSE_CLIENT") : "";
+const adHead = ADSENSE ? `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE}" crossorigin="anonymous"></script>` : "";
+const adSlot = ADSENSE ? `<div class="adzone"><div class="adlabel">Publicité</div><ins class="adsbygoogle" style="display:block" data-ad-client="${ADSENSE}" data-ad-format="auto" data-full-width-responsive="true"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>` : "";
+const sponsorBox = () => {
+  const name = cfg("SPONSOR_NAME"), url = cfg("SPONSOR_URL");
+  if (name && /^https:\/\//.test(url)) return `<a class="sponsor" href="${esc(url)}" target="_blank" rel="sponsored noopener"><span class="sp-tag">PARTENAIRE</span><b>${esc(name)}</b><span>${esc(cfg("SPONSOR_TEXT"))}</span></a>`;
+  return `<a class="sponsor empty" href="/partenaires"><span class="sp-tag">ESPACE PARTENAIRE</span><b>Ton commerce ici</b><span>Fais connaître ta marque aux fans de manga du fenua →</span></a>`;
+};
+const SPONSOR_CSS = `.sponsor{display:grid;gap:4px;max-width:720px;margin:28px auto;padding:18px 20px;background:#fff;color:#0a0a0a;border:4px solid #0a0a0a;box-shadow:8px 8px 0 #ffe14d;text-decoration:none;text-align:center;transition:transform .1s,box-shadow .1s}
+.sponsor:hover{transform:translate(-2px,-2px);box-shadow:10px 10px 0 #ffe14d}.sponsor b{font-size:20px}.sponsor span{color:#4a4550}
+.sponsor.empty{border-style:dashed;background:#fffdf7}.sp-tag{font-size:11px;font-weight:900;letter-spacing:.25em;color:#ff2a36!important}
+.adzone{max-width:760px;margin:28px auto;padding:0 16px;text-align:center}.adlabel{font-size:11px;letter-spacing:.2em;color:#8a8490;margin-bottom:4px}`;
+
 const INDEX = `<!doctype html>
 <html lang="fr">
 <head>
@@ -41,10 +59,11 @@ const INDEX = `<!doctype html>
 <meta property="og:description" content="Des mangas 100 % tahitiens à télécharger en PDF.">
 <meta property="og:image" content="/img/og.jpg">
 <link rel="icon" href="/img/favicon.png">
-<meta name="theme-color" content="#24202a">
+<meta name="theme-color" content="#fffdf7">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
+${adHead}
 </head>
 <body>
 
@@ -184,6 +203,9 @@ const INDEX = `<!doctype html>
   <a class="btn big" href="https://ko-fi.com/loshing57323" target="_blank" rel="noopener">Soutenir FENUA MANGA sur Ko-fi</a>
 </section>
 
+<section style="padding:0 16px;">${sponsorBox()}</section>
+${adSlot}
+
 <footer>
   <div class="brand">FENUA <span>MANGA</span></div>
   <p>Le fenua en manga · <a href="https://www.tiktok.com/@fenuamanga" rel="noopener">TikTok</a> · <a href="https://www.youtube.com/@fenuamanga" rel="noopener">YouTube</a> · <a href="/tshirts">T-shirts</a> · <a href="https://ko-fi.com/loshing57323" rel="noopener">Soutenir</a> · <a href="/liens.html">Tous les liens</a></p>
@@ -201,25 +223,26 @@ const LIENS = `<!doctype html>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FENUA MANGA — Liens</title>
 <link rel="icon" href="/img/favicon.png">
-<meta name="theme-color" content="#24202a">
+<meta name="theme-color" content="#fffdf7">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
+${adHead}
 <style>
   .links { max-width:440px; margin:0 auto; padding:40px 16px 56px; text-align:center; }
   .links img.logo { width:120px; height:120px; border-radius:50%; margin:0 auto 14px; border:4px solid var(--paper); box-shadow:0 0 0 4px var(--red); }
   .links h1 { font-size:30px; font-weight:900; }
   .links h1 span { color:var(--red); }
-  .links p.bio { color:#e2d9e4; margin:6px 0 26px; }
+  .links p.bio { color:#4a4550; margin:6px 0 26px; }
   .links a.l { display:block; margin:0 0 16px; padding:16px; background:var(--paper); color:var(--ink); font-weight:900; font-size:17px;
     text-decoration:none; border:4px solid var(--ink); box-shadow:6px 6px 0 var(--red); }
   .links a.l { transition:transform .1s, box-shadow .1s; }
   .links a.l:hover { transform:translate(-2px,-2px); box-shadow:8px 8px 0 var(--red); }
   .links h1 { font-family:Bangers,Inter,sans-serif; font-weight:400; font-size:44px; letter-spacing:1.5px; }
   .links a.l.main { background:var(--red); color:var(--paper); border-color:var(--paper); box-shadow:6px 6px 0 var(--paper); }
-  .guide { text-align:left; background:#2f2a36; border:3px solid #463f4e; padding:18px; margin-top:28px; }
+  .guide { text-align:left; background:#fff; border:3px solid var(--ink); box-shadow:6px 6px 0 #ffe14d; padding:18px; margin-top:28px; }
   .guide h2 { font-size:20px; text-align:left; margin-bottom:10px; }
-  .guide ol { margin-left:20px; color:#f1eae2; }
+  .guide ol { margin-left:20px; color:#2b2730; }
   .guide li { margin-bottom:8px; }
 </style>
 </head>
@@ -238,6 +261,8 @@ const LIENS = `<!doctype html>
   <a class="l" href="#guide">🧭 Guide : par où commencer ?</a>
   <a class="l" href="https://www.tiktok.com/@fenuamanga" rel="noopener">🎬 TikTok · @fenuamanga</a>
   <a class="l" href="https://www.youtube.com/@fenuamanga" rel="noopener">▶️ YouTube · @fenuamanga</a>
+  <a class="l" href="/partenaires">📣 Devenir partenaire de FENUA MANGA</a>
+  ${sponsorBox()}
 
   <section class="guide" id="guide">
     <h2>🧭 Guide du lecteur</h2>
@@ -248,6 +273,7 @@ const LIENS = `<!doctype html>
       <li><b>Abonne-toi</b> pour ne pas rater les prochains tomes et les nouvelles séries.</li>
     </ol>
   </section>
+  ${adSlot}
 </main>
 </body>
 </html>
@@ -362,6 +388,7 @@ section h2 { font-family:Bangers,Inter,sans-serif; font-weight:400; letter-spaci
   font-family:Bangers,Inter,sans-serif; font-size:22px; letter-spacing:1.5px; padding:6px 0; }
 .marquee div { display:inline-block; animation:mq 30s linear infinite; }
 @keyframes mq { to { transform:translateX(-50%); } }
+${SPONSOR_CSS}
 .pages img { transition:transform .2s, box-shadow .2s; }
 .pages img:hover { transform:translate(-4px,-4px) rotate(-1deg); box-shadow:10px 10px 0 var(--red); }
 .card { transition:transform .15s, box-shadow .15s; }
@@ -371,6 +398,24 @@ section h2 { font-family:Bangers,Inter,sans-serif; font-weight:400; letter-spaci
 .buy-box { transition:transform .2s; }
 .buy-box:hover { transform:translate(-3px,-3px); }
 footer .brand { font-size:40px; }
+/* ---- Thème clair « page imprimée » ---- */
+body { background-color:#fffdf7; color:var(--ink);
+  background-image:radial-gradient(rgba(0,0,0,.06) 18%, transparent 19%), radial-gradient(ellipse 70% 50% at 10% 0%, rgba(255,42,54,.12), transparent 70%), radial-gradient(ellipse 60% 50% at 95% 35%, rgba(42,200,180,.12), transparent 70%), radial-gradient(ellipse 70% 50% at 20% 100%, rgba(255,200,60,.14), transparent 70%); }
+.brand, .box .brand { color:var(--ink); }
+.top { background:rgba(255,253,247,.92); }
+.btn { border-color:var(--ink); box-shadow:6px 6px 0 var(--ink); color:#fff; }
+.btn:hover { box-shadow:8px 8px 0 var(--ink); }
+.btn:active { box-shadow:2px 2px 0 var(--ink); }
+.small-btn { box-shadow:3px 3px 0 var(--ink); } .small-btn:hover { box-shadow:5px 5px 0 var(--ink); }
+.hero h1 { text-shadow:6px 6px 0 #ffe14d, 10px 10px 0 var(--ink); }
+.hero-img img, .pages img { border-color:var(--ink); }
+.pitch { color:#2b2730; } .small { color:#6a6470; } .price { color:#c98a00; } .btn .price { color:#ffe14d; }
+.strip { color:#fff; border-color:var(--ink); }
+.card.red { box-shadow:6px 6px 0 var(--ink); } .card.red:hover { box-shadow:9px 9px 0 var(--ink); }
+.nav a:not(.btn):hover { color:var(--red); }
+.marquee { background:var(--ink); color:var(--paper); }
+footer { color:#4a4550; }
+.links a.l.main { border-color:var(--ink); box-shadow:6px 6px 0 var(--ink); }
 @media (prefers-reduced-motion:reduce) { * { transition:none !important; animation:none !important; } html { scroll-behavior:auto; } }
 `;
 
@@ -834,7 +879,7 @@ type TMeta = { noindex?: boolean; image?: string; desc?: string };
 const MARQUEE = "IMPRIMÉ À LA DEMANDE ✦ LIVRÉ À TAHITI & PARTOUT ✦ PAIEMENT SÉCURISÉ STRIPE ✦ 100 % FENUA ✦ ";
 const tlayout = (title: string, body: string, meta: TMeta = {}) => `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${title}</title><meta name="description" content="${meta.desc || "T-shirts manga tahitiens, imprimés à la demande."}">
-${meta.noindex ? `<meta name="robots" content="noindex">` : ""}<meta name="theme-color" content="#24202a">
+${meta.noindex ? `<meta name="robots" content="noindex">` : ""}<meta name="theme-color" content="#fffdf7">
 <meta property="og:title" content="${title}"><meta property="og:image" content="${meta.image || `${TPUB}/img/og.jpg`}">
 <link rel="icon" href="/img/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -913,6 +958,17 @@ select{width:100%;background:var(--card);color:var(--ink);border:3px solid var(-
 .dept{font-size:13px;letter-spacing:.5em;color:var(--mute);border:1px solid var(--line);padding:4px 10px}
 .dsec .card{border-width:2px;box-shadow:6px 6px 0 #14121a}.dsec .card:hover{box-shadow:10px 10px 0 var(--red);transform:translate(-4px,-4px)}
 .dsec .card h3{font-family:Inter,system-ui,sans-serif;font-weight:900;font-size:19px;letter-spacing:.08em;text-transform:uppercase}
+
+:root{--bg:#fffdf7;--card:#ffffff;--ink:#0a0a0a;--mute:#5a5560;--line:#e2dccf}
+body{background-image:radial-gradient(rgba(0,0,0,.06) 18%,transparent 19%),radial-gradient(ellipse 70% 50% at 10% 0%,rgba(255,42,54,.12),transparent 70%),radial-gradient(ellipse 60% 50% at 95% 35%,rgba(42,200,180,.12),transparent 70%),radial-gradient(ellipse 70% 50% at 20% 100%,rgba(255,200,60,.14),transparent 70%)}
+header{background:rgba(255,253,247,.92)}
+.cartbtn,.buy,.marquee,.pill[aria-pressed=true],.private{color:#fff}
+.marquee{background:var(--ink);border-bottom-color:var(--red)}
+.hero h1{color:var(--ink);-webkit-text-stroke:0;text-shadow:5px 5px 0 #ffe14d}.hero h1 em{text-shadow:5px 5px 0 var(--ink)}
+.card .img,.views{background:radial-gradient(rgba(0,0,0,.06) 22%,transparent 23%) 0 0/14px 14px,radial-gradient(circle at 50% 40%,#ffffff,#efe9df 72%)}
+.perks li{color:#2b2730}.dsec .card{box-shadow:6px 6px 0 #d8d1c4}
+.price{color:#c98a00}
+${SPONSOR_CSS}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style><script>
 const getCart=()=>{try{return JSON.parse(localStorage.getItem('fm_cart')||'[]')}catch(e){return []}};
@@ -934,7 +990,9 @@ function home() {
   return tlayout("T-shirts — FENUA MANGA", `<section class="hero"><div class="kata">ティーシャツ</div><h1>LES T-SHIRTS<br><em>FENUA MANGA</em></h1>
   <p>Tirés de nos mangas. Imprimés à la commande, livrés chez toi.</p></section><div class="grid">${fenua}</div>
   <section class="dsec" id="daytho"><div class="dhead"><h2>DAYTHO<span>デイソ</span></h2><div class="dept">DTHO 987</div></div>
-  <p class="mute">Streetwear techwear. Logo sur le cœur, personnages au dos. Noir, blanc, bleu marine, rouge, rose et vert.</p><div class="grid">${daytho}</div></section>`);
+  <p class="mute">Streetwear techwear. Logo sur le cœur, personnages au dos. Noir, blanc, bleu marine, rouge, rose et vert.</p><div class="grid">${daytho}</div></section>
+  ${sponsorBox()}
+  <section class="box" style="text-align:center;max-width:720px;margin:28px auto"><h2>Soutiens FENUA MANGA 🤝</h2><p class="mute">Chaque soutien finance les prochains tomes. Les soutiens reçoivent les épisodes en avance et leur nom au générique.</p><a class="buy" style="display:inline-block;width:auto;padding:14px 28px;text-decoration:none" href="/soutenir">Soutenir sur Ko-fi</a></section>`);
 }
 function productPage(p: TProduct) {
   const sw = p.colors.map((c, i) => `<button class="swatch" title="${c.fr}" aria-label="${c.fr}" aria-pressed="${i === 0}" data-c="${c.pf}" style="background:${c.hex}"></button>`).join("");
@@ -949,7 +1007,7 @@ function productPage(p: TProduct) {
   <div class="label">Couleur : <b id="cn">${p.colors[0].fr}</b></div><div class="opts">${sw}</div>
   <div class="label">Taille</div><div class="opts" id="sizes">${sz}</div>
   <button class="buy" id="add">Ajouter au panier</button>
-  <ul class="perks"><li>👕 Coton 100 % ringspun (Gildan 64000 Softstyle), doux et léger, coupe unisexe.</li><li>🖨️ Imprimé à la demande : expédition sous 2 à 5 jours ouvrés.</li><li>🔒 Paiement sécurisé par Stripe · <a href="/livraison">Livraison & retours</a></li></ul></div></div>
+  <ul class="perks"><li>👕 Coton 100 % ringspun (Gildan 64000 Softstyle), doux et léger, coupe unisexe.</li><li>🖨️ Imprimé à la demande : expédition sous 2 à 5 jours ouvrés.</li><li>🔒 Paiement sécurisé par Stripe · <a href="/livraison">Livraison & retours</a></li><li>📖 Tu n'as pas encore lu TOA ? <a href="/#toa">Le Tome 1 en PDF, ${TOA_P}</a></li></ul></div></div>
   <script>
   const V=${JSON.stringify(views)},C=${JSON.stringify(Object.fromEntries(p.colors.map((c) => [c.pf, c.fr])))};let c="${p.colors[0].pf}",s="${p.sizes[1]}",v="${startSide}";
   const draw=()=>document.getElementById('view').innerHTML=V[c+'|'+v];
@@ -983,6 +1041,29 @@ function cartPage() {
   if(j.url)location.href=j.url;else{alert(j.error||'Erreur');e.target.disabled=false;e.target.textContent='Payer'}};</script>`, { noindex: true });
 }
 
+/* ===================== PARTENAIRES ===================== */
+const LEADS = `${DATA}/partenaires.jsonl`;
+const leadHits = new Map<string, number[]>();
+function partnersPage(msg = "") {
+  return tlayout("Devenir partenaire — FENUA MANGA", `<div style="max-width:720px;margin:0 auto"><div class="kata" style="margin-top:20px">パートナー</div><h2>Deviens partenaire</h2>
+  <p>FENUA MANGA, ce sont des mangas 100 % tahitiens, des épisodes vidéo sur TikTok et YouTube, et une boutique de t-shirts. Un public jeune, fan de manga et de culture du fenua.</p>
+  <ul class="perks"><li>📣 Ton logo et ton lien sur le site (accueil, page Liens, boutique)</li><li>🎬 Une mention dans un épisode vidéo</li><li>🤝 Une offre sur mesure : un mois, un tome, un événement</li></ul>
+  ${msg}
+  <form class="box" method="post" action="/partenaires" style="display:grid;gap:10px">
+    <label class="label">Ton nom<input name="nom" required maxlength="80" style="width:100%;padding:10px;font:inherit;border:3px solid var(--ink)"></label>
+    <label class="label">Ton commerce / ta marque<input name="marque" maxlength="120" style="width:100%;padding:10px;font:inherit;border:3px solid var(--ink)"></label>
+    <label class="label">Comment te contacter (e-mail, téléphone, Instagram…)<input name="contact" required maxlength="160" style="width:100%;padding:10px;font:inherit;border:3px solid var(--ink)"></label>
+    <label class="label">Ton idée<textarea name="message" maxlength="1500" rows="4" style="width:100%;padding:10px;font:inherit;border:3px solid var(--ink)"></textarea></label>
+    <input name="site" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+    <button class="buy" type="submit">Envoyer ma demande</button>
+  </form></div>`, { desc: "Fais connaître ta marque aux fans de manga du fenua : deviens partenaire de FENUA MANGA." });
+}
+async function readLeads() {
+  const f = Bun.file(LEADS);
+  if (!(await f.exists())) return [];
+  return (await f.text()).split("\n").filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean).reverse();
+}
+
 /* ===================== ROUTES T-SHIRTS ===================== */
 const thtml = (s: string, status = 200) => new Response(s, { status, headers: { "Content-Type": "text/html; charset=utf-8" } });
 const tjson = (o: any, status = 200) => new Response(JSON.stringify(o), { status, headers: { "Content-Type": "application/json" } });
@@ -993,6 +1074,22 @@ async function tshirtRoute(req: Request, url: URL, p: string): Promise<Response 
     const prod = byId(p.slice(9)); return prod ? thtml(productPage(prod)) : null;
   }
   if (p === "/panier") return thtml(cartPage());
+  if (p === "/partenaires" && req.method === "GET") return thtml(partnersPage());
+  if (p === "/partenaires" && req.method === "POST") {
+    const form = await req.formData().catch(() => null);
+    const get = (k: string, max: number) => String(form?.get(k) ?? "").trim().slice(0, max);
+    if (!form || get("site", 10)) return thtml(partnersPage(`<div class="notice">Māuruuru ! Ta demande est bien reçue.</div>`));
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "?";
+    const now = Date.now(), hits = (leadHits.get(ip) || []).filter((t) => now - t < 3600_000);
+    if (hits.length >= 5) return thtml(partnersPage(`<div class="notice">Trop de demandes, réessaie plus tard.</div>`), 429);
+    const lead = { at: new Date().toISOString(), nom: get("nom", 80), marque: get("marque", 120), contact: get("contact", 160), message: get("message", 1500) };
+    if (!lead.nom || !lead.contact) return thtml(partnersPage(`<div class="notice">Indique ton nom et un moyen de te contacter.</div>`), 400);
+    hits.push(now); leadHits.set(ip, hits);
+    const f = Bun.file(LEADS);
+    await Bun.write(LEADS, ((await f.exists()) ? await f.text() : "") + JSON.stringify(lead) + "\n", { createPath: true });
+    log(`Nouvelle demande partenaire : ${lead.marque || lead.nom}`);
+    return thtml(partnersPage(`<div class="notice">Māuruuru ${esc(lead.nom)} ! On te recontacte très vite.</div>`));
+  }
   if (p === "/livraison") return thtml(tlayout("Livraison — FENUA MANGA", `<div class="kata" style="margin-top:20px">配送</div><h2>Livraison & retours</h2>
   <p>Chaque t-shirt est imprimé à la commande par notre partenaire d'impression puis expédié directement chez toi. Fabrication : 2 à 5 jours ouvrés. Livraison : environ 3 à 8 jours en Europe, plus pour l'outre-mer et l'international.</p>
   <p>Frais de port par commande :</p><ul>${Object.values(ZONES).map((z) => `<li>${z.label} : ${teuro(z.cents)}</li>`).join("")}</ul>
@@ -1020,7 +1117,7 @@ async function tshirtRoute(req: Request, url: URL, p: string): Promise<Response 
     const countries = free ? Object.values(ZONES).flatMap((z) => z.countries) : ZONES[zone].countries;
     try {
       const s = await tstripe("POST", "/checkout/sessions", {
-        mode: "payment", locale: "fr", success_url: `${TPUB}/tshirts/merci?session_id={CHECKOUT_SESSION_ID}`, cancel_url: `${TPUB}/panier`,
+        mode: "payment", locale: "fr", allow_promotion_codes: true, success_url: `${TPUB}/tshirts/merci?session_id={CHECKOUT_SESSION_ID}`, cancel_url: `${TPUB}/panier`,
         line_items: lines.map((l) => { const pr = byId(l.product)!; const col = pr.colors.find((x) => x.pf === l.color)!;
           return { quantity: Math.floor(l.qty), price_data: { currency: "eur", unit_amount: pr.price, product_data: { name: `${pr.name} — ${col.fr} ${l.size}`, images: [`${TPUB}/print/${designFor(pr, l.color)}/${pr.sides.includes("back") ? "back" : "front"}.png?w=600&v=${ASSET_V}`] } } }; }),
         shipping_address_collection: { allowed_countries: countries }, phone_number_collection: { enabled: true },
@@ -1034,6 +1131,7 @@ async function tshirtRoute(req: Request, url: URL, p: string): Promise<Response 
     const id = url.searchParams.get("session_id") || "";
     if (id) { try { await fulfill(id); } catch (e: any) { log(`Merci/fulfill : ${e.message}`); } }
     return thtml(tlayout("Merci — FENUA MANGA", `<div class="hero"><h1>MĀURU<em>URU !</em></h1><p>Ta commande est enregistrée. Tu vas recevoir un reçu par e-mail, et ton t-shirt part à l'impression.</p><p><a href="/tshirts">Retour aux t-shirts</a></p></div>
+    <div class="box" style="text-align:center"><h2>Lis l'histoire 📖</h2><p>TOA, Tome 1 : 44 pages de combat au fenua, en PDF à lire tout de suite.</p><a class="buy" style="display:inline-block;width:auto;padding:14px 28px;text-decoration:none" href="/#acheter">Lire TOA · ${TOA_P}</a></div>
     <script>try{localStorage.removeItem('fm_cart')}catch(e){};count()</script>`, { noindex: true }));
   }
   if (p === "/stripe/webhook" && req.method === "POST") {
@@ -1056,9 +1154,11 @@ async function tshirtRoute(req: Request, url: URL, p: string): Promise<Response 
       await check("Printful", async () => { if (!env("PRINTFUL_API_KEY")) throw new Error("clé manquante"); const cat = await catalog(TEE); return `connecté · Gildan 64000 · ${cat.variants.size} variantes`; }),
       await check("Mode commandes", async () => (env("PRINTFUL_AUTO_CONFIRM") === "true" ? "envoi automatique en production" : "brouillon (à confirmer dans Printful)")),
     ].join("");
-    const ev = events.map((e) => `<div class="row"><span class="mute">${e.at.slice(0, 16).replace("T", " ")}</span><span>${e.msg}</span></div>`).join("") || `<p class="mute">Rien pour l'instant.</p>`;
+    const ev = events.map((e) => `<div class="row"><span class="mute">${e.at.slice(0, 16).replace("T", " ")}</span><span>${esc(e.msg)}</span></div>`).join("") || `<p class="mute">Rien pour l'instant.</p>`;
     const tests = TPRODUCTS.filter((pr) => pr.hidden).map((pr) => `<a href="/tshirts/${pr.id}">${pr.name}</a>`).join(" · ");
-    return thtml(tlayout("Admin t-shirts — FENUA MANGA", `<h2>Admin t-shirts</h2>${rows}<h3>T-shirts test (privés)</h3><p>${tests}</p><h3>Journal</h3>${ev}`, { noindex: true }));
+    const leads = (await readLeads()).map((l: any) => `<div class="row"><span class="mute">${esc(String(l.at).slice(0, 16).replace("T", " "))}</span><span><b>${esc(l.marque || l.nom)}</b> · ${esc(l.nom)} · ${esc(l.contact)}<br>${esc(l.message || "")}</span></div>`).join("") || `<p class="mute">Aucune demande pour l'instant.</p>`;
+    const money = `<div class="row"><b>Publicité AdSense</b><span>${ADSENSE ? `✅ active (${ADSENSE})` : "⏸️ inactive : ajouter ADSENSE_CLIENT"}</span></div><div class="row"><b>Encart partenaire</b><span>${cfg("SPONSOR_NAME") ? `✅ ${esc(cfg("SPONSOR_NAME"))}` : "⏸️ libre (« Ton commerce ici »)"}</span></div>`;
+    return thtml(tlayout("Admin t-shirts — FENUA MANGA", `<h2>Admin t-shirts</h2>${rows}${money}<h3>Demandes partenaires</h3>${leads}<h3>T-shirts test (privés)</h3><p>${tests}</p><h3>Journal</h3>${ev}`, { noindex: true }));
   }
   return null;
 }
@@ -1092,9 +1192,10 @@ Bun.serve({
 
     if (p === "/robots.txt") return new Response(`User-agent: *\nDisallow: /admin\nDisallow: /tshirts/admin\nDisallow: /panier\nDisallow: /merci\nDisallow: /telecharger\nSitemap: ${TPUB}/sitemap.xml\n`, { headers: { "Content-Type": "text/plain" } });
     if (p === "/sitemap.xml") {
-      const urls = ["/", "/tshirts", "/liens", "/livraison", ...TPRODUCTS.filter((x) => !x.hidden).map((x) => `/tshirts/${x.id}`)];
+      const urls = ["/", "/tshirts", "/liens", "/livraison", "/partenaires", ...TPRODUCTS.filter((x) => !x.hidden).map((x) => `/tshirts/${x.id}`)];
       return new Response(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map((u) => `<url><loc>${TPUB}${u}</loc></url>`).join("")}</urlset>`, { headers: { "Content-Type": "application/xml" } });
     }
+    if (p === "/ads.txt") return ADSENSE ? new Response(`google.com, ${ADSENSE.replace("ca-", "")}, DIRECT, f08c47fec0942fa0\n`, { headers: { "Content-Type": "text/plain" } }) : new Response("Not found", { status: 404 });
     if (p === "/favicon.ico") return Response.redirect(`${origin}/img/favicon.png`, 301);
     if (p === "/" || p === "/index.html") return html(INDEX);
     if (p === "/liens" || p === "/liens.html") return html(LIENS);
@@ -1150,6 +1251,7 @@ Bun.serve({
         "line_items[0][price_data][product_data][name]": prod.name,
         "line_items[0][price_data][product_data][description]": prod.desc,
         "metadata[produit]": id,
+        allow_promotion_codes: "true",
         locale: "fr",
         success_url: `${origin}/merci?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${origin}/#acheter`,
@@ -1165,7 +1267,9 @@ Bun.serve({
       const prod = productOf(s);
       return html(page("Māuruuru !", `<h1>Māuruuru ! 🌺</h1><p>Ton paiement est confirmé. Voici ton manga :</p>
         <a class="btn" href="/telecharger?session_id=${encodeURIComponent(id!)}">⬇️ Télécharger ${prod.label}</a>
-        <p class="small">Garde cette page : le lien reste valable pour retélécharger ton fichier.</p>`));
+        <p class="small">Garde cette page : le lien reste valable pour retélécharger ton fichier.</p>
+        <h2>Porte l'histoire 👕</h2><p>Manu et le logo FENUA MANGA, en t-shirt imprimé à la commande.</p>
+        <a class="btn" href="/tshirts">Voir les t-shirts</a>`));
     }
 
     if (p === "/telecharger") {
