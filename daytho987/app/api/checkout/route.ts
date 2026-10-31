@@ -1,73 +1,74 @@
 import { NextResponse } from "next/server";
+import { findVariant, isOrderable } from "@/lib/products";
+import { stripe, SHIPPING_COUNTRIES, encodeCart, type CartLine } from "@/lib/stripe";
 
+// Crée une session Stripe Checkout à partir du panier.
+// Aucune commande Printful n'est créée ici : elle ne part qu'APRÈS paiement,
+// depuis le webhook Stripe (app/api/webhooks/stripe/route.ts).
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    const lines: CartLine[] = Array.isArray(body?.items) ? body.items : [];
 
-    // Vérification de sécurité basique
-    if (!body.variantId || !body.imageUrl) {
-      return NextResponse.json({ error: "Données de commande manquantes." }, { status: 400 });
+    if (lines.length === 0 || lines.length > 20) {
+      return NextResponse.json({ error: "Panier vide ou invalide." }, { status: 400 });
     }
 
-    if (!process.env.PRINTFUL_API_KEY || process.env.PRINTFUL_API_KEY === "ta_cle_secrete_ici") {
-      return NextResponse.json({ error: "Clé API Printful non configurée (PRINTFUL_API_KEY)." }, { status: 500 });
-    }
-
-    // Construction de l'URL absolue pour Printful
-    // On utilise l'en-tête 'host' pour s'adapter automatiquement à Railway ou localhost
-    const host = request.headers.get("host");
-    const protocol = host?.includes("localhost") ? "http" : "https";
-    const absoluteImageUrl = `${protocol}://${host}${body.imageUrl}`;
-
-    const recipient = {
-      name: "Client DAYTHO 987",
-      address1: "123 Rue de la Paix",
-      city: "Paris",
-      country_code: "FR",
-      zip: "75000",
-      email: "client@daytho987.com"
-    };
-
-    const orderData = {
-      recipient: recipient,
-      items: [
-        {
-          variant_id: body.variantId,
-          quantity: 1,
-          files: [
-            {
-              url: absoluteImageUrl
-            }
-          ]
-        }
-      ],
-      retail_costs: {
-        currency: "EUR",
-        subtotal: "35.00",
-        total: "35.00"
+    const lineItems = [];
+    for (const line of lines) {
+      const quantity = Number(line.quantity);
+      const found = findVariant(String(line.productId), String(line.size));
+      if (!found || !Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
+        return NextResponse.json({ error: "Article invalide dans le panier." }, { status: 400 });
       }
-    };
+      if (!isOrderable(found.variant)) {
+        return NextResponse.json(
+          { error: `${found.product.name} (${found.variant.size}) n'est pas encore disponible.` },
+          { status: 400 },
+        );
+      }
+      lineItems.push({
+        quantity,
+        price_data: {
+          currency: "eur",
+          unit_amount: found.product.priceCents, // prix du serveur, jamais du client
+          product_data: { name: `${found.product.name} — ${found.variant.size}` },
+        },
+      });
+    }
 
-    const response = await fetch("https://api.printful.com/orders", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.PRINTFUL_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(orderData),
+    const origin = process.env.SITE_URL ?? new URL(request.url).origin;
+    const shippingCents = Number(process.env.SHIPPING_FLAT_CENTS ?? 0);
+
+    const session = await stripe().checkout.sessions.create({
+      mode: "payment",
+      line_items: lineItems,
+      shipping_address_collection: { allowed_countries: SHIPPING_COUNTRIES },
+      phone_number_collection: { enabled: true },
+      shipping_options:
+        shippingCents > 0
+          ? [
+              {
+                shipping_rate_data: {
+                  type: "fixed_amount",
+                  display_name: "Livraison standard",
+                  fixed_amount: { amount: shippingCents, currency: "eur" },
+                },
+              },
+            ]
+          : undefined,
+      metadata: { cart: encodeCart(lines) },
+      locale: "fr",
+      success_url: `${origin}/merci?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/#shop`,
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error("Erreur Printful:", data);
-      return NextResponse.json({ error: data.error?.message || "Erreur Printful" }, { status: response.status });
-    }
-
-    return NextResponse.json({ success: true, printfulOrder: data.result });
-
+    return NextResponse.json({ url: session.url });
   } catch (error) {
-    console.error("Erreur serveur:", error);
-    return NextResponse.json({ error: "Erreur interne du serveur" }, { status: 500 });
+    console.error("Erreur checkout:", error);
+    const message = error instanceof Error && error.message.includes("manquante")
+      ? "Paiement non configuré (clé Stripe manquante)."
+      : "Impossible de lancer le paiement.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

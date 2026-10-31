@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Inter, Oswald } from "next/font/google";
 import Image from "next/image";
 import "./globals.css";
-import { ShoppingCart } from "lucide-react";
+import { CartProvider } from "@/components/CartProvider";
+import { CartButton } from "@/components/CartButton";
+import { CartDrawer } from "@/components/CartDrawer";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const oswald = Oswald({ subsets: ["latin"], variable: "--font-oswald" });
@@ -20,6 +22,7 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className={`${inter.variable} ${oswald.variable} font-sans bg-daytho-black text-daytho-white antialiased min-h-screen flex flex-col`}>
+        <CartProvider>
         {/* Header */}
         <header className="border-b border-daytho-red/30 p-4 flex justify-between items-center sticky top-0 bg-daytho-black/90 backdrop-blur-md z-50">
           <a href="/" className="flex items-center">
@@ -34,11 +37,9 @@ export default function RootLayout({
             <a href="#" className="hover:text-daytho-red transition-colors">LOOKBOOK</a>
             <a href="#" className="hover:text-daytho-red transition-colors">CONTACT</a>
           </nav>
-          <button className="flex items-center gap-2 hover:text-daytho-red transition-colors">
-            <ShoppingCart size={20} />
-            <span className="text-xs font-bold">0</span>
-          </button>
+          <CartButton />
         </header>
+        <CartDrawer />
 
         <main className="flex-grow">{children}</main>
 
@@ -54,6 +55,7 @@ export default function RootLayout({
             <p>Impression &amp; Livraison par <span className="text-daytho-red font-bold">Printful</span>.</p>
           </div>
         </footer>
+        </CartProvider>
       </body>
     </html>
   );
