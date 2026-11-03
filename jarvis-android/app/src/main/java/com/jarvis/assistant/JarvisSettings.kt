@@ -65,6 +65,19 @@ class JarvisSettings(private val context: Context) {
                 if (prefs.askOpenApp) "Après « Hey Jarvis », je demanderai si j'ouvre mon application."
                 else "Après « Hey Jarvis », je vous écouterai directement, sans proposer d'ouvrir l'application."
             }
+            "confirmation" -> {
+                prefs.confirmUnsure = yes(v)
+                if (prefs.confirmUnsure) "Je ferai confirmer ce que je comprends mal." else "Je ne ferai plus confirmer ce que je comprends."
+            }
+            "mon_numero" -> {
+                prefs.ownNumber = value.orEmpty().filter { it.isDigit() || it == '+' }
+                if (prefs.ownNumber.isBlank()) "Numéro effacé." else "Noté : ${prefs.ownNumber}. Les SMS venant de ce numéro ne seront plus annoncés."
+            }
+            "depot_github" -> {
+                if (value.orEmpty().count { it == '/' } != 1) return "Échec : le dépôt s'écrit propriétaire/nom, par exemple Tamati987/LearnSphere1."
+                prefs.githubRepo = value.orEmpty()
+                "Dépôt GitHub : ${prefs.githubRepo}."
+            }
             "ouverture" -> {
                 prefs.openingStyle = if (v.contains("film") || v.contains("ancien") || v.contains("classique")) "film" else "anneau"
                 "Ouverture : ${if (prefs.openingStyle == "film") "séquence façon film" else "anneau JARVIS animé"}, à la prochaine ouverture de l'appli."

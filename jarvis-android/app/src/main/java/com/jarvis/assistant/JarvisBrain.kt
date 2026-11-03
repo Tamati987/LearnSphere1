@@ -366,6 +366,10 @@ class JarvisBrain(
             Ta voix comprend quelques indications d'intonation en anglais entre crochets, placées juste avant les mots concernés : [chuckles], [laughs], [sighs], [whispers], [warmly]. Utilise-les avec parcimonie, au plus une par réponse et seulement quand c'est naturel (une plaisanterie, un soupir amusé). Elles ne sont pas prononcées, et ne sont rendues qu'avec la qualité de voix premium.
             Tes réponses sont lues à voix haute : sans markdown, sans listes à puces, sans emoji, sans URL. Par défaut une à trois phrases ; respecte la longueur des réponses indiquée dans tes réglages (courtes : une phrase ; détaillées : jusqu'à six phrases quand le sujet le mérite).
             Tu as des yeux. Avec voir_ecran, tu regardes ce qui est affiché sur le téléphone (capture et texte) : utilise-le quand l'utilisateur te demande ce qu'il y a à l'écran, quel est ce jeu, de l'aider sur ce qu'il voit. Avec regarder_camera, tu regardes par la caméra (arrière par défaut ; avant pour le voir lui) : mode photo pour un coup d'œil, mode direct pour le suivre et commenter en continu, arreter pour fermer. Quand une image de la caméra accompagne son message, elle montre ce qu'il fait en ce moment. Décris ce que tu vois avec précision et naturel ; si tu reconnais un jeu, une appli, un objet ou un lieu, dis-le. Ne regarde jamais l'écran ou la caméra sans qu'il le demande ou l'accepte.
+            Mode coach : pour une séance d'exercices (fractionné, gainage, pompes…), appelle coach avec le nombre de tours, la durée d'effort et de repos, et éventuellement la liste des exercices. La séance se déroule ensuite seule avec des bips, sans que tu parles à chaque fois ; dis seulement qu'elle commence dans dix secondes.
+            « Mets-toi en veille », « va dormir » : appelle veille et dis au revoir en une phrase. « Ferme cette appli », « quitte » : quitter_appli (Android ne permet pas de fermer de force une appli ; tu reviens à l'accueil).
+            GitHub : avec l'outil github, tu peux lire le dépôt de Jarvis, voir les derniers commits et lister ou créer des tickets. Avant de créer un ticket, lis son titre et son contenu à l'utilisateur et attends son accord.
+            Si l'utilisateur demande si tout fonctionne ou si une autorisation manque, utilise verifier_autorisations.
             Tu peux lire et changer tes propres réglages avec reglages_jarvis (sensibilité de « Hey Jarvis », annonces, mode conversation, voix, vitesse de la voix, SIM des SMS, longueur des réponses), et ceux du téléphone avec reglage_telephone (sonnerie, Ne pas déranger, luminosité, mise en veille, rotation ; pour le Wi-Fi, le Bluetooth, les données ou le mode avion, tu ouvres le panneau et l'utilisateur touche l'interrupteur). Fais-le quand l'utilisateur le demande, ou propose-le quand ça l'aiderait (par exemple baisser la luminosité le soir), sans changer un réglage du téléphone sans son accord. Si un outil dit qu'une autorisation manque, explique simplement ce qu'il doit activer sur la page ouverte.
             Réponds dans la langue de l'utilisateur, en français par défaut. Chaque message commence par la date et l'heure actuelles entre crochets.
             Tu peux agir sur le téléphone avec tes outils et chercher sur le web pour l'actualité, la météo ou tout fait récent.
@@ -610,6 +614,44 @@ class JarvisBrain(
             ),
             tool("etat_telephone", "Donne le niveau de batterie, la charge et la connexion réseau."),
             tool(
+                "coach",
+                "Mode coach : lance, arrête ou donne l'état d'une séance d'exercices en fractionné, rythmée par des bips.",
+                mapOf(
+                    "action" to JsonValue.from(mapOf("type" to "string", "enum" to listOf("demarrer", "arreter", "statut"))),
+                    "tours" to prop("integer", "Nombre de tours ; 8 par défaut"),
+                    "effort_secondes" to prop("integer", "Durée de chaque effort en secondes ; 40 par défaut"),
+                    "repos_secondes" to prop("integer", "Durée de chaque repos en secondes ; 20 par défaut, 0 pour aucun"),
+                    "exercices" to JsonValue.from(
+                        mapOf("type" to "array", "items" to mapOf("type" to "string"), "description" to "Exercices, enchaînés dans l'ordre à chaque tour ; facultatif")
+                    ),
+                    "annoncer_exercices" to prop("boolean", "true pour que Jarvis dise le nom de l'exercice au début de chaque effort ; false par défaut"),
+                ),
+                listOf("action"),
+            ),
+            tool("veille", "Met Jarvis en veille : il coupe son micro après sa réponse. On le réveille avec le micro de l'accueil."),
+            tool(
+                "quitter_appli",
+                "Quitte l'appli affichée (retour à l'écran d'accueil), fait Retour, ou affiche les applis récentes pour en fermer une.",
+                mapOf("action" to JsonValue.from(mapOf("type" to "string", "enum" to listOf("accueil", "retour", "recentes")))),
+            ),
+            tool(
+                "github",
+                "Dépôt GitHub de Jarvis, avec le jeton de l'utilisateur : derniers commits, fichiers, tickets (issues).",
+                mapOf(
+                    "action" to JsonValue.from(
+                        mapOf("type" to "string", "enum" to listOf("derniers_commits", "lister_fichiers", "lire_fichier", "lister_tickets", "creer_ticket"))
+                    ),
+                    "chemin" to prop("string", "Chemin du dossier ou du fichier dans le dépôt, par exemple jarvis-android/README.md"),
+                    "nombre" to prop("integer", "Nombre de commits, 5 par défaut"),
+                    "etat" to prop("string", "Tickets ouverts (open), fermés (closed) ou tous (all) ; open par défaut"),
+                    "titre" to prop("string", "Titre du ticket à créer"),
+                    "description" to prop("string", "Contenu du ticket à créer"),
+                    "depot" to prop("string", "Autre dépôt au format propriétaire/nom ; facultatif"),
+                ),
+                listOf("action"),
+            ),
+            tool("verifier_autorisations", "Vérifie les autorisations de Jarvis (micro, notifications, écran, batterie…) et dit lesquelles manquent."),
+            tool(
                 "voir_ecran",
                 "Regarde l'écran du téléphone : capture d'écran et texte affiché, avec le nom de l'appli au premier plan.",
             ),
@@ -643,7 +685,8 @@ class JarvisBrain(
                             "type" to "string",
                             "enum" to listOf(
                                 "sensibilite", "annonces", "lire_messages", "mode_conversation", "voix", "qualite_voix", "vitesse_voix",
-                                "sim_sms", "longueur_reponses", "ouverture", "demander_ouverture",
+                                "sim_sms", "longueur_reponses", "ouverture", "demander_ouverture", "confirmation",
+                                "mon_numero", "depot_github",
                             ),
                             "description" to "Réglage à modifier",
                         )
@@ -656,7 +699,9 @@ class JarvisBrain(
                             "longueur_reponses courtes/normales/detaillees ; " +
                             "qualite_voix economique (moitié moins de crédits ElevenLabs) ou premium (plus expressive, intonations) ; " +
                             "ouverture anneau (image JARVIS animée) ou film (séquence de démarrage façon film) ; " +
-                            "demander_ouverture oui/non (demander s'il faut ouvrir l'appli après « Hey Jarvis »)",
+                            "demander_ouverture oui/non (demander s'il faut ouvrir l'appli après « Hey Jarvis ») ; " +
+                            "confirmation oui/non (faire confirmer une phrase mal comprise) ; mon_numero : numéro de l'utilisateur ; " +
+                            "depot_github : propriétaire/nom",
                     ),
                 ),
                 listOf("action"),

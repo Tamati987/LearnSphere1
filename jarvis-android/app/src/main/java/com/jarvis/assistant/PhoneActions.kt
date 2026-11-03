@@ -82,11 +82,56 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         } ?: "Échec : l'accès aux notifications n'est pas accordé à Jarvis."
         "lire_sms" -> readSms(input.optStr("contact"), input.int("nombre"), input["non_lus"] == true)
         "etat_telephone" -> status()
+        "coach" -> coach(input)
+        "veille" -> JarvisService.instance?.let { it.sleepSoon(); "Mise en veille après cette phrase. Pour réveiller Jarvis : le micro de l'accueil." }
+            ?: "Jarvis est déjà en veille."
+        "quitter_appli" -> leaveApp(input.optStr("action") ?: "accueil")
+        "github" -> GitHubTool(context).run(input.str("action"), input)
+        "verifier_autorisations" -> PermissionWatch.report(context)
         "voir_ecran" -> lookAtScreen()
         "regarder_camera" -> lookThroughCamera(input.optStr("mode") ?: "photo", input.optStr("camera") == "avant")
         "reglages_jarvis" -> JarvisSettings(context).jarvis(input.optStr("action"), input.optStr("reglage"), input.optStr("valeur"))
         "reglage_telephone" -> JarvisSettings(context).phone(input.str("reglage"), input.optStr("valeur")) { launch(it) }
         else -> "Échec : outil inconnu « $name »."
+    }
+
+    private fun coach(input: Map<String, Any?>): String {
+        val service = JarvisService.instance ?: return "Échec : Jarvis est en veille."
+        val action = input.optStr("action") ?: "demarrer"
+        if (action != "demarrer") return service.runCoach(action, null)
+        val exercises = (input["exercices"] as? List<*>).orEmpty().map { it.toString() }.filter { it.isNotBlank() }
+        val plan = Coach.Plan(
+            rounds = input.int("tours").takeIf { it > 0 }?.coerceAtMost(100) ?: 8,
+            workSeconds = input.int("effort_secondes").takeIf { it > 0 }?.coerceAtMost(3600) ?: 40,
+            restSeconds = if (input.containsKey("repos_secondes")) input.int("repos_secondes").coerceIn(0, 3600) else 20,
+            exercises = exercises,
+            announceExercises = input["annoncer_exercices"] == true && exercises.isNotEmpty(),
+        )
+        return service.runCoach("demarrer", plan)
+    }
+
+    /**
+     * Quitter l'appli à l'écran. Android interdit de fermer de force une autre appli : Jarvis
+     * revient à l'accueil, fait Retour ou montre les applis récentes, par l'accessibilité.
+     */
+    private fun leaveApp(action: String): String {
+        val global = when (action) {
+            "retour" -> android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK
+            "recentes" -> android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS
+            else -> android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME
+        }
+        if (ScreenReader.globalAction(global)) {
+            return when (action) {
+                "retour" -> "Retour fait."
+                "recentes" -> "Applis récentes affichées : l'utilisateur peut balayer celle à fermer."
+                else -> "Appli quittée, retour à l'écran d'accueil."
+            }
+        }
+        if (action == "accueil") {
+            launch(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME))
+            return "Retour à l'écran d'accueil."
+        }
+        return "Échec : il faut activer la lecture de l'écran (accessibilité) pour que Jarvis fasse Retour ou ouvre les applis récentes."
     }
 
     /** Capture et texte de l'écran, par le service d'accessibilité de Jarvis. */

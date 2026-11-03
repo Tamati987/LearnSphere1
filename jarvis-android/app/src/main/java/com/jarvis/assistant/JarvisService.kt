@@ -207,6 +207,34 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
             .newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "jarvis:listen")
             .apply { setReferenceCounted(false); acquire() }
         startWakeWord()
+        // Premier contrôle des autorisations peu après le démarrage, puis toutes les 30 minutes.
+        main.postDelayed(watchPermissions, 20_000)
+    }
+
+    private val coach by lazy {
+        Coach(main, say = { text -> main.post { if (JarvisBus.state == JarvisBus.State.WAITING) say(text) } }, onFinished = {})
+    }
+
+    /** Mode coach, appelé par l'outil coach (depuis le fil de Claude). */
+    fun runCoach(action: String, plan: Coach.Plan?): String = when (action) {
+        "arreter" -> { main.post { coach.stop() }; "Séance arrêtée." }
+        "statut" -> coach.status()
+        else -> {
+            val p = plan ?: return "Échec : séance incomplète."
+            main.post { coach.start(p) }
+            "Séance lancée : ${Coach.PREPARATION_SECONDS} secondes de préparation, puis ${p.rounds} tours de ${p.workSeconds} s " +
+                "d'effort et ${p.restSeconds} s de repos. Deux bips aigus = effort, un bip grave = repos, petits bips = 3 dernières secondes."
+        }
+    }
+
+    private val watchPermissions = object : Runnable {
+        override fun run() {
+            val lost = runCatching { PermissionWatch.check(this@JarvisService) }.getOrDefault(emptyList())
+            if (lost.isNotEmpty() && JarvisBus.state == JarvisBus.State.WAITING) {
+                say("Monsieur, j'ai perdu l'accès à ${lost.joinToString(" et ")}. Je vous ai laissé une notification pour le réactiver.")
+            }
+            main.postDelayed(this, 30 * 60_000L)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -224,6 +252,8 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
 
     override fun onDestroy() {
         if (instance === this) instance = null
+        main.removeCallbacks(watchPermissions)
+        coach.release()
         wakeLock?.release()
         wakeWord?.release()
         if (smsReceiverRegistered) unregisterReceiver(smsReceiver)
@@ -309,6 +339,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         heard.setLength(0)
         followUp = false
         pendingQuestion = null
+        pendingConfirmation = null
         awaitingOpenAnswer = false
         awaitingCallAnswer = false
         wakeWord?.start()
@@ -375,6 +406,9 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
                     main.removeCallbacks(endContinuation)
                     val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
                         ?.takeIf { it.isNotBlank() } ?: partial
+                    // Certitude de Google (0 à 1) ; 0 ou absente quand il ne la donne pas.
+                    results?.getFloatArray(SpeechRecognizer.CONFIDENCE_SCORES)?.firstOrNull()
+                        ?.takeIf { it > 0f }?.let { lowestConfidence = minOf(lowestConfidence, it) }
                     if (text.isNotBlank()) heard.append(' ').append(text.trim())
                     if (text.isNotBlank() && looksUnfinished(text) && continuations < MAX_CONTINUATIONS) {
                         continuations++
@@ -443,8 +477,24 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         val text = heard.toString().trim()
         heard.setLength(0)
         partial = ""
-        if (text.isNotEmpty()) handle(text) else if (!reaskQuestion()) resumeWakeWord()
+        val confidence = lowestConfidence
+        lowestConfidence = 1f
+        if (text.isEmpty()) { if (!reaskQuestion()) resumeWakeWord(); return }
+        // Reconnaissance peu sûre d'elle : Jarvis vérifie avant d'agir (sauf pour un simple oui / non).
+        val busy = awaitingCallAnswer || awaitingOpenAnswer || pendingConfirmation != null
+        if (!busy && confidence in 0.01f..UNSURE && yesOrNo(text) == null && Prefs(this).confirmUnsure) {
+            JarvisBus.line(false, "Compris avec peu de certitude (%.0f %%) : « $text ».".format(confidence * 100))
+            pendingConfirmation = text
+            say("J'ai compris : « $text ». C'est bien ça ?")
+            return
+        }
+        handle(text)
     }
+
+    // Phrase comprise avec peu de certitude, en attente du « oui » de l'utilisateur.
+    private var pendingConfirmation: String? = null
+    // Plus faible certitude de la reconnaissance sur la phrase en cours (1 = inconnue ou sûre).
+    private var lowestConfidence = 1f
 
     /** La phrase s'arrête sur un mot qui appelle une suite (« de », « et », « mets »…). */
     private fun looksUnfinished(text: String): Boolean {
@@ -550,13 +600,21 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
      * déverrouillage si besoin). Non : Jarvis demande ce qu'il peut faire. Autre chose : c'est
      * déjà une demande, traitée normalement (renvoie false).
      */
-    private fun handleOpenAnswer(text: String): Boolean {
+    /**
+     * Réponse courte par oui (true) ou par non (false) ; null si c'est autre chose, par exemple
+     * déjà une demande (« Non, mets de la musique »).
+     */
+    private fun yesOrNo(text: String, extraYes: Set<String> = emptySet()): Boolean? {
         val words = text.lowercase(Locale.FRANCE).replace(Regex("[^a-zàâçéèêëîïôûùüÿ' ]"), " ")
             .split(Regex("\\s+")).filter { it.isNotBlank() }
         val no = words.any { it in setOf("non", "pas", "nan", "inutile") }
-        val yes = !no && words.any { it in setOf("oui", "ouais", "ouvre", "ouvrir", "vas", "d'accord", "ok", "volontiers", "affirmatif") }
-        // « Non, mets de la musique » : c'est déjà une demande.
-        if (words.size > 6 || (!yes && !no) || (no && words.size > 3)) return false
+        val yes = !no && words.any { it in YES_WORDS || it in extraYes }
+        if (words.size > 6 || (!yes && !no) || (no && words.size > 3)) return null
+        return yes
+    }
+
+    private fun handleOpenAnswer(text: String): Boolean {
+        val yes = yesOrNo(text, setOf("ouvre", "ouvrir")) ?: return false
         JarvisBus.line(true, text)
         if (yes) {
             val open = Intent(this, MainActivity::class.java)
@@ -581,6 +639,15 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
             awaitingOpenAnswer = false
             if (handleOpenAnswer(text)) return
         }
+        pendingConfirmation?.let { understood ->
+            pendingConfirmation = null
+            when (yesOrNo(text, setOf("exactement", "exact", "voilà", "ça", "bien"))) {
+                true -> { JarvisBus.line(true, text); return handle(understood) }
+                false -> { JarvisBus.line(true, text); say("Pardon, Monsieur. Pouvez-vous répéter ?"); return }
+                // Autre chose : l'utilisateur a reformulé sa demande, on la traite telle quelle.
+                null -> Unit
+            }
+        }
         answeringUser = true
         pauseWakeWord()
         JarvisBus.line(true, text)
@@ -599,6 +666,11 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
 
     private fun announceSms(address: String, body: String) {
         worker.execute {
+            // SMS envoyé depuis le propre numéro de l'utilisateur (autre SIM, test) : pas d'annonce.
+            if (OwnNumbers.isOwn(this, address)) {
+                JarvisBus.line(false, "SMS de votre propre numéro ignoré.")
+                return@execute
+            }
             val name = actions.contactName(address)
             val from = name ?: "le $address"
             val spoken = if (Prefs(this).readMessageContent) "Monsieur, nouveau message de $from : « ${body.take(400)} ». Souhaitez-vous répondre ?"
@@ -777,7 +849,19 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         playNext()
     }
 
+    // « Mets-toi en veille » : le service s'arrête une fois la réponse dite.
+    @Volatile private var sleepAfterReply = false
+
+    /** Demandé par l'outil veille : Jarvis finit sa phrase puis coupe son micro. */
+    fun sleepSoon() { sleepAfterReply = true }
+
     private fun afterSpeaking() {
+        if (sleepAfterReply) {
+            sleepAfterReply = false
+            JarvisBus.line(false, "Jarvis est en veille : touchez le micro de l'accueil pour le réveiller.")
+            stopSelf()
+            return
+        }
         // Mode conversation : après une réponse à l'utilisateur, le micro reste ouvert une fois,
         // comme quand on discute avec quelqu'un. Silence : retour à « Hey Jarvis », sans insister.
         val chatting = !followUp && answeringUser && Prefs(this).conversationMode
@@ -858,6 +942,9 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         private const val MAX_CONTINUATIONS = 2
         private const val CONTINUATION_WAIT_MS = 3500L
         private const val RESTART_DELAY_MS = 250L
+        // En dessous de cette certitude, Jarvis fait confirmer ce qu'il a compris.
+        private const val UNSURE = 0.45f
+        private val YES_WORDS = setOf("oui", "ouais", "vas", "d'accord", "ok", "volontiers", "affirmatif", "absolument", "parfait")
         private const val MAX_REASKS = 1
         private val UNFINISHED_WORDS = setOf(
             "et", "ou", "de", "du", "des", "d", "le", "la", "les", "l", "un", "une", "à", "au", "aux",

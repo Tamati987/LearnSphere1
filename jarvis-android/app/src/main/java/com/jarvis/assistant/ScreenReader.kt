@@ -94,6 +94,9 @@ class ScreenReader : AccessibilityService() {
             return enabled.contains("${context.packageName}/") && instance != null
         }
 
+        /** Geste global (accueil, retour, applis récentes) ; false si le service n'est pas activé. */
+        fun globalAction(action: Int): Boolean = instance?.performGlobalAction(action) ?: false
+
         /** Texte de l'écran et capture, ou null si le service n'est pas activé. */
         fun look(): Pair<String, ByteArray?>? {
             val service = instance ?: return null

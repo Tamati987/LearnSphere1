@@ -66,6 +66,21 @@ class Prefs(context: Context) {
         get() = prefs.getBoolean("ask_open_app", true)
         set(value) = prefs.edit().putBoolean("ask_open_app", value).apply()
 
+    /** Faire confirmer une phrase comprise avec peu de certitude. */
+    var confirmUnsure: Boolean
+        get() = prefs.getBoolean("confirm_unsure", true)
+        set(value) = prefs.edit().putBoolean("confirm_unsure", value).apply()
+
+    /** Numéro de l'utilisateur, donné à Jarvis quand la SIM ne l'indique pas. */
+    var ownNumber: String
+        get() = prefs.getString("own_number", "").orEmpty()
+        set(value) = prefs.edit().putString("own_number", value.trim()).apply()
+
+    /** Dépôt GitHub de l'outil GitHub, au format propriétaire/nom. */
+    var githubRepo: String
+        get() = prefs.getString("github_repo", "Tamati987/LearnSphere1").orEmpty()
+        set(value) = prefs.edit().putString("github_repo", value.trim()).apply()
+
     /** Longueur des réponses : courtes, normales ou détaillées. */
     var replyLength: String
         get() = prefs.getString("reply_length", "normales").orEmpty()

@@ -55,6 +55,11 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
         elevenLabs.setText(prefs.elevenLabsKey)
         val announceSms = findViewById<android.widget.CheckBox>(R.id.announce_sms)
         announceSms.isChecked = prefs.announceSms
+        val githubToken = findViewById<EditText>(R.id.github_token)
+        val githubRepo = findViewById<EditText>(R.id.github_repo)
+        githubRepo.setText(prefs.githubRepo)
+        // Le jeton n'est jamais réaffiché : on indique seulement qu'il est enregistré.
+        if (SecretStore.githubToken(this).isNotBlank()) githubToken.hint = "Jeton enregistré (chiffré) — laisser vide pour le garder"
         val readContent = findViewById<android.widget.CheckBox>(R.id.read_content)
         readContent.isChecked = prefs.readMessageContent
         val sensitivity = findViewById<android.widget.RadioGroup>(R.id.sensitivity)
@@ -66,6 +71,12 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
             prefs.elevenLabsKey = elevenLabs.text.toString()
             prefs.announceSms = announceSms.isChecked
             prefs.readMessageContent = readContent.isChecked
+            if (githubToken.text.isNotBlank()) {
+                SecretStore.setGithubToken(this, githubToken.text.toString())
+                githubToken.text.clear()
+                githubToken.hint = "Jeton enregistré (chiffré) — laisser vide pour le garder"
+            }
+            if (githubRepo.text.count { it == '/' } == 1) prefs.githubRepo = githubRepo.text.toString()
             prefs.wakeSensitivity = sensitivityIds.indexOf(sensitivity.checkedRadioButtonId).coerceAtLeast(0)
             if (prefs.isConfigured) {
                 stopService(Intent(this, JarvisService::class.java))
@@ -262,6 +273,7 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
             Manifest.permission.READ_SMS,
             Manifest.permission.RECEIVE_SMS,
             Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.READ_PHONE_NUMBERS,
             Manifest.permission.READ_CALL_LOG,
             Manifest.permission.ANSWER_PHONE_CALLS,
             Manifest.permission.ACCESS_COARSE_LOCATION,

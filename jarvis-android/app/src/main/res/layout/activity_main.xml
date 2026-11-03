@@ -69,6 +69,22 @@
 
             <TextView
                 style="@style/Label"
+                android:text="Jeton GitHub (facultatif, gardé chiffré)" />
+
+            <EditText
+                android:id="@+id/github_token"
+                style="@style/Field"
+                android:hint="github_pat_…"
+                android:inputType="textPassword" />
+
+            <EditText
+                android:id="@+id/github_repo"
+                style="@style/Field"
+                android:hint="Dépôt : propriétaire/nom"
+                android:inputType="text" />
+
+            <TextView
+                style="@style/Label"
                 android:text="Sensibilité de « Hey Jarvis »" />
 
             <RadioGroup
