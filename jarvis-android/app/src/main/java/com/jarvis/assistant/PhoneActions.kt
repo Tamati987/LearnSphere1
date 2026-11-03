@@ -86,6 +86,11 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         "etat_telephone" -> status()
         "coach" -> coach(input)
         "routine" -> routine(input)
+        "ouvrir_recherche_web" -> {
+            val query = input.str("recherche")
+            if (launch(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=" + Uri.encode(query)))))
+                "Recherche « $query » ouverte dans le navigateur." else "Échec : aucun navigateur trouvé."
+        }
         "historique" -> {
             val start = parseDate(input.optStr("date"))?.timeInMillis ?: 0L
             val days = input.int("jours").takeIf { it > 0 } ?: if (input.optStr("date") != null) 1 else 3650

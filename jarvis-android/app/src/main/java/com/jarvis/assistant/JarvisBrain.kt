@@ -19,7 +19,7 @@ import com.anthropic.models.messages.StopReason
 import com.anthropic.models.messages.TextBlockParam
 import com.anthropic.models.messages.Tool
 import com.anthropic.models.messages.ToolResultBlockParam
-import com.anthropic.models.messages.WebSearchTool20260209
+import com.anthropic.models.messages.WebSearchTool20250305
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -178,7 +178,10 @@ class JarvisBrain(
             return "Le serveur a répondu par une erreur ${e.statusCode()}."
         } catch (e: Exception) {
             history.clear()
-            return "Je n'arrive pas à joindre mes serveurs. Vérifiez la connexion internet."
+            // La cause exacte va dans le journal, pour pouvoir la corriger.
+            JarvisBus.line(false, "Erreur technique : ${e.javaClass.simpleName} ${e.message.orEmpty().take(200)}")
+            return if (e is java.io.IOException) "Je n'arrive pas à joindre mes serveurs. Vérifiez la connexion internet."
+            else "Un problème technique m'empêche de répondre, Monsieur. Le détail est dans le journal."
         }
     }
 
@@ -337,7 +340,7 @@ class JarvisBrain(
             .cacheControl(CacheControlEphemeral.builder().build())
             // Si Claude Opus 5.5 refuse une demande, le serveur la repasse à un autre modèle.
             .putAdditionalBodyProperty("fallbacks", JsonValue.from("default"))
-            .addTool(WebSearchTool20260209.builder().maxUses(3L).build())
+            .addTool(WebSearchTool20250305.builder().maxUses(3L).build())
             .messages(history)
         if (fast) {
             // Mode rapide : le même modèle écrit jusqu'à 2,5 fois plus vite.
@@ -375,7 +378,7 @@ class JarvisBrain(
             Si l'utilisateur demande si tout fonctionne ou si une autorisation manque, utilise verifier_autorisations.
             Tu peux lire et changer tes propres réglages avec reglages_jarvis (sensibilité de « Hey Jarvis », annonces, mode conversation, voix, vitesse de la voix, SIM des SMS, longueur des réponses), et ceux du téléphone avec reglage_telephone (sonnerie, Ne pas déranger, luminosité, mise en veille, rotation ; pour le Wi-Fi, le Bluetooth, les données ou le mode avion, tu ouvres le panneau et l'utilisateur touche l'interrupteur). Fais-le quand l'utilisateur le demande, ou propose-le quand ça l'aiderait (par exemple baisser la luminosité le soir), sans changer un réglage du téléphone sans son accord. Si un outil dit qu'une autorisation manque, explique simplement ce qu'il doit activer sur la page ouverte.
             Réponds dans la langue de l'utilisateur, en français par défaut. Chaque message commence par la date et l'heure actuelles entre crochets.
-            Tu peux agir sur le téléphone avec tes outils et chercher sur le web pour l'actualité, la météo ou tout fait récent.
+            Tu peux agir sur le téléphone avec tes outils et chercher sur le web (web_search) pour l'actualité, les résultats sportifs, les prix, les horaires ou tout fait récent : cherche, puis donne directement la réponse trouvée, sans renvoyer l'utilisateur vers un site. Si l'utilisateur veut voir les résultats lui-même dans le navigateur, utilise ouvrir_recherche_web.
             Quand une demande correspond à un outil, utilise-le puis confirme en une phrase ce que tu as fait.
             L'utilisateur écoute sa musique avec l'appli NewPipe. Pour toute demande de musique, appelle directement musique_newpipe, sans recherche web et sans poser de question : la musique doit démarrer tout de suite. Si la demande est vague (« mets de la bonne musique »), choisis toi-même une recherche précise et réussie, par exemple « playlist meilleurs hits feel good » ou selon l'heure et l'ambiance. Mets playlist à false seulement pour un morceau précis. Utilise newpipe_lire pour un lien que tu as déjà, newpipe_rechercher seulement si l'utilisateur veut parcourir les résultats, jouer_musique seulement s'il demande une autre appli.
             Pour la météo, utilise l'outil meteo plutôt que la recherche web : il est plus rapide et donne la température exacte. Pour savoir ce qu'affiche une autre appli du téléphone, lis ses notifications avec lire_notifications ; tu ne peux pas lire l'intérieur des applis.
@@ -631,6 +634,12 @@ class JarvisBrain(
                     "annoncer_exercices" to prop("boolean", "true pour que Jarvis dise le nom de l'exercice au début de chaque effort ; false par défaut"),
                 ),
                 listOf("action"),
+            ),
+            tool(
+                "ouvrir_recherche_web",
+                "Ouvre une recherche Google dans le navigateur du téléphone (Chrome), pour que l'utilisateur voie les résultats lui-même.",
+                mapOf("recherche" to prop("string", "Ce qu'il faut chercher")),
+                listOf("recherche"),
             ),
             tool(
                 "historique",
