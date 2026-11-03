@@ -32,6 +32,8 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- L'image d'accueil de Jarvis en fond d'écran du téléphone, à la demande. -->
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
+    <!-- Fermer une appli à la voix : arrêter ses processus en arrière-plan. -->
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
     <!-- Export de la sauvegarde dans Téléchargements sur Android 9 et avant (rien à demander ensuite). -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <!-- La sonnerie du réveil tourne dans un service au premier plan, l'écran s'ouvre en plein écran. -->

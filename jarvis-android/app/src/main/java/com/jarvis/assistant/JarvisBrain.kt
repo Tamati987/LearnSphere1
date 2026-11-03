@@ -373,7 +373,7 @@ class JarvisBrain(
             Historique : pour retrouver ce qui a été dit un jour précis ou à propos d'un sujet (« qu'est-ce que je t'avais dit sur… », « de quoi on a parlé mardi ? »), cherche avec historique.
             Routines : quand l'utilisateur veut que tu fasses quelque chose de toi-même à une heure donnée (« tous les soirs à 20 h, propose-moi du reggae roots », « en semaine à 18 h, lance le coach »), programme-le avec routine. À l'heure dite, tu recevras la consigne entre crochets : exécute-la alors directement, avec tes outils, sans demander pourquoi.
             Mode coach : pour une séance d'exercices (fractionné, gainage, pompes…), appelle coach avec le nombre de tours, la durée d'effort et de repos, et éventuellement la liste des exercices. La séance se déroule ensuite seule avec des bips, sans que tu parles à chaque fois ; dis seulement qu'elle commence dans dix secondes.
-            « Mets-toi en veille », « va dormir » : appelle veille et dis au revoir en une phrase. « Ferme cette appli », « quitte » : quitter_appli (Android ne permet pas de fermer de force une appli ; tu reviens à l'accueil).
+            « Mets-toi en veille », « va dormir » : appelle veille et dis au revoir en une phrase. « Quitte cette appli » : quitter_appli (retour à l'accueil). « Ferme WhatsApp », « ferme toutes mes applis de musique » : fermer_application pour chaque appli nommée. Tu peux ouvrir n'importe quelle appli installée avec ouvrir_application ; si le nom compris semble faux, consulte lister_applications.
             GitHub : avec l'outil github, tu peux lire le dépôt de Jarvis, voir les derniers commits et lister ou créer des tickets. Avant de créer un ticket, lis son titre et son contenu à l'utilisateur et attends son accord.
             Si l'utilisateur demande si tout fonctionne ou si une autorisation manque, utilise verifier_autorisations.
             Tu peux lire et changer tes propres réglages avec reglages_jarvis (sensibilité de « Hey Jarvis », annonces, mode conversation, voix, vitesse de la voix, SIM des SMS, longueur des réponses), et ceux du téléphone avec reglage_telephone (sonnerie, Ne pas déranger, luminosité, mise en veille, rotation ; pour le Wi-Fi, le Bluetooth, les données ou le mode avion, tu ouvres le panneau et l'utilisateur touche l'interrupteur). Fais-le quand l'utilisateur le demande, ou propose-le quand ça l'aiderait (par exemple baisser la luminosité le soir), sans changer un réglage du téléphone sans son accord. Si un outil dit qu'une autorisation manque, explique simplement ce qu'il doit activer sur la page ouverte.
@@ -695,6 +695,13 @@ class JarvisBrain(
                 listOf("action"),
             ),
             tool("veille", "Met Jarvis en veille : il coupe son micro après sa réponse. On le réveille avec le micro de l'accueil."),
+            tool(
+                "fermer_application",
+                "Ferme complètement une application précise (retour à l'accueil, puis arrêt forcé dans ses réglages).",
+                mapOf("nom" to prop("string", "Nom de l'application, tel qu'affiché sur le téléphone")),
+                listOf("nom"),
+            ),
+            tool("lister_applications", "Liste les applications installées sur le téléphone, pour retrouver le nom exact d'une appli."),
             tool(
                 "quitter_appli",
                 "Quitte l'appli affichée (retour à l'écran d'accueil), fait Retour, ou affiche les applis récentes pour en fermer une.",

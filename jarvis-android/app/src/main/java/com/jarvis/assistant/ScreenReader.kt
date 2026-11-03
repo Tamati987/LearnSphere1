@@ -68,6 +68,34 @@ class ScreenReader : AccessibilityService() {
         return result
     }
 
+    /** Attend qu'un bouton portant l'un des [labels] s'affiche (jusqu'à [timeoutMs]) et le touche. */
+    private fun clickWhenShown(labels: List<String>, timeoutMs: Long): Boolean {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            val node = findByText(rootInActiveWindow, labels, 0)
+            if (node != null) {
+                var target: AccessibilityNodeInfo? = node
+                while (target != null && !target.isClickable) target = target.parent
+                if (target != null && target.isEnabled && target.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true
+                // Bouton grisé : l'appli est déjà arrêtée.
+                if (target != null && !target.isEnabled) return true
+            }
+            Thread.sleep(250)
+        }
+        return false
+    }
+
+    private fun findByText(node: AccessibilityNodeInfo?, labels: List<String>, depth: Int): AccessibilityNodeInfo? {
+        if (node == null || depth > 40) return null
+        val text = normalizeLabel(node.text?.toString() ?: node.contentDescription?.toString().orEmpty())
+        if (text.isNotEmpty() && labels.any { text == it }) return node
+        for (i in 0 until node.childCount) findByText(node.getChild(i), labels, depth + 1)?.let { return it }
+        return null
+    }
+
+    private fun normalizeLabel(s: String) = java.text.Normalizer.normalize(s.lowercase().replace('’', '\''), java.text.Normalizer.Form.NFD)
+        .replace(Regex("\\p{M}"), "").trim()
+
     /** Appli au premier plan et texte visible, pour compléter l'image. */
     private fun screenText(): String {
         val root = rootInActiveWindow ?: return ""
@@ -93,6 +121,30 @@ class ScreenReader : AccessibilityService() {
             val enabled = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).orEmpty()
             return enabled.contains("${context.packageName}/") && instance != null
         }
+
+        /** Appli affichée au premier plan (nom du paquet), ou null. */
+        fun foregroundPackage(): String? = runCatching { instance?.rootInActiveWindow?.packageName?.toString() }.getOrNull()
+
+        /**
+         * Ferme complètement une appli comme on le ferait à la main : sa page « Infos sur l'appli »
+         * s'ouvre, Jarvis touche « Forcer l'arrêt » puis confirme. À appeler hors du fil principal.
+         */
+        fun forceStop(context: Context, pkg: String): Boolean {
+            val service = instance ?: return false
+            context.startActivity(
+                android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:$pkg"))
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_NO_HISTORY)
+            )
+            val stopped = service.clickWhenShown(STOP_LABELS, 6000) &&
+                // La confirmation : « OK » ou un second « Forcer l'arrêt ».
+                service.clickWhenShown(CONFIRM_LABELS, 3000)
+            Thread.sleep(400)
+            service.performGlobalAction(GLOBAL_ACTION_BACK)
+            return stopped
+        }
+
+        private val STOP_LABELS = listOf("forcer l'arret", "forcer l arret", "arret force", "forcer l'arret de l'application", "force stop", "forcer la fermeture")
+        private val CONFIRM_LABELS = listOf("ok", "forcer l'arret", "forcer l arret", "arret force", "force stop", "confirmer")
 
         /** Geste global (accueil, retour, applis récentes) ; false si le service n'est pas activé. */
         fun globalAction(action: Int): Boolean = instance?.performGlobalAction(action) ?: false

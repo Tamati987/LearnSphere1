@@ -55,6 +55,8 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         "regler_alarme" -> alarm(input.int("heure"), input.int("minute"), input.optStr("libelle"))
         "minuteur" -> timer(input.int("secondes"), input.optStr("libelle"))
         "ouvrir_application" -> openApp(input.str("nom"))
+        "fermer_application" -> closeApp(input.str("nom"))
+        "lister_applications" -> installedApps().joinToString(", ") { it.first }
         "lampe_torche" -> torch(input["allumer"] == true)
         "regler_volume" -> volume(input.int("pourcentage"))
         "jouer_musique" -> music(input.str("recherche"))
@@ -511,18 +513,72 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         return "Minuteur de $seconds secondes lancé."
     }
 
-    private fun openApp(name: String): String {
+    /** Applis installées (nom affiché, paquet), triées par nom. */
+    private fun installedApps(): List<Pair<String, String>> {
         val pm = context.packageManager
         val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        val wanted = normalize(name)
-        val apps = pm.queryIntentActivities(launcher, 0)
+        return pm.queryIntentActivities(launcher, 0)
             .map { it.loadLabel(pm).toString() to it.activityInfo.packageName }
-        val match = apps.firstOrNull { normalize(it.first) == wanted }
+            .distinctBy { it.second }
+            .sortedBy { it.first.lowercase() }
+    }
+
+    /**
+     * L'appli dont le nom ressemble le plus à [name] : nom exact, puis nom contenu, puis nom
+     * proche (la reconnaissance vocale écrit parfois « what's app » ou « you tube »).
+     */
+    private fun findApp(name: String): Pair<String, String>? {
+        val wanted = normalize(name)
+        if (wanted.isEmpty()) return null
+        val apps = installedApps()
+        return apps.firstOrNull { normalize(it.first) == wanted }
             ?: apps.firstOrNull { normalize(it.first).contains(wanted) || wanted.contains(normalize(it.first)) }
-            ?: return "Échec : aucune application nommée « $name »."
-        val intent = pm.getLaunchIntentForPackage(match.second) ?: return "Échec : ${match.first} ne peut pas être ouverte."
+            ?: apps.map { it to distance(normalize(it.first), wanted) }
+                .filter { (app, d) -> d <= maxOf(1, normalize(app.first).length / 4) }
+                .minByOrNull { it.second }?.first
+    }
+
+    private fun distance(a: String, b: String): Int {
+        val row = IntArray(b.length + 1) { it }
+        for (i in 1..a.length) {
+            var previous = row[0]
+            row[0] = i
+            for (j in 1..b.length) {
+                val current = row[j]
+                row[j] = minOf(row[j] + 1, row[j - 1] + 1, previous + if (a[i - 1] == b[j - 1]) 0 else 1)
+                previous = current
+            }
+        }
+        return row[b.length]
+    }
+
+    private fun openApp(name: String): String {
+        val match = findApp(name) ?: return "Échec : aucune application nommée « $name ». Applis installées : " +
+            installedApps().joinToString(", ") { it.first }.take(1500)
+        val intent = context.packageManager.getLaunchIntentForPackage(match.second)
+            ?: return "Échec : ${match.first} ne peut pas être ouverte."
         launch(intent)
         return "${match.first} ouverte."
+    }
+
+    /**
+     * Ferme une appli : si elle est à l'écran, retour à l'accueil ; ses processus en arrière-plan
+     * sont arrêtés ; puis, avec la lecture de l'écran activée, « Forcer l'arrêt » dans ses réglages.
+     */
+    private fun closeApp(name: String): String {
+        val match = findApp(name) ?: return "Échec : aucune application nommée « $name »."
+        val (label, pkg) = match
+        if (pkg == context.packageName) return "Échec : pour arrêter Jarvis, utilisez plutôt la veille."
+        if (ScreenReader.foregroundPackage() == pkg) {
+            ScreenReader.globalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME)
+            Thread.sleep(300)
+        }
+        runCatching { context.getSystemService(android.app.ActivityManager::class.java).killBackgroundProcesses(pkg) }
+        if (!ScreenReader.isEnabled(context)) {
+            return "$label quittée et arrêtée en arrière-plan. Pour la fermer complètement, il faut activer la lecture de l'écran (accessibilité)."
+        }
+        return if (ScreenReader.forceStop(context, pkg)) "$label fermée complètement (arrêt forcé)."
+        else "$label quittée, mais le bouton « Forcer l'arrêt » n'a pas été trouvé : elle est seulement arrêtée en arrière-plan."
     }
 
     private fun torch(on: Boolean): String {
