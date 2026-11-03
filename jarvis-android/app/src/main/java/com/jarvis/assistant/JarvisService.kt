@@ -207,6 +207,8 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
             .newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "jarvis:listen")
             .apply { setReferenceCounted(false); acquire() }
         startWakeWord()
+        Routines.scheduleAll(this)
+        registerBatteryWatch()
         // Premier contrôle des autorisations peu après le démarrage, puis toutes les 30 minutes.
         main.postDelayed(watchPermissions, 20_000)
     }
@@ -225,6 +227,53 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
             "Séance lancée : ${Coach.PREPARATION_SECONDS} secondes de préparation, puis ${p.rounds} tours de ${p.workSeconds} s " +
                 "d'effort et ${p.restSeconds} s de repos. Deux bips aigus = effort, un bip grave = repos, petits bips = 3 dernières secondes."
         }
+    }
+
+    /**
+     * Routine programmée par l'utilisateur : Jarvis prend l'initiative et confie la consigne à
+     * Claude. S'il est occupé, il réessaie une minute plus tard (deux fois au plus).
+     */
+    fun runRoutine(instruction: String, attempt: Int = 0) {
+        main.post {
+            if (JarvisBus.state != JarvisBus.State.WAITING) {
+                if (attempt < 2) main.postDelayed({ runRoutine(instruction, attempt + 1) }, 60_000)
+                return@post
+            }
+            pauseWakeWord()
+            JarvisBus.line(false, "Routine : $instruction")
+            JarvisBus.state(JarvisBus.State.THINKING)
+            val gen = startReply()
+            worker.execute {
+                var queued = 0
+                val answer = brain.ask(
+                    "[Routine programmée par l'utilisateur pour cette heure-ci, à faire maintenant de ta propre initiative : $instruction]"
+                ) { sentence -> queued++; queueSentence(gen, sentence) }
+                if (queued == 0) queueSentence(gen, answer)
+                finishReply(gen, answer)
+            }
+        }
+    }
+
+    // Batterie faible : Jarvis prévient une fois par charge.
+    private var batteryReceiverRegistered = false
+    private val batteryReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (!Prefs(context).proactive) return
+            val level = getSystemService(android.os.BatteryManager::class.java)
+                .getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            JarvisBus.line(false, "Batterie faible : $level %.")
+            if (JarvisBus.state == JarvisBus.State.WAITING) {
+                say("Monsieur, la batterie n'est plus qu'à $level %. Je vous conseille de brancher le téléphone.")
+            }
+        }
+    }
+
+    private fun registerBatteryWatch() {
+        if (batteryReceiverRegistered) return
+        androidx.core.content.ContextCompat.registerReceiver(
+            this, batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_LOW), androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        batteryReceiverRegistered = true
     }
 
     private val watchPermissions = object : Runnable {
@@ -253,6 +302,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     override fun onDestroy() {
         if (instance === this) instance = null
         main.removeCallbacks(watchPermissions)
+        if (batteryReceiverRegistered) unregisterReceiver(batteryReceiver)
         coach.release()
         wakeLock?.release()
         wakeWord?.release()

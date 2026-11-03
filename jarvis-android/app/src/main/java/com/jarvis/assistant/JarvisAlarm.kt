@@ -17,7 +17,7 @@ import java.util.Calendar
  */
 data class Alarm(
     val id: Int, val hour: Int, val minute: Int, val days: Set<Int>, val text: String,
-    val agenda: Boolean = false, val music: String? = null,
+    val agenda: Boolean = false, val music: String? = null, val weather: Boolean = false,
 )
 
 /**
@@ -47,27 +47,32 @@ object JarvisAlarm {
             save(context, all(context).map { if (it.hour == 6 && it.minute == 0) it.copy(agenda = true) else it })
             prefs.edit().putBoolean("defaults_v2", true).apply()
         }
+        if (!prefs.getBoolean("defaults_v3", false) && prefs.getBoolean("defaults_v1", false)) {
+            // Mise à jour : le réveil de 6 h donne aussi la météo du jour.
+            save(context, all(context).map { if (it.hour == 6 && it.minute == 0) it.copy(weather = true) else it })
+            prefs.edit().putBoolean("defaults_v3", true).apply()
+        }
         if (prefs.getBoolean("defaults_v1", false)) return
         add(
             context, 6, 0, WEEKDAYS,
             "Bonjour, Monsieur. Il est six heures. C'est l'heure de vous préparer pour le travail. Je vous souhaite une excellente journée.",
-            agenda = true,
+            agenda = true, weather = true,
         )
         add(
             context, 12, 0, DAY_NAMES.values.toSet(),
             "Monsieur, il est midi. C'est l'heure du déjeuner. Je vous suggère de faire une pause, vous l'avez bien mérité.",
         )
-        prefs.edit().putBoolean("defaults_v1", true).putBoolean("defaults_v2", true).apply()
+        prefs.edit().putBoolean("defaults_v1", true).putBoolean("defaults_v2", true).putBoolean("defaults_v3", true).apply()
     }
 
     /** Ajoute ou remplace le réveil de [hour]:[minute] et le programme. */
     fun add(
         context: Context, hour: Int, minute: Int, days: Set<Int>, text: String?, agenda: Boolean = false,
-        music: String? = null,
+        music: String? = null, weather: Boolean = false,
     ): Alarm {
         val alarms = all(context).filterNot { it.hour == hour && it.minute == minute && it.id != SNOOZE_ID }
         val id = (alarms.filter { it.id != SNOOZE_ID }.maxOfOrNull { it.id } ?: 0) + 1
-        val alarm = Alarm(id, hour, minute, days, text ?: defaultText(hour, minute), agenda, music?.trim()?.takeIf { it.isNotEmpty() })
+        val alarm = Alarm(id, hour, minute, days, text ?: defaultText(hour, minute), agenda, music?.trim()?.takeIf { it.isNotEmpty() }, weather)
         save(context, alarms + alarm)
         schedule(context, alarm)
         return alarm
@@ -92,7 +97,7 @@ object JarvisAlarm {
             val days = o.getJSONArray("days").let { d -> (0 until d.length()).map { d.getInt(it) }.toSet() }
             Alarm(
                 o.getInt("id"), o.getInt("hour"), o.getInt("minute"), days, o.getString("text"), o.optBoolean("agenda"),
-                o.optString("music").takeIf { it.isNotBlank() },
+                o.optString("music").takeIf { it.isNotBlank() }, o.optBoolean("weather"),
             )
         }
     }
@@ -140,7 +145,7 @@ object JarvisAlarm {
             alarm.days == WEEKDAYS -> "du lundi au vendredi"
             else -> DAY_NAMES.filterValues { it in alarm.days }.keys.joinToString(", ")
         }
-        val agenda = if (alarm.agenda) ", puis le programme du jour" else ""
+        val agenda = (if (alarm.weather) ", puis la météo" else "") + (if (alarm.agenda) ", puis le programme du jour" else "")
         val music = alarm.music?.let { ", puis la musique « $it » dans NewPipe" }.orEmpty()
         return "%02d:%02d, %s : « %s »%s%s".format(alarm.hour, alarm.minute, days, alarm.text, agenda, music)
     }
@@ -183,7 +188,7 @@ object JarvisAlarm {
             array.put(
                 JSONObject().put("id", a.id).put("hour", a.hour).put("minute", a.minute)
                     .put("days", JSONArray(a.days.sorted())).put("text", a.text).put("agenda", a.agenda)
-                    .put("music", a.music ?: "")
+                    .put("music", a.music ?: "").put("weather", a.weather)
             )
         }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("alarms", array.toString()).apply()
@@ -219,7 +224,7 @@ class AlarmBootReceiver : BroadcastReceiver() {
         when (intent.action) {
             Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED, Intent.ACTION_TIME_CHANGED,
             Intent.ACTION_TIMEZONE_CHANGED, "android.intent.action.QUICKBOOT_POWERON",
-            -> JarvisAlarm.scheduleAll(context)
+            -> { JarvisAlarm.scheduleAll(context); Routines.scheduleAll(context) }
         }
     }
 }

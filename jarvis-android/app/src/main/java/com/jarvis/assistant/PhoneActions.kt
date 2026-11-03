@@ -83,6 +83,7 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         "lire_sms" -> readSms(input.optStr("contact"), input.int("nombre"), input["non_lus"] == true)
         "etat_telephone" -> status()
         "coach" -> coach(input)
+        "routine" -> routine(input)
         "veille" -> JarvisService.instance?.let { it.sleepSoon(); "Mise en veille après cette phrase. Pour réveiller Jarvis : le micro de l'accueil." }
             ?: "Jarvis est déjà en veille."
         "quitter_appli" -> leaveApp(input.optStr("action") ?: "accueil")
@@ -93,6 +94,26 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         "reglages_jarvis" -> JarvisSettings(context).jarvis(input.optStr("action"), input.optStr("reglage"), input.optStr("valeur"))
         "reglage_telephone" -> JarvisSettings(context).phone(input.str("reglage"), input.optStr("valeur")) { launch(it) }
         else -> "Échec : outil inconnu « $name »."
+    }
+
+    private fun routine(input: Map<String, Any?>): String = when (input.optStr("action") ?: "lister") {
+        "ajouter" -> {
+            val instruction = input.str("consigne")
+            if (instruction.isBlank()) "Échec : la routine a besoin d'une consigne."
+            else {
+                val days = (input["jours"] as? List<*>).orEmpty()
+                    .mapNotNull { JarvisAlarm.DAY_NAMES[it.toString().lowercase().trim()] }.toSet()
+                val r = Routines.add(context, input.int("heure").coerceIn(0, 23), input.int("minute").coerceIn(0, 59), days, instruction)
+                "Routine programmée : ${Routines.describe(r)}."
+            }
+        }
+        "supprimer" -> {
+            val all = input["toutes"] == true
+            val n = Routines.remove(context, if (all) null else input.int("numero"))
+            if (n == 0) "Aucune routine supprimée." else "$n routine(s) supprimée(s)."
+        }
+        else -> Routines.all(context).takeIf { it.isNotEmpty() }?.joinToString("\n") { Routines.describe(it) }
+            ?: "Aucune routine programmée."
     }
 
     private fun coach(input: Map<String, Any?>): String {
@@ -208,10 +229,11 @@ class PhoneActions(private val context: Context) : ToolExecutor {
             ?: existing?.days ?: emptySet()
         val phrase = input.optStr("phrase") ?: existing?.text
         val agenda = (input["agenda"] as? Boolean) ?: existing?.agenda ?: false
+        val weather = (input["meteo"] as? Boolean) ?: existing?.weather ?: false
         // Musique : absente = inchangée ; texte vide = retirée.
         val music = if (input.containsKey("musique")) input["musique"]?.toString() else existing?.music
         val alarm = try {
-            JarvisAlarm.add(context, h, m, daySet, phrase, agenda, music)
+            JarvisAlarm.add(context, h, m, daySet, phrase, agenda, music, weather)
         } catch (e: IllegalStateException) {
             // Android 12 : l'autorisation « Alarmes et rappels » se donne dans les réglages.
             launch(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")))

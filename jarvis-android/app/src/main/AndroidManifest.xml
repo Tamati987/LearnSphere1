@@ -124,6 +124,10 @@
             android:name=".SmsSentReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".RoutineReceiver"
+            android:exported="false" />
+
         <service
             android:name=".AlarmRingService"
             android:exported="false"

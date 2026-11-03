@@ -109,8 +109,15 @@ class AlarmRingService : Service(), TextToSpeech.OnInitListener {
         tts = TextToSpeech(this, this)
         // Le programme du jour (lu dans l'agenda) puis la voix se préparent pendant que le carillon sonne.
         val withAgenda = alarm?.agenda == true
+        val withWeather = alarm?.weather == true
         music = alarm?.music
         worker.execute {
+            if (withWeather) {
+                Weather.morningSummary(this)?.let { forecast ->
+                    text = "$text $forecast"
+                    main.post { listener?.invoke() }
+                }
+            }
             if (withAgenda) {
                 runCatching { PhoneActions(this).todaySummary() }.getOrNull()?.let { summary ->
                     text = "$text $summary"

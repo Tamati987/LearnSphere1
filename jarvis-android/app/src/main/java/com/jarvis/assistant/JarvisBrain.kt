@@ -366,6 +366,7 @@ class JarvisBrain(
             Ta voix comprend quelques indications d'intonation en anglais entre crochets, placées juste avant les mots concernés : [chuckles], [laughs], [sighs], [whispers], [warmly]. Utilise-les avec parcimonie, au plus une par réponse et seulement quand c'est naturel (une plaisanterie, un soupir amusé). Elles ne sont pas prononcées, et ne sont rendues qu'avec la qualité de voix premium.
             Tes réponses sont lues à voix haute : sans markdown, sans listes à puces, sans emoji, sans URL. Par défaut une à trois phrases ; respecte la longueur des réponses indiquée dans tes réglages (courtes : une phrase ; détaillées : jusqu'à six phrases quand le sujet le mérite).
             Tu as des yeux. Avec voir_ecran, tu regardes ce qui est affiché sur le téléphone (capture et texte) : utilise-le quand l'utilisateur te demande ce qu'il y a à l'écran, quel est ce jeu, de l'aider sur ce qu'il voit. Avec regarder_camera, tu regardes par la caméra (arrière par défaut ; avant pour le voir lui) : mode photo pour un coup d'œil, mode direct pour le suivre et commenter en continu, arreter pour fermer. Quand une image de la caméra accompagne son message, elle montre ce qu'il fait en ce moment. Décris ce que tu vois avec précision et naturel ; si tu reconnais un jeu, une appli, un objet ou un lieu, dis-le. Ne regarde jamais l'écran ou la caméra sans qu'il le demande ou l'accepte.
+            Routines : quand l'utilisateur veut que tu fasses quelque chose de toi-même à une heure donnée (« tous les soirs à 20 h, propose-moi du reggae roots », « en semaine à 18 h, lance le coach »), programme-le avec routine. À l'heure dite, tu recevras la consigne entre crochets : exécute-la alors directement, avec tes outils, sans demander pourquoi.
             Mode coach : pour une séance d'exercices (fractionné, gainage, pompes…), appelle coach avec le nombre de tours, la durée d'effort et de repos, et éventuellement la liste des exercices. La séance se déroule ensuite seule avec des bips, sans que tu parles à chaque fois ; dis seulement qu'elle commence dans dix secondes.
             « Mets-toi en veille », « va dormir » : appelle veille et dis au revoir en une phrase. « Ferme cette appli », « quitte » : quitter_appli (Android ne permet pas de fermer de force une appli ; tu reviens à l'accueil).
             GitHub : avec l'outil github, tu peux lire le dépôt de Jarvis, voir les derniers commits et lister ou créer des tickets. Avant de créer un ticket, lis son titre et son contenu à l'utilisateur et attends son accord.
@@ -460,6 +461,7 @@ class JarvisBrain(
                         )
                     ),
                     "agenda" to prop("boolean", "true pour que Jarvis annonce aussi le programme du jour lu dans l'agenda"),
+                    "meteo" to prop("boolean", "true pour que Jarvis donne aussi la météo du jour ; absent pour garder le réglage du réveil existant"),
                     "musique" to prop(
                         "string",
                         "Recherche lancée dans NewPipe après la phrase du réveil, par exemple « playlist reggae roots » ; " +
@@ -628,6 +630,26 @@ class JarvisBrain(
                 ),
                 listOf("action"),
             ),
+            tool(
+                "routine",
+                "Routines de Jarvis : à une heure et certains jours, Jarvis suit de lui-même une consigne de l'utilisateur.",
+                mapOf(
+                    "action" to JsonValue.from(mapOf("type" to "string", "enum" to listOf("ajouter", "lister", "supprimer"))),
+                    "heure" to prop("integer", "Heure de 0 à 23"),
+                    "minute" to prop("integer", "Minute de 0 à 59"),
+                    "jours" to JsonValue.from(
+                        mapOf(
+                            "type" to "array",
+                            "items" to mapOf("type" to "string", "enum" to JarvisAlarm.DAY_NAMES.keys.toList()),
+                            "description" to "Jours de répétition ; vide pour une seule fois",
+                        )
+                    ),
+                    "consigne" to prop("string", "Ce que Jarvis doit faire, par exemple « propose du reggae roots dans NewPipe »"),
+                    "numero" to prop("integer", "Numéro de la routine à supprimer"),
+                    "toutes" to prop("boolean", "true pour supprimer toutes les routines"),
+                ),
+                listOf("action"),
+            ),
             tool("veille", "Met Jarvis en veille : il coupe son micro après sa réponse. On le réveille avec le micro de l'accueil."),
             tool(
                 "quitter_appli",
@@ -686,7 +708,7 @@ class JarvisBrain(
                             "enum" to listOf(
                                 "sensibilite", "annonces", "lire_messages", "mode_conversation", "voix", "qualite_voix", "vitesse_voix",
                                 "sim_sms", "longueur_reponses", "ouverture", "demander_ouverture", "confirmation",
-                                "mon_numero", "depot_github",
+                                "mon_numero", "depot_github", "proactivite",
                             ),
                             "description" to "Réglage à modifier",
                         )
@@ -701,7 +723,7 @@ class JarvisBrain(
                             "ouverture anneau (image JARVIS animée) ou film (séquence de démarrage façon film) ; " +
                             "demander_ouverture oui/non (demander s'il faut ouvrir l'appli après « Hey Jarvis ») ; " +
                             "confirmation oui/non (faire confirmer une phrase mal comprise) ; mon_numero : numéro de l'utilisateur ; " +
-                            "depot_github : propriétaire/nom",
+                            "depot_github : propriétaire/nom ; proactivite oui/non",
                     ),
                 ),
                 listOf("action"),

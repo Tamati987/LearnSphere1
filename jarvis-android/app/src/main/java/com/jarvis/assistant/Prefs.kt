@@ -66,6 +66,11 @@ class Prefs(context: Context) {
         get() = prefs.getBoolean("ask_open_app", true)
         set(value) = prefs.edit().putBoolean("ask_open_app", value).apply()
 
+    /** Proactivité : Jarvis prend l'initiative (batterie faible…). Les routines restent actives. */
+    var proactive: Boolean
+        get() = prefs.getBoolean("proactive", true)
+        set(value) = prefs.edit().putBoolean("proactive", value).apply()
+
     /** Faire confirmer une phrase comprise avec peu de certitude. */
     var confirmUnsure: Boolean
         get() = prefs.getBoolean("confirm_unsure", true)

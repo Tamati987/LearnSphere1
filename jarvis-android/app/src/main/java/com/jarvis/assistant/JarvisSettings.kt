@@ -65,6 +65,11 @@ class JarvisSettings(private val context: Context) {
                 if (prefs.askOpenApp) "Après « Hey Jarvis », je demanderai si j'ouvre mon application."
                 else "Après « Hey Jarvis », je vous écouterai directement, sans proposer d'ouvrir l'application."
             }
+            "proactivite" -> {
+                prefs.proactive = yes(v)
+                if (prefs.proactive) "Je prendrai l'initiative quand c'est utile, par exemple batterie faible."
+                else "Je ne prendrai plus l'initiative, sauf pour vos routines programmées."
+            }
             "confirmation" -> {
                 prefs.confirmUnsure = yes(v)
                 if (prefs.confirmUnsure) "Je ferai confirmer ce que je comprends mal." else "Je ne ferai plus confirmer ce que je comprends."

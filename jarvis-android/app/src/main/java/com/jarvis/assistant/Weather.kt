@@ -34,6 +34,26 @@ object Weather {
             .apply()
     }
 
+    /**
+     * Météo du réveil, en une phrase à dire : temps actuel, température, maximum et risque de
+     * pluie de la journée. Null si la position est inconnue ou le réseau absent.
+     */
+    fun morningSummary(context: Context): String? = runCatching {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (!prefs.contains("lat")) return null
+        val json = get(
+            "https://api.open-meteo.com/v1/forecast?latitude=${prefs.getFloat("lat", 0f)}&longitude=${prefs.getFloat("lon", 0f)}" +
+                "&current=temperature_2m,weather_code&daily=temperature_2m_max,precipitation_probability_max" +
+                "&timezone=auto&forecast_days=1"
+        )
+        val current = json.getJSONObject("current")
+        val daily = json.getJSONObject("daily")
+        val rain = daily.getJSONArray("precipitation_probability_max").optInt(0, 0)
+        "Côté météo : ${describe(current.getInt("weather_code"))}, ${current.getDouble("temperature_2m").roundToInt()} degrés, " +
+            "jusqu'à ${daily.getJSONArray("temperature_2m_max").getDouble(0).roundToInt()} dans la journée" +
+            (if (rain >= 40) ", et $rain % de risque de pluie : prenez de quoi vous couvrir." else ".")
+    }.getOrNull()
+
     /** Météo pour [city], ou pour la position mémorisée. Appel réseau : hors du fil principal. */
     fun report(context: Context, city: String?, days: Int): String {
         val (lat, lon, place) = if (!city.isNullOrBlank()) {

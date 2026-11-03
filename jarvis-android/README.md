@@ -32,6 +32,9 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
   - donner la météo actuelle (température, ressenti, pluie, vent) et les prévisions, à votre position ou pour une ville, via Open-Meteo (gratuit, sans clé) ;
   - lire les notifications affichées par vos autres applis (météo, banque, livraison, mails…), sans déverrouiller ;
   - donner l'état de la batterie et du réseau.
+  - routines : « tous les soirs à 20 h, propose-moi du reggae roots », « en semaine à 18 h, lance le coach ». À l'heure dite, Jarvis prend l'initiative et le fait (s'il n'est pas en veille) ;
+  - prévenir de lui-même quand la batterie est faible (désactivable : « arrête la proactivité ») ;
+  - donner la météo du jour au réveil (activée pour le réveil de 6 h, ajoutable aux autres) ;
   - mode coach : « Jarvis, 8 tours de 40 secondes d'effort et 20 de repos » (avec ou sans liste d'exercices). Après 10 s de préparation, la séance se déroule seule : deux bips aigus pour l'effort, un bip grave pour le repos, petits bips sur les 3 dernières secondes, et Jarvis ne parle qu'à la fin ;
   - quitter l'appli affichée (« ferme cette appli ») : retour à l'écran d'accueil, Retour ou applis récentes. Android ne permet à aucune appli d'en fermer une autre de force ;
   - se mettre en veille (« mets-toi en veille ») : il coupe son micro ; le micro de l'accueil le réveille ;
