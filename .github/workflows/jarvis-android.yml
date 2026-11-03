@@ -45,7 +45,7 @@ jobs:
       # Un seul fichier à télécharger, sans zip : le dernier APK est publié seul sur la
       # branche jarvis-apk (remplacée à chaque fois, pour ne pas alourdir le dépôt).
       - name: Publier Jarvis.apk sur la branche jarvis-apk
-        if: github.ref == 'refs/heads/ccr-ba39d770-6tseta'
+        if: github.ref == 'refs/heads/ccr-ba39d770-6tseta' || github.ref == 'refs/heads/ccr-f8f134b0-asy0qx'
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
