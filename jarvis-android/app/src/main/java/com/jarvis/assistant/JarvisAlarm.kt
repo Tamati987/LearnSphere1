@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import org.json.JSONArray
-import org.json.JSONObject
 import java.util.Calendar
 
 /**
@@ -89,10 +88,20 @@ object JarvisAlarm {
 
     fun get(context: Context, id: Int): Alarm? = all(context).firstOrNull { it.id == id }
 
+    /** Réveils, lus dans la base Jarvis (la première fois, repris des anciennes préférences). */
     fun all(context: Context): List<Alarm> {
-        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("alarms", "[]")
+        migratePrefs(context)
+        return JarvisDb.dao(context).alarms()
+            .map { Alarm(it.id, it.hour, it.minute, JarvisDb.days(it.days), it.text, it.agenda, it.music?.takeIf { m -> m.isNotBlank() }, it.weather) }
+            .sortedWith(compareBy({ it.hour }, { it.minute }))
+    }
+
+    /** Versions 3.x à 7.x : réveils gardés en JSON dans les préférences ; copiés une fois dans la base. */
+    private fun migratePrefs(context: Context) {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val raw = prefs.getString("alarms", null) ?: return
         val array = runCatching { JSONArray(raw) }.getOrDefault(JSONArray())
-        return (0 until array.length()).map { i ->
+        val old = (0 until array.length()).map { i ->
             val o = array.getJSONObject(i)
             val days = o.getJSONArray("days").let { d -> (0 until d.length()).map { d.getInt(it) }.toSet() }
             Alarm(
@@ -100,6 +109,8 @@ object JarvisAlarm {
                 o.optString("music").takeIf { it.isNotBlank() }, o.optBoolean("weather"),
             )
         }
+        if (JarvisDb.dao(context).alarms().isEmpty()) writeRows(context, old)
+        prefs.edit().remove("alarms").apply()
     }
 
     /** Le réveil vient de sonner : on programme sa prochaine fois, ou on l'efface s'il était unique. */
@@ -183,15 +194,14 @@ object JarvisAlarm {
     }
 
     private fun save(context: Context, alarms: List<Alarm>) {
-        val array = JSONArray()
-        alarms.sortedWith(compareBy({ it.hour }, { it.minute })).forEach { a ->
-            array.put(
-                JSONObject().put("id", a.id).put("hour", a.hour).put("minute", a.minute)
-                    .put("days", JSONArray(a.days.sorted())).put("text", a.text).put("agenda", a.agenda)
-                    .put("music", a.music ?: "").put("weather", a.weather)
-            )
-        }
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("alarms", array.toString()).apply()
+        migratePrefs(context)
+        writeRows(context, alarms)
+    }
+
+    private fun writeRows(context: Context, alarms: List<Alarm>) {
+        JarvisDb.dao(context).replaceAlarms(
+            alarms.map { AlarmRow(it.id, it.hour, it.minute, JarvisDb.days(it.days), it.text, it.agenda, it.music, it.weather) }
+        )
     }
 
     private fun defaultText(hour: Int, minute: Int): String {

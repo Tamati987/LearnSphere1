@@ -37,7 +37,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
   - donner la météo du jour au réveil (activée pour le réveil de 6 h, ajoutable aux autres) ;
   - retrouver une ancienne conversation mot pour mot (« de quoi on a parlé mardi ? ») : tout l'historique est gardé un an dans une base sur le téléphone ;
   - baisser la musique pendant qu'il parle au lieu de la couper, et filtrer l'écho de sa propre voix dans le micro de « Hey Jarvis » (quand le téléphone le permet) ;
-  - fonctionner sans internet pour les commandes simples (heure, lampe, volume, appel, réveil, minuteur, coach, musique, applis), avec la voix d'Android ;
+  - fonctionner sans internet : les commandes simples (heure, lampe, volume, appel, réveil, minuteur, coach, musique, applis) restent disponibles, et pour discuter, Jarvis utilise un petit modèle de langage installé sur le téléphone (Gemma, format .task de MediaPipe), avec la reconnaissance vocale et la voix d'Android. Il garde sa mémoire, ses consignes et l'historique, et repasse sur Claude dès que le réseau revient. Le modèle s'installe dans l'écran des clés, une seule fois : par un lien direct téléchargé en Wi-Fi uniquement, ou à partir d'un fichier .task déjà téléchargé ;
   - mode coach : « Jarvis, 8 tours de 40 secondes d'effort et 20 de repos » (avec ou sans liste d'exercices). Après 10 s de préparation, la séance se déroule seule : deux bips aigus pour l'effort, un bip grave pour le repos, petits bips sur les 3 dernières secondes, et Jarvis ne parle qu'à la fin ;
   - quitter l'appli affichée (« ferme cette appli ») : retour à l'écran d'accueil, Retour ou applis récentes. Android ne permet à aucune appli d'en fermer une autre de force ;
   - se mettre en veille (« mets-toi en veille ») : il coupe son micro ; le micro de l'accueil le réveille ;
@@ -113,6 +113,8 @@ Vous pouvez aussi toucher **Parler**, dans l'appli ou dans la notification, au l
 - Quand Jarvis lit votre agenda, les événements de la période demandée sont envoyés à Claude.
 - Les captures d'écran et les images de la caméra sont envoyées à Claude seulement quand vous le demandez, ou toutes les dix secondes en mode direct (chaque regard est un appel à Claude, facturé comme une question). Elles ne sont pas enregistrées sur le téléphone. Les applis protégées (banque, mots de passe) donnent une capture noire.
 - Les clés restent dans les préférences privées de l'appli, sur le téléphone.
+- Toutes les données de Jarvis (historique des conversations, mémoire à long terme et consignes, résumés, réveils, routines) sont dans une seule base, « jarvis.db », dans la mémoire interne de l'appli. L'écran des clés permet de les exporter dans un seul fichier JSON du dossier Téléchargements (sans les clés d'accès), de réimporter ce fichier après une réinstallation (fusion sans doublons), et d'effacer l'historique des conversations.
+- La sauvegarde automatique d'Android est activée pour cette base et les réglages (vers votre compte Google, et lors d'un transfert vers un nouveau téléphone). Le jeton GitHub chiffré en est exclu : sa clé ne quitte pas le téléphone.
 - La mémoire de Jarvis (souvenirs, consignes, résumés des conversations) est un fichier privé de l'appli, sur le téléphone. Elle est envoyée à Claude au début de chaque conversation pour qu'il s'en serve, et à la fin de chaque conversation, celle-ci est envoyée à Claude pour être résumée. Elle survit aux mises à jour ; elle est effacée si vous désinstallez l'appli.
 
 ## Code

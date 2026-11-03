@@ -115,6 +115,56 @@
                 android:layout_marginTop="24dp"
                 android:text="Enregistrer et démarrer" />
 
+            <TextView
+                style="@style/Label"
+                android:text="Mode hors ligne (modèle de langage sur le téléphone)" />
+
+            <TextView
+                android:id="@+id/offline_status"
+                style="@style/Body"
+                android:layout_marginTop="4dp"
+                android:textSize="14sp" />
+
+            <EditText
+                android:id="@+id/offline_url"
+                style="@style/Field"
+                android:hint="Lien direct du modèle .task (Gemma)"
+                android:inputType="textUri" />
+
+            <Button
+                android:id="@+id/offline_download"
+                style="@style/Secondary"
+                android:layout_marginTop="8dp"
+                android:text="Télécharger en Wi-Fi" />
+
+            <Button
+                android:id="@+id/offline_import"
+                style="@style/Secondary"
+                android:layout_marginTop="8dp"
+                android:text="Installer un modèle déjà téléchargé" />
+
+            <TextView
+                style="@style/Label"
+                android:text="Mes données" />
+
+            <Button
+                android:id="@+id/export_data"
+                style="@style/Secondary"
+                android:layout_marginTop="8dp"
+                android:text="Exporter dans Téléchargements" />
+
+            <Button
+                android:id="@+id/import_data"
+                style="@style/Secondary"
+                android:layout_marginTop="8dp"
+                android:text="Réimporter une sauvegarde" />
+
+            <Button
+                android:id="@+id/clear_history"
+                style="@style/Secondary"
+                android:layout_marginTop="8dp"
+                android:text="Effacer l'historique des conversations" />
+
             <Button
                 android:id="@+id/wallpaper"
                 style="@style/Secondary"

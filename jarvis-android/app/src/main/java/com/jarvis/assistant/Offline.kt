@@ -22,8 +22,12 @@ object Offline {
             caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
-    /** Réponse à dire pour [text], en exécutant l'action correspondante. */
-    fun answer(text: String, actions: ToolExecutor): String {
+    /** Message quand rien ne peut répondre hors ligne. */
+    const val LIMITS = "Je suis hors ligne, Monsieur. Sans internet, je ne sais faire que les commandes simples : l'heure, " +
+        "la lampe, le volume, un appel, un réveil, un minuteur, le coach, la musique ou ouvrir une application."
+
+    /** Réponse à dire pour [text], en exécutant l'action correspondante ; null si ce n'est pas une commande connue. */
+    fun command(text: String, actions: ToolExecutor): String? {
         val q = normalize(text)
         val numbers = Regex("\\d+").findAll(q).map { it.value.toInt() }.toList()
         fun after(vararg words: String): String? = words.firstNotNullOfOrNull { w ->
@@ -72,8 +76,7 @@ object Offline {
             }
             "batterie" in q -> actions.execute("etat_telephone", emptyMap())
             "veille" in q || "dors" in q -> done(actions.execute("veille", emptyMap()), "Je me mets en veille.")
-            else -> "Je suis hors ligne, Monsieur. Sans internet, je ne sais faire que les commandes simples : l'heure, " +
-                "la lampe, le volume, un appel, un réveil, un minuteur, le coach, la musique ou ouvrir une application."
+            else -> null
         }
     }
 

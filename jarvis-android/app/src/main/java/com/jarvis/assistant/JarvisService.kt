@@ -77,6 +77,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     private lateinit var tts: TextToSpeech
     private lateinit var brain: JarvisBrain
     private lateinit var actions: PhoneActions
+    private lateinit var memory: JarvisMemory
     private var smsReceiverRegistered = false
     private var announceMessages = true
     private var callReceiverRegistered = false
@@ -195,7 +196,8 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         actions = PhoneActions(this)
         announceMessages = prefs.announceSms
         instance = this
-        brain = JarvisBrain(prefs.anthropicKey, actions, JarvisMemory(this)) { JarvisSettings(this).describe() }
+        memory = JarvisMemory(this)
+        brain = JarvisBrain(prefs.anthropicKey, actions, memory) { JarvisSettings(this).describe() }
         registerReceivers()
         // Les réveils ont pu être effacés si le téléphone a fermé Jarvis de force : on les reprogramme.
         JarvisAlarm.scheduleAll(this)
@@ -711,9 +713,18 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
             // Chaque phrase part vers la voix dès que Claude l'a écrite.
             // Caméra ouverte : Jarvis voit ce que fait l'utilisateur en même temps qu'il l'entend.
             val image = if (CameraActivity.isOpen) CameraActivity.capture(timeoutMs = 2_000) else null
-            // Hors ligne : Jarvis traite lui-même les commandes simples, sans Claude.
-            val answer = if (!Offline.isOnline(this)) Offline.answer(text, actions)
-            else brain.ask(text, image) { sentence -> queued++; queueSentence(gen, sentence) }
+            // Hors ligne : commandes simples traitées sur place, sinon le modèle de langage du
+            // téléphone. La conversation est gardée (mémoire et historique) pour la suite en ligne.
+            val answer = if (!Offline.isOnline(this)) {
+                val reply = Offline.command(text, actions) ?: LocalBrain.answer(this, memory, text) ?: Offline.LIMITS
+                memory.addLine("Utilisateur : $text")
+                memory.addLine("Jarvis : $reply")
+                reply
+            } else {
+                // Réseau revenu : le modèle local libère la mémoire du téléphone.
+                LocalBrain.release()
+                brain.ask(text, image) { sentence -> queued++; queueSentence(gen, sentence) }
+            }
             if (queued == 0) queueSentence(gen, answer)
             finishReply(gen, answer)
         }

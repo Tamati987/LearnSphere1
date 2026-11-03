@@ -32,6 +32,34 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
     private lateinit var toggle: Button
     private var bootTrack: AudioTrack? = null
 
+    // Sauvegarde à réimporter, choisie par l'utilisateur (après une réinstallation, par exemple).
+    private val pickBackup = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@registerForActivityResult
+        Thread {
+            val report = runCatching { DataTransfer.import(this, uri) }.getOrElse { "Import impossible : ${it.message}" }
+            runOnUiThread {
+                JarvisBus.line(false, report)
+                android.widget.Toast.makeText(this, report, android.widget.Toast.LENGTH_LONG).show()
+                // Le service relit la mémoire, les réveils et les réglages importés.
+                if (prefs.isConfigured) {
+                    stopService(Intent(this, JarvisService::class.java))
+                    startJarvis()
+                }
+            }
+        }.start()
+    }
+
+    // Modèle de langage hors ligne déjà téléchargé (fichier .task), choisi par l'utilisateur.
+    private val pickModel = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@registerForActivityResult
+        val status = findViewById<TextView>(R.id.offline_status)
+        status.text = "Installation du modèle… (une à deux minutes)"
+        Thread {
+            val report = runCatching { LocalBrain.importFrom(this, uri) }.getOrElse { "Installation impossible : ${it.message}" }
+            runOnUiThread { status.text = report }
+        }.start()
+    }
+
     private val askPermissions =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
             if (result[Manifest.permission.RECORD_AUDIO] == true) JarvisService.start(this)
@@ -94,6 +122,39 @@ class MainActivity : AppCompatActivity(), JarvisBus.Listener {
             showSetup()
         }
         findViewById<Button>(R.id.settings).setOnClickListener { openSettings() }
+        val offlineStatus = findViewById<TextView>(R.id.offline_status)
+        offlineStatus.text = LocalBrain.describe(this)
+        findViewById<Button>(R.id.offline_download).setOnClickListener {
+            val url = findViewById<EditText>(R.id.offline_url).text.toString().trim()
+            offlineStatus.text = if (!url.startsWith("https://")) "Collez d'abord le lien direct (https://…) du fichier .task."
+            else runCatching { LocalBrain.download(this, url) }.getOrElse { "Téléchargement impossible : ${it.message}" }
+        }
+        findViewById<Button>(R.id.offline_import).setOnClickListener { pickModel.launch(arrayOf("*/*")) }
+        findViewById<Button>(R.id.export_data).setOnClickListener { button ->
+            Thread {
+                val result = runCatching { DataTransfer.export(this) }
+                runOnUiThread {
+                    (button as Button).text = result.fold(
+                        { "Exporté : Téléchargements/$it" },
+                        { "Export impossible : ${it.message}" },
+                    )
+                }
+            }.start()
+        }
+        findViewById<Button>(R.id.import_data).setOnClickListener {
+            pickBackup.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
+        }
+        findViewById<Button>(R.id.clear_history).setOnClickListener { button ->
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Effacer l'historique ?")
+                .setMessage("Tous les messages des conversations passées seront supprimés du téléphone. La mémoire à long terme, les consignes et les réveils sont gardés.")
+                .setPositiveButton("Effacer") { _, _ ->
+                    val ok = History.clear(this)
+                    (button as Button).text = if (ok) "Historique effacé ✓" else "Effacement impossible"
+                }
+                .setNegativeButton("Annuler", null)
+                .show()
+        }
         findViewById<Button>(R.id.wallpaper).setOnClickListener { button ->
             // L'image d'accueil de Jarvis devient le fond d'écran du téléphone.
             val done = runCatching {

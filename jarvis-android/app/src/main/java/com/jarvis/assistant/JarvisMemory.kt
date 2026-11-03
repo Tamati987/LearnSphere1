@@ -1,7 +1,6 @@
 package com.jarvis.assistant
 
 import android.content.Context
-import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.text.Normalizer
@@ -10,7 +9,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Mémoire à long terme de Jarvis, gardée dans un fichier privé sur le téléphone :
+ * Mémoire à long terme de Jarvis, gardée dans la base Jarvis (Room) sur le téléphone :
  * - les souvenirs : faits sur l'utilisateur (« sa fille s'appelle Léa ») et consignes
  *   apprises sur sa façon de faire (« ne pas lire les SMS de la banque ») ;
  * - les résumés des conversations précédentes ;
@@ -114,34 +113,44 @@ class JarvisMemory(private val context: Context) {
         save()
     }
 
+    /** Lit la mémoire dans la base Jarvis ; la première fois, reprend l'ancien fichier memoire.json. */
     private fun load() {
-        val json = runCatching { JSONObject(file.readText()) }.getOrNull() ?: return
-        json.optJSONArray("souvenirs")?.let { a ->
-            for (i in 0 until a.length()) a.getJSONObject(i).let {
-                memories += Memory(it.getInt("id"), it.optString("type", FAIT), it.getString("texte"), it.optString("date"))
-            }
-        }
-        json.optJSONArray("conversations")?.let { a ->
-            for (i in 0 until a.length()) a.getJSONObject(i).let { summaries += Summary(it.optString("date"), it.getString("resume")) }
-        }
-        json.optJSONArray("en_cours")?.let { a -> for (i in 0 until a.length()) transcript += a.getString(i) }
-        transcriptStart = json.optString("debut")
+        val dao = JarvisDb.dao(context)
+        if (file.exists()) migrateFile()
+        dao.memories().forEach { memories += Memory(it.id, it.type, it.text, it.date) }
+        dao.summaries().forEach { summaries += Summary(it.date, it.text) }
+        dao.transcript().forEach { transcript += it.line }
+        transcriptStart = dao.value(KEY_START).orEmpty()
     }
 
+    /** Ancienne mémoire (fichier JSON des versions 3.x à 7.x) : copiée dans la base, puis le fichier est retiré. */
+    private fun migrateFile() {
+        val json = runCatching { JSONObject(file.readText()) }.getOrNull()
+        if (json != null) {
+            val oldMemories = json.optJSONArray("souvenirs")?.let { a ->
+                (0 until a.length()).map { a.getJSONObject(it) }
+                    .map { MemoryRow(it.getInt("id"), it.optString("type", FAIT), it.getString("texte"), it.optString("date")) }
+            }.orEmpty()
+            val oldSummaries = json.optJSONArray("conversations")?.let { a ->
+                (0 until a.length()).map { a.getJSONObject(it) }.map { SummaryRow(date = it.optString("date"), text = it.getString("resume")) }
+            }.orEmpty()
+            val oldTranscript = json.optJSONArray("en_cours")?.let { a -> (0 until a.length()).map { TranscriptRow(line = a.getString(it)) } }.orEmpty()
+            val dao = JarvisDb.dao(context)
+            dao.replaceMemory(oldMemories, oldSummaries, oldTranscript)
+            dao.setValue(ValueRow(KEY_START, json.optString("debut")))
+        }
+        file.renameTo(File(file.parentFile, file.name + ".ancien"))
+    }
+
+    /** Écrit toute la mémoire dans la base, en une seule transaction (jamais à moitié écrite). */
     private fun save() {
-        val json = JSONObject()
-            .put("souvenirs", JSONArray().apply {
-                memories.forEach { put(JSONObject().put("id", it.id).put("type", it.type).put("texte", it.text).put("date", it.date)) }
-            })
-            .put("conversations", JSONArray().apply {
-                summaries.forEach { put(JSONObject().put("date", it.date).put("resume", it.text)) }
-            })
-            .put("en_cours", JSONArray(transcript))
-            .put("debut", transcriptStart)
-        // Écriture dans un fichier temporaire puis renommage : jamais de mémoire à moitié écrite.
-        val tmp = File(file.parentFile, file.name + ".tmp")
-        tmp.writeText(json.toString())
-        tmp.renameTo(file)
+        val dao = JarvisDb.dao(context)
+        dao.replaceMemory(
+            memories.map { MemoryRow(it.id, it.type, it.text, it.date) },
+            summaries.map { SummaryRow(date = it.date, text = it.text) },
+            transcript.map { TranscriptRow(line = it) },
+        )
+        dao.setValue(ValueRow(KEY_START, transcriptStart))
     }
 
     private fun today() = SimpleDateFormat("d MMMM yyyy", Locale.FRANCE).format(Date())
@@ -153,6 +162,7 @@ class JarvisMemory(private val context: Context) {
     companion object {
         const val FAIT = "fait"
         const val CONSIGNE = "consigne"
+        private const val KEY_START = "transcript_start"
         private const val MAX_MEMORIES = 150
         private const val MAX_SUMMARIES = 40
         private const val MAX_TRANSCRIPT = 80

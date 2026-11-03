@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sauvegarde automatique d'Android (jusqu'à Android 11) : la base de Jarvis et ses réglages.
+     Les secrets chiffrés sont exclus : leur clé reste dans le téléphone et ne se restaure pas. -->
+<full-backup-content>
+    <include domain="database" path="jarvis.db" />
+    <include domain="sharedpref" path="jarvis.xml" />
+    <include domain="sharedpref" path="jarvis_alarm.xml" />
+    <include domain="sharedpref" path="jarvis_weather.xml" />
+    <exclude domain="sharedpref" path="jarvis_secrets.xml" />
+</full-backup-content>

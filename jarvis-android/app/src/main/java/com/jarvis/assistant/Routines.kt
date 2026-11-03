@@ -6,7 +6,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import org.json.JSONArray
-import org.json.JSONObject
 import java.util.Calendar
 
 /**
@@ -21,13 +20,23 @@ object Routines {
     const val EXTRA_ID = "routine_id"
 
     fun all(context: Context): List<Routine> {
-        val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("routines", "[]")
+        migratePrefs(context)
+        return JarvisDb.dao(context).routines().map { Routine(it.id, it.hour, it.minute, JarvisDb.days(it.days), it.instruction) }
+            .sortedBy { it.id }
+    }
+
+    /** Version 7.1 : routines gardées en JSON dans les préférences ; copiées une fois dans la base. */
+    private fun migratePrefs(context: Context) {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val raw = prefs.getString("routines", null) ?: return
         val array = runCatching { JSONArray(raw) }.getOrDefault(JSONArray())
-        return (0 until array.length()).map { i ->
+        val old = (0 until array.length()).map { i ->
             val o = array.getJSONObject(i)
             val days = o.getJSONArray("days").let { d -> (0 until d.length()).map { d.getInt(it) }.toSet() }
             Routine(o.getInt("id"), o.getInt("hour"), o.getInt("minute"), days, o.getString("instruction"))
         }
+        if (JarvisDb.dao(context).routines().isEmpty()) writeRows(context, old)
+        prefs.edit().remove("routines").apply()
     }
 
     fun add(context: Context, hour: Int, minute: Int, days: Set<Int>, instruction: String): Routine {
@@ -82,14 +91,12 @@ object Routines {
     )
 
     private fun save(context: Context, list: List<Routine>) {
-        val array = JSONArray()
-        list.forEach {
-            array.put(
-                JSONObject().put("id", it.id).put("hour", it.hour).put("minute", it.minute)
-                    .put("days", JSONArray(it.days.sorted())).put("instruction", it.instruction)
-            )
-        }
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("routines", array.toString()).apply()
+        migratePrefs(context)
+        writeRows(context, list)
+    }
+
+    private fun writeRows(context: Context, list: List<Routine>) {
+        JarvisDb.dao(context).replaceRoutines(list.map { RoutineRow(it.id, it.hour, it.minute, JarvisDb.days(it.days), it.instruction) })
     }
 
     /** Heure courante, pour les messages du journal. */

@@ -12,8 +12,8 @@ android {
         applicationId = "com.jarvis.assistant"
         minSdk = 26
         targetSdk = 35
-        versionCode = 52
-        versionName = "7.2"
+        versionCode = 53
+        versionName = "7.3"
 
         ndk {
             abiFilters += setOf("arm64-v8a", "armeabi-v7a")
@@ -67,6 +67,7 @@ dependencies {
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")
     implementation("androidx.security:security-crypto:1.0.0")
     implementation("androidx.room:room-runtime:2.6.1")
+    implementation("com.google.mediapipe:tasks-genai:0.10.27")
     ksp("androidx.room:room-compiler:2.6.1")
     implementation("androidx.camera:camera-camera2:1.4.1")
     implementation("androidx.camera:camera-lifecycle:1.4.1")

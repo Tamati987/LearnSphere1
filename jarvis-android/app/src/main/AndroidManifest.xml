@@ -32,6 +32,8 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- L'image d'accueil de Jarvis en fond d'écran du téléphone, à la demande. -->
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
+    <!-- Export de la sauvegarde dans Téléchargements sur Android 9 et avant (rien à demander ensuite). -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <!-- La sonnerie du réveil tourne dans un service au premier plan, l'écran s'ouvre en plein écran. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
@@ -63,7 +65,9 @@
     </queries>
 
     <application
-        android:allowBackup="false"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher"
@@ -127,6 +131,14 @@
         <receiver
             android:name=".RoutineReceiver"
             android:exported="false" />
+
+        <receiver
+            android:name=".ModelDownloadReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
+            </intent-filter>
+        </receiver>
 
         <service
             android:name=".AlarmRingService"
