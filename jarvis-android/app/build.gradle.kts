@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -11,8 +12,8 @@ android {
         applicationId = "com.jarvis.assistant"
         minSdk = 26
         targetSdk = 35
-        versionCode = 51
-        versionName = "7.1"
+        versionCode = 52
+        versionName = "7.2"
 
         ndk {
             abiFilters += setOf("arm64-v8a", "armeabi-v7a")
@@ -65,6 +66,8 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")
     implementation("androidx.security:security-crypto:1.0.0")
+    implementation("androidx.room:room-runtime:2.6.1")
+    ksp("androidx.room:room-compiler:2.6.1")
     implementation("androidx.camera:camera-camera2:1.4.1")
     implementation("androidx.camera:camera-lifecycle:1.4.1")
     implementation("androidx.camera:camera-view:1.4.1")

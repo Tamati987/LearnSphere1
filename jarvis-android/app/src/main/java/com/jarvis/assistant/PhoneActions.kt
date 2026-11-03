@@ -68,6 +68,8 @@ class PhoneActions(private val context: Context) : ToolExecutor {
             ?.joinToString("\n") { JarvisAlarm.describe(it) } ?: "Aucun réveil de Jarvis n'est programmé."
         "annuler_reveil" -> cancelWakeUp(input["tous"] == true, input["heure"]?.let { input.int("heure") }, input.int("minute"))
         "lire_agenda" -> readCalendar(input.optStr("date"), input.int("jours"))
+        "supprimer_evenement" -> deleteEvent(input.str("titre"), input.optStr("date"))
+        "modifier_evenement" -> editEvent(input)
         "ajouter_evenement" -> addEvent(
             input.str("titre"), input.str("date"), input.optStr("heure"),
             input.int("duree_minutes"), input.optStr("lieu"),
@@ -84,6 +86,13 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         "etat_telephone" -> status()
         "coach" -> coach(input)
         "routine" -> routine(input)
+        "historique" -> {
+            val start = parseDate(input.optStr("date"))?.timeInMillis ?: 0L
+            val days = input.int("jours").takeIf { it > 0 } ?: if (input.optStr("date") != null) 1 else 3650
+            val from = if (input.optStr("date") != null) start else System.currentTimeMillis() - days * 24 * 3600_000L
+            val to = if (input.optStr("date") != null) start + days * 24 * 3600_000L else System.currentTimeMillis()
+            History.search(context, input.str("recherche"), from, to, input.int("nombre").takeIf { it > 0 } ?: 20)
+        }
         "veille" -> JarvisService.instance?.let { it.sleepSoon(); "Mise en veille après cette phrase. Pour réveiller Jarvis : le micro de l'accueil." }
             ?: "Jarvis est déjà en veille."
         "quitter_appli" -> leaveApp(input.optStr("action") ?: "accueil")
@@ -377,6 +386,99 @@ class PhoneActions(private val context: Context) : ToolExecutor {
     }
 
     /** « AAAA-MM-JJ » (ou vide pour aujourd'hui) vers minuit de ce jour, heure locale. */
+    private data class FoundEvent(val id: Long, val title: String, val begin: Long, val allDay: Boolean, val recurring: Boolean)
+
+    /** Événements dont le titre contient [title], le jour [date] ou dans les 60 prochains jours. */
+    private fun findEvents(title: String, date: String?): List<FoundEvent> {
+        val start = parseDate(date) ?: return emptyList()
+        val end = (start.clone() as java.util.Calendar).apply { add(java.util.Calendar.DAY_OF_YEAR, if (date.isNullOrBlank()) 60 else 1) }
+        val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also {
+            ContentUris.appendId(it, start.timeInMillis)
+            ContentUris.appendId(it, end.timeInMillis)
+        }.build()
+        val wanted = normalize(title)
+        val found = mutableListOf<FoundEvent>()
+        context.contentResolver.query(
+            uri,
+            arrayOf(
+                CalendarContract.Instances.EVENT_ID, CalendarContract.Instances.TITLE, CalendarContract.Instances.BEGIN,
+                CalendarContract.Instances.ALL_DAY, CalendarContract.Instances.RRULE,
+            ),
+            null, null, "${CalendarContract.Instances.BEGIN} ASC",
+        )?.use { c ->
+            while (c.moveToNext()) {
+                val name = c.getString(1).orEmpty()
+                if (wanted.isNotEmpty() && !normalize(name).contains(wanted)) continue
+                found += FoundEvent(c.getLong(0), name, c.getLong(2), c.getInt(3) == 1, !c.getString(4).isNullOrBlank())
+            }
+        }
+        return found.distinctBy { it.id }
+    }
+
+    private fun describeEvent(e: FoundEvent): String {
+        val day = SimpleDateFormat("EEEE d MMMM", Locale.FRANCE).apply {
+            if (e.allDay) timeZone = java.util.TimeZone.getTimeZone("UTC")
+        }.format(Date(e.begin))
+        val at = if (e.allDay) "toute la journée" else "à " + SimpleDateFormat("HH:mm", Locale.FRANCE).format(Date(e.begin))
+        return "« ${e.title} », $day $at" + if (e.recurring) " (événement répété)" else ""
+    }
+
+    /** Un seul événement trouvé, ou un message qui explique pourquoi on ne peut pas choisir. */
+    private fun pickEvent(title: String, date: String?): Pair<FoundEvent?, String> {
+        if (title.isBlank()) return null to "Échec : précisez le titre du rendez-vous."
+        val found = findEvents(title, date)
+        return when {
+            found.isEmpty() -> null to "Aucun rendez-vous « $title » trouvé${if (date == null) " dans les 60 prochains jours" else " ce jour-là"}."
+            found.size > 1 -> null to "Plusieurs rendez-vous correspondent, demandez lequel :\n" + found.take(8).joinToString("\n") { describeEvent(it) }
+            found[0].recurring -> null to "Échec : ${describeEvent(found[0])} se répète ; modifiez-le dans l'appli Agenda pour ne pas toucher toute la série."
+            else -> found[0] to ""
+        }
+    }
+
+    private fun deleteEvent(title: String, date: String?): String {
+        if (!granted(Manifest.permission.WRITE_CALENDAR)) return "Échec : permission de modifier l'agenda non accordée dans l'appli."
+        val (event, problem) = pickEvent(title, date)
+        if (event == null) return problem
+        val n = context.contentResolver.delete(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, event.id), null, null)
+        return if (n > 0) "Rendez-vous supprimé : ${describeEvent(event)}." else "Échec : l'agenda a refusé la suppression."
+    }
+
+    private fun editEvent(input: Map<String, Any?>): String {
+        if (!granted(Manifest.permission.WRITE_CALENDAR)) return "Échec : permission de modifier l'agenda non accordée dans l'appli."
+        val (event, problem) = pickEvent(input.str("titre"), input.optStr("date"))
+        if (event == null) return problem
+        val values = android.content.ContentValues()
+        input.optStr("nouveau_titre")?.let { values.put(CalendarContract.Events.TITLE, it) }
+        input.optStr("lieu")?.let { values.put(CalendarContract.Events.EVENT_LOCATION, it) }
+        val newDate = input.optStr("nouvelle_date")
+        val newTime = input.optStr("nouvelle_heure")
+        val duration = input.int("duree_minutes")
+        if (newDate != null || newTime != null || duration > 0) {
+            if (event.allDay && newTime == null) return "Échec : pour un événement sur toute la journée, donnez aussi une heure."
+            // Nouveau début : la nouvelle date (ou l'ancienne) à la nouvelle heure (ou l'ancienne).
+            val old = java.util.Calendar.getInstance().apply { timeInMillis = event.begin }
+            val day = parseDate(newDate) ?: return "Échec : date « $newDate » illisible, format attendu AAAA-MM-JJ."
+            if (newDate == null) day.timeInMillis = old.timeInMillis
+            val parts = newTime?.split(":", "h")?.mapNotNull { it.trim().toIntOrNull() }
+            day.set(java.util.Calendar.HOUR_OF_DAY, parts?.getOrNull(0)?.coerceIn(0, 23) ?: old.get(java.util.Calendar.HOUR_OF_DAY))
+            day.set(java.util.Calendar.MINUTE, parts?.getOrNull(1)?.coerceIn(0, 59) ?: if (parts != null) 0 else old.get(java.util.Calendar.MINUTE))
+            val previousLength = context.contentResolver.query(
+                ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, event.id),
+                arrayOf(CalendarContract.Events.DTSTART, CalendarContract.Events.DTEND), null, null, null,
+            )?.use { c -> if (c.moveToFirst()) c.getLong(1) - c.getLong(0) else null } ?: 3600_000L
+            val length = if (duration > 0) duration * 60_000L else previousLength.coerceAtLeast(15 * 60_000L)
+            values.put(CalendarContract.Events.ALL_DAY, 0)
+            values.put(CalendarContract.Events.DTSTART, day.timeInMillis)
+            values.put(CalendarContract.Events.DTEND, day.timeInMillis + length)
+            values.put(CalendarContract.Events.EVENT_TIMEZONE, java.util.TimeZone.getDefault().id)
+        }
+        if (values.size() == 0) return "Échec : rien à modifier (nouveau titre, date, heure, durée ou lieu)."
+        val n = context.contentResolver.update(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, event.id), values, null, null)
+        if (n == 0) return "Échec : l'agenda a refusé la modification."
+        val updated = findEvents(input.optStr("nouveau_titre") ?: event.title, null).firstOrNull { it.id == event.id }
+        return "Rendez-vous modifié : ${updated?.let { describeEvent(it) } ?: "« ${event.title} »"}."
+    }
+
     private fun parseDate(text: String?): java.util.Calendar? {
         val cal = java.util.Calendar.getInstance().apply {
             set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)

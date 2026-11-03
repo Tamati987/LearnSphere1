@@ -37,6 +37,18 @@ class WakeWordListener(context: Context, private val threshold: Float, private v
                 AudioFormat.ENCODING_PCM_16BIT,
                 maxOf(minBuffer, WakeWordDetector.CHUNK * 2 * 4),
             )
+            // Annulation d'écho et réduction du bruit, quand le téléphone les propose : le micro
+            // entend moins la voix de Jarvis et la musique du haut-parleur.
+            val echo = runCatching {
+                if (android.media.audiofx.AcousticEchoCanceler.isAvailable())
+                    android.media.audiofx.AcousticEchoCanceler.create(record.audioSessionId)?.apply { enabled = true }
+                else null
+            }.getOrNull()
+            val noise = runCatching {
+                if (android.media.audiofx.NoiseSuppressor.isAvailable())
+                    android.media.audiofx.NoiseSuppressor.create(record.audioSessionId)?.apply { enabled = true }
+                else null
+            }.getOrNull()
             val chunk = ShortArray(WakeWordDetector.CHUNK)
             synchronized(detector) { detector.reset() }
             try {
@@ -62,6 +74,8 @@ class WakeWordListener(context: Context, private val threshold: Float, private v
                 JarvisBus.line(false, "Écoute de « Hey Jarvis » interrompue : ${e.message}. Utilisez le bouton Parler.")
             } finally {
                 runCatching { record.stop() }
+                echo?.release()
+                noise?.release()
                 record.release()
             }
         }, "hey-jarvis").apply { start() }

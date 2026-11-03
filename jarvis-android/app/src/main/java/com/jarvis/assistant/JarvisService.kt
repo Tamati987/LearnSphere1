@@ -302,6 +302,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     override fun onDestroy() {
         if (instance === this) instance = null
         main.removeCallbacks(watchPermissions)
+        releaseDuck()
         if (batteryReceiverRegistered) unregisterReceiver(batteryReceiver)
         coach.release()
         wakeLock?.release()
@@ -507,6 +508,8 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
                 Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
                     .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                     .putExtra(RecognizerIntent.EXTRA_LANGUAGE, "fr-FR")
+                    // Sans internet : reconnaissance sur le téléphone (pack français hors ligne de Google).
+                    .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, !Offline.isOnline(this@JarvisService))
                     .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
                     // Silence toléré avant de couper (respecté par certaines versions de Google seulement).
                     .putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2000L)
@@ -708,7 +711,9 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
             // Chaque phrase part vers la voix dès que Claude l'a écrite.
             // Caméra ouverte : Jarvis voit ce que fait l'utilisateur en même temps qu'il l'entend.
             val image = if (CameraActivity.isOpen) CameraActivity.capture(timeoutMs = 2_000) else null
-            val answer = brain.ask(text, image) { sentence -> queued++; queueSentence(gen, sentence) }
+            // Hors ligne : Jarvis traite lui-même les commandes simples, sans Claude.
+            val answer = if (!Offline.isOnline(this)) Offline.answer(text, actions)
+            else brain.ask(text, image) { sentence -> queued++; queueSentence(gen, sentence) }
             if (queued == 0) queueSentence(gen, answer)
             finishReply(gen, answer)
         }
@@ -817,6 +822,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     }
 
     private fun stopSpeech() {
+        releaseDuck()
         speechGeneration++
         playQueue.forEach { it.second?.delete() }
         playQueue.clear()
@@ -831,7 +837,8 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     private fun queueSentence(gen: Int, sentence: String) {
         synth.execute {
             if (gen != speechGeneration) return@execute
-            val audio = voice?.let { v ->
+            // Hors ligne, ElevenLabs est injoignable : voix d'Android tout de suite.
+            val audio = voice?.takeIf { Offline.isOnline(this) }?.let { v ->
                 runCatching { v.synthesize(sentence, fast = gen == urgentGeneration) }
                     // Crédits épuisés : déjà signalé une fois par la voix, inutile de le répéter à chaque phrase.
                     .onFailure { if (it.message != "crédits ElevenLabs épuisés") JarvisBus.line(false, "Voix ElevenLabs indisponible (${it.message}), voix Android utilisée.") }
@@ -871,6 +878,7 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         // Voix Android pas encore prête : on attend son initialisation.
         if (audio == null && ttsState == TTS_PENDING) { playQueue.addFirst(next); return }
         playing = true
+        duckOthers()
         JarvisBus.state(JarvisBus.State.SPEAKING)
         val urgent = speechGeneration == urgentGeneration
         val v = voice
@@ -905,7 +913,32 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
     /** Demandé par l'outil veille : Jarvis finit sa phrase puis coupe son micro. */
     fun sleepSoon() { sleepAfterReply = true }
 
+    // Focus audio « duck » : la musique (NewPipe…) baisse pendant que Jarvis parle, sans s'arrêter.
+    private var focusRequest: android.media.AudioFocusRequest? = null
+
+    private fun duckOthers() {
+        if (focusRequest != null) return
+        val request = android.media.AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+            .setAudioAttributes(
+                android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_ASSISTANT)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+            )
+            .build()
+        if (getSystemService(AudioManager::class.java).requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            focusRequest = request
+        }
+    }
+
+    private fun releaseDuck() {
+        focusRequest?.let { getSystemService(AudioManager::class.java).abandonAudioFocusRequest(it) }
+        focusRequest = null
+    }
+
     private fun afterSpeaking() {
+        // Jarvis a fini de parler : la musique reprend son volume.
+        releaseDuck()
         if (sleepAfterReply) {
             sleepAfterReply = false
             JarvisBus.line(false, "Jarvis est en veille : touchez le micro de l'accueil pour le réveiller.")

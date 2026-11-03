@@ -17,7 +17,7 @@ import java.util.Locale
  * - la conversation en cours, pour la résumer même si Jarvis a été fermé entre-temps.
  * Elle survit aux mises à jour de l'appli ; elle disparaît seulement si l'appli est désinstallée.
  */
-class JarvisMemory(context: Context) {
+class JarvisMemory(private val context: Context) {
 
     data class Memory(val id: Int, val type: String, val text: String, val date: String)
     data class Summary(val date: String, val text: String)
@@ -89,6 +89,8 @@ class JarvisMemory(context: Context) {
     fun addLine(line: String) {
         if (transcript.isEmpty()) transcriptStart = SimpleDateFormat("EEEE d MMMM yyyy à HH:mm", Locale.FRANCE).format(Date())
         transcript += line.take(1500)
+        // Et mot pour mot dans l'historique complet (base Room).
+        History.add(context, line)
         while (transcript.size > MAX_TRANSCRIPT) transcript.removeAt(0)
         save()
     }

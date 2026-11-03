@@ -20,7 +20,7 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
     - 6 h, du lundi au vendredi : « Bonjour, Monsieur. Il est six heures. C'est l'heure de vous préparer pour le travail. Je vous souhaite une excellente journée. » Puis le programme du jour lu dans l'agenda, par exemple « Au programme aujourd'hui : réunion à 9 heures et déjeuner avec Paul à 12 heures 30. »
     - 12 h, tous les jours : « Monsieur, il est midi. C'est l'heure du déjeuner. Je vous suggère de faire une pause, vous l'avez bien mérité. »
   - réveiller en musique : « Jarvis, au réveil de 6 h, mets du reggae roots ». Après sa phrase, Jarvis lance la recherche dans NewPipe. Si le téléphone est verrouillé, il continue de sonner jusqu'à ce que vous déverrouilliez (ou touchiez « Arrêter »), puis la musique démarre ; « Encore 10 min » repousse sans musique ;
-  - lire votre agenda (« qu'est-ce que j'ai demain ? ») et y ajouter des rendez-vous, avec un rappel 30 minutes avant ;
+  - lire votre agenda (« qu'est-ce que j'ai demain ? »), y ajouter des rendez-vous avec un rappel 30 minutes avant, les déplacer ou les renommer, et les supprimer après votre accord ;
   - régler une alarme classique ou un minuteur ;
   - ouvrir une application ;
   - allumer ou éteindre la lampe torche ;
@@ -35,6 +35,9 @@ Assistant vocal personnel inspiré de J.A.R.V.I.S. Dites « Hey Jarvis », posez
   - routines : « tous les soirs à 20 h, propose-moi du reggae roots », « en semaine à 18 h, lance le coach ». À l'heure dite, Jarvis prend l'initiative et le fait (s'il n'est pas en veille) ;
   - prévenir de lui-même quand la batterie est faible (désactivable : « arrête la proactivité ») ;
   - donner la météo du jour au réveil (activée pour le réveil de 6 h, ajoutable aux autres) ;
+  - retrouver une ancienne conversation mot pour mot (« de quoi on a parlé mardi ? ») : tout l'historique est gardé un an dans une base sur le téléphone ;
+  - baisser la musique pendant qu'il parle au lieu de la couper, et filtrer l'écho de sa propre voix dans le micro de « Hey Jarvis » (quand le téléphone le permet) ;
+  - fonctionner sans internet pour les commandes simples (heure, lampe, volume, appel, réveil, minuteur, coach, musique, applis), avec la voix d'Android ;
   - mode coach : « Jarvis, 8 tours de 40 secondes d'effort et 20 de repos » (avec ou sans liste d'exercices). Après 10 s de préparation, la séance se déroule seule : deux bips aigus pour l'effort, un bip grave pour le repos, petits bips sur les 3 dernières secondes, et Jarvis ne parle qu'à la fin ;
   - quitter l'appli affichée (« ferme cette appli ») : retour à l'écran d'accueil, Retour ou applis récentes. Android ne permet à aucune appli d'en fermer une autre de force ;
   - se mettre en veille (« mets-toi en veille ») : il coupe son micro ; le micro de l'accueil le réveille ;
