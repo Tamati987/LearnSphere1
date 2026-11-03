@@ -451,7 +451,17 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
         partial = ""
         // Une seule reconnaissance, réutilisée : en recréer une aussitôt après l'avoir détruite
         // fait échouer la connexion au service Google (code 11).
-        val engine = recognizer ?: SpeechRecognizer.createSpeechRecognizer(this).also { recognizer = it }
+        // Sans internet : la reconnaissance « sur l'appareil » d'Android (Android 12 et plus), qui
+        // n'a pas besoin du réseau. Avec internet : la reconnaissance habituelle de Google.
+        val offline = !Offline.isOnline(this)
+        val onDevice = offline && android.os.Build.VERSION.SDK_INT >= 31 &&
+            runCatching { SpeechRecognizer.isOnDeviceRecognitionAvailable(this) }.getOrDefault(false)
+        if (recognizer != null && recognizerOnDevice != onDevice) { recognizer?.destroy(); recognizer = null }
+        recognizerOnDevice = onDevice
+        val engine = recognizer ?: (
+            if (onDevice && android.os.Build.VERSION.SDK_INT >= 31) SpeechRecognizer.createOnDeviceSpeechRecognizer(this)
+            else SpeechRecognizer.createSpeechRecognizer(this)
+        ).also { recognizer = it }
         engine.cancel()
         engine.apply {
             setRecognitionListener(object : RecognitionListener {
@@ -491,6 +501,15 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
                         else -> {
                             // Sinon on l'écrit dans le journal, pour comprendre un blocage (écran verrouillé…).
                             if (!silent) JarvisBus.line(false, "Reconnaissance vocale impossible (code $error).")
+                            // Hors ligne et rien de transcrit : Jarvis le dit, au lieu de rester muet.
+                            if (!silent && !Offline.isOnline(this@JarvisService)) {
+                                say(
+                                    "Je suis hors ligne, Monsieur, et je ne parviens pas à comprendre la voix sans internet. " +
+                                        "Installez la reconnaissance vocale française hors ligne dans les réglages Google, " +
+                                        "ou écrivez-moi dans l'appli."
+                                )
+                                return
+                            }
                             if (!(silent && reaskQuestion())) resumeWakeWord()
                         }
                     }
@@ -548,6 +567,8 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
 
     // Phrase comprise avec peu de certitude, en attente du « oui » de l'utilisateur.
     private var pendingConfirmation: String? = null
+    // La reconnaissance vocale en service est-elle celle « sur l'appareil » (hors ligne) ?
+    private var recognizerOnDevice = false
     // Plus faible certitude de la reconnaissance sur la phrase en cours (1 = inconnue ou sûre).
     private var lowestConfidence = 1f
 
