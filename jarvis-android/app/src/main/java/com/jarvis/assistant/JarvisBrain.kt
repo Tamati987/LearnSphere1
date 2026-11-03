@@ -20,6 +20,7 @@ import com.anthropic.models.messages.TextBlockParam
 import com.anthropic.models.messages.Tool
 import com.anthropic.models.messages.ToolResultBlockParam
 import com.anthropic.models.messages.WebSearchTool20250305
+import com.anthropic.models.messages.WebSearchTool20260209
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -91,6 +92,9 @@ class JarvisBrain(
     private var lastExchange = 0L
     // Mode rapide de Claude ; coupé pour la session si le compte n'y a pas accès.
     @Volatile private var fastMode = true
+    // Version de l'outil de recherche web : si l'API en refuse une, on passe à la suivante,
+    // et en dernier recours on continue sans recherche web plutôt que de ne plus répondre.
+    @Volatile private var searchVariant = 0
     // Mémoire figée au début de chaque conversation : le début de la requête reste identique
     // d'un échange à l'autre et reste en cache. Les nouveaux souvenirs sont déjà dans l'historique.
     private var memorySnapshot = contextBlock()
@@ -175,7 +179,8 @@ class JarvisBrain(
             return "Trop de demandes d'un coup, Monsieur. Réessayez dans un instant."
         } catch (e: AnthropicServiceException) {
             history.clear()
-            return "Le serveur a répondu par une erreur ${e.statusCode()}."
+            JarvisBus.line(false, "Erreur de Claude ${e.statusCode()} : ${e.message.orEmpty().take(300)}")
+            return "Le serveur a répondu par une erreur ${e.statusCode()}. Le détail est dans le journal."
         } catch (e: Exception) {
             history.clear()
             // La cause exacte va dans le journal, pour pouvoir la corriger.
@@ -277,17 +282,40 @@ class JarvisBrain(
     }
 
     /** Un appel à Claude en flux ; repasse en mode normal si le mode rapide est refusé. */
+    /**
+     * Un appel à Claude en flux, avec reprise automatique quand l'API refuse la requête (400) :
+     * d'abord sans le mode rapide, puis avec une autre version de la recherche web, puis sans
+     * elle. Chaque refus est noté dans le journal avec le message exact de l'API.
+     */
     private fun stream(splitter: SentenceSplitter): Message {
-        try {
-            return streamOnce(splitter, fastMode)
-        } catch (e: Exception) {
-            val fastRefused = fastMode && !splitter.started &&
-                (e is RateLimitException || e is BadRequestException)
-            if (!fastRefused) throw e
-            // Mode rapide indisponible (compte, quota dédié) : on continue en mode normal.
-            if (e is BadRequestException) fastMode = false
-            return streamOnce(splitter, fast = false)
+        var lastError: Exception? = null
+        repeat(4) {
+            try {
+                return streamOnce(splitter, fastMode)
+            } catch (e: Exception) {
+                lastError = e
+                if (splitter.started) throw e
+                when {
+                    // Mode rapide indisponible (compte, quota dédié) : on continue en mode normal.
+                    fastMode && e is RateLimitException -> fastMode = false
+                    e is BadRequestException -> {
+                        JarvisBus.line(false, "Requête refusée par Claude : ${e.message.orEmpty().take(300)}")
+                        when {
+                            fastMode -> fastMode = false
+                            searchVariant < SEARCH_VARIANTS - 1 -> searchVariant++
+                            else -> throw e
+                        }
+                    }
+                    // Réponse illisible (bloc inconnu de la recherche web) : autre version de la recherche.
+                    e !is java.io.IOException && e !is AnthropicServiceException && searchVariant < SEARCH_VARIANTS - 1 -> {
+                        JarvisBus.line(false, "Réponse illisible (${e.javaClass.simpleName}) : autre version de la recherche web.")
+                        searchVariant++
+                    }
+                    else -> throw e
+                }
+            }
         }
+        throw lastError ?: IllegalStateException("aucune réponse")
     }
 
     private fun streamOnce(splitter: SentenceSplitter, fast: Boolean): Message {
@@ -340,8 +368,12 @@ class JarvisBrain(
             .cacheControl(CacheControlEphemeral.builder().build())
             // Si Claude Opus 5.5 refuse une demande, le serveur la repasse à un autre modèle.
             .putAdditionalBodyProperty("fallbacks", JsonValue.from("default"))
-            .addTool(WebSearchTool20250305.builder().maxUses(3L).build())
             .messages(history)
+        when (searchVariant) {
+            0 -> builder.addTool(WebSearchTool20250305.builder().maxUses(3L).build())
+            1 -> builder.addTool(WebSearchTool20260209.builder().maxUses(3L).build())
+            // 2 : sans recherche web.
+        }
         if (fast) {
             // Mode rapide : le même modèle écrit jusqu'à 2,5 fois plus vite.
             builder.speed(MessageCreateParams.Speed.FAST)
@@ -358,6 +390,7 @@ class JarvisBrain(
 
     companion object {
         const val MODEL = "claude-opus-5-5"
+        private const val SEARCH_VARIANTS = 3
         private const val IDLE_RESET_MS = 10 * 60 * 1000L
         private const val MAX_MESSAGES = 60
         private const val MAX_STEPS = 8
