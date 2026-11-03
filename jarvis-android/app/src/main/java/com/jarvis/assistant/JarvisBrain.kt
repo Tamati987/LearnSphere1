@@ -95,6 +95,18 @@ class JarvisBrain(
     // Version de l'outil de recherche web : si l'API en refuse une, on passe à la suivante,
     // et en dernier recours on continue sans recherche web plutôt que de ne plus répondre.
     @Volatile private var searchVariant = 0
+    // Moment où l'API a répondu « crédit épuisé » (0 : crédit disponible).
+    @Volatile private var noCreditSince = 0L
+
+    /**
+     * Vrai si le crédit Claude vient d'être signalé épuisé : Jarvis répond alors hors ligne.
+     * Au bout de quelques minutes, il réessaie Claude, au cas où le crédit aurait été rechargé.
+     */
+    fun creditExhausted(): Boolean =
+        noCreditSince != 0L && System.currentTimeMillis() - noCreditSince < CREDIT_RETRY_MS
+
+    private fun isCreditError(e: Exception): Boolean =
+        e is AnthropicServiceException && e.message.orEmpty().contains("credit balance", ignoreCase = true)
     // Mémoire figée au début de chaque conversation : le début de la requête reste identique
     // d'un échange à l'autre et reste en cache. Les nouveaux souvenirs sont déjà dans l'historique.
     private var memorySnapshot = contextBlock()
@@ -179,6 +191,11 @@ class JarvisBrain(
             return "Trop de demandes d'un coup, Monsieur. Réessayez dans un instant."
         } catch (e: AnthropicServiceException) {
             history.clear()
+            if (isCreditError(e)) {
+                if (noCreditSince == 0L) JarvisBus.line(false, "Crédit Claude épuisé : rechargez-le sur console.anthropic.com (Settings, Billing).")
+                noCreditSince = System.currentTimeMillis()
+                return CREDIT_MESSAGE
+            }
             JarvisBus.line(false, "Erreur de Claude ${e.statusCode()} : ${e.message.orEmpty().take(300)}")
             return "Le serveur a répondu par une erreur ${e.statusCode()}. Le détail est dans le journal."
         } catch (e: Exception) {
@@ -291,10 +308,12 @@ class JarvisBrain(
         var lastError: Exception? = null
         repeat(4) {
             try {
-                return streamOnce(splitter, fastMode)
+                return streamOnce(splitter, fastMode).also { noCreditSince = 0L }
             } catch (e: Exception) {
                 lastError = e
                 if (splitter.started) throw e
+                // Crédit épuisé : inutile de réessayer, ni de couper le mode rapide ou la recherche.
+                if (isCreditError(e)) throw e
                 when {
                     // Mode rapide indisponible (compte, quota dédié) : on continue en mode normal.
                     fastMode && e is RateLimitException -> fastMode = false
@@ -394,6 +413,9 @@ class JarvisBrain(
         private const val IDLE_RESET_MS = 10 * 60 * 1000L
         private const val MAX_MESSAGES = 60
         private const val MAX_STEPS = 8
+        private const val CREDIT_RETRY_MS = 5 * 60 * 1000L
+        const val CREDIT_MESSAGE = "Monsieur, mon crédit Claude est épuisé. Rechargez-le sur la console Anthropic, " +
+            "rubrique Billing. En attendant, je passe en mode hors ligne."
 
         private val SYSTEM_PROMPT = """
             Tu es J.A.R.V.I.S., l'assistant vocal personnel de l'utilisateur, sur son téléphone Android.

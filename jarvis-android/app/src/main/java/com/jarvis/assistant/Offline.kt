@@ -26,6 +26,11 @@ object Offline {
     const val LIMITS = "Je suis hors ligne, Monsieur. Sans internet, je ne sais faire que les commandes simples : l'heure, " +
         "la lampe, le volume, un appel, un réveil, un minuteur, le coach, la musique ou ouvrir une application."
 
+    /** Message quand le crédit Claude est épuisé et qu'aucun modèle local ne peut répondre. */
+    const val NO_CREDIT_LIMITS = "Sans crédit Claude, je ne sais faire que les commandes simples : l'heure, la lampe, " +
+        "le volume, un appel, un réveil, un minuteur, le coach, la musique ou ouvrir une application. " +
+        "Installez le modèle Gemma dans l'écran Clés pour que je puisse aussi converser."
+
     /** Réponse à dire pour [text], en exécutant l'action correspondante ; null si ce n'est pas une commande connue. */
     fun command(text: String, actions: ToolExecutor): String? {
         val q = normalize(text)

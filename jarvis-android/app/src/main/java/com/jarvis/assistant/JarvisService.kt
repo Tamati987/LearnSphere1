@@ -736,19 +736,34 @@ class JarvisService : Service(), TextToSpeech.OnInitListener {
             val image = if (CameraActivity.isOpen) CameraActivity.capture(timeoutMs = 2_000) else null
             // Hors ligne : commandes simples traitées sur place, sinon le modèle de langage du
             // téléphone. La conversation est gardée (mémoire et historique) pour la suite en ligne.
-            val answer = if (!Offline.isOnline(this)) {
-                val reply = Offline.command(text, actions) ?: LocalBrain.answer(this, memory, text) ?: Offline.LIMITS
+            // Crédit Claude épuisé : même traitement que sans internet, Claude est réessayé
+            // toutes les cinq minutes au cas où le crédit aurait été rechargé.
+            val answer = if (!Offline.isOnline(this) || brain.creditExhausted()) {
+                val reply = localReply(text)
                 memory.addLine("Utilisateur : $text")
                 memory.addLine("Jarvis : $reply")
                 reply
             } else {
                 // Réseau revenu : le modèle local libère la mémoire du téléphone.
                 LocalBrain.release()
-                brain.ask(text, image) { sentence -> queued++; queueSentence(gen, sentence) }
+                val reply = brain.ask(text, image) { sentence -> queued++; queueSentence(gen, sentence) }
+                // Le crédit vient de s'épuiser : on prévient, puis on répond quand même hors ligne.
+                if (reply == JarvisBrain.CREDIT_MESSAGE && queued == 0) {
+                    val local = localReply(text)
+                    memory.addLine("Jarvis : $local")
+                    "$reply $local"
+                } else reply
             }
             if (queued == 0) queueSentence(gen, answer)
             finishReply(gen, answer)
         }
+    }
+
+    /** Réponse sans Claude : commande simple, sinon modèle Gemma du téléphone s'il est installé. */
+    private fun localReply(text: String): String {
+        Offline.command(text, actions)?.let { return it }
+        LocalBrain.answer(this, memory, text)?.let { return it }
+        return if (Offline.isOnline(this)) Offline.NO_CREDIT_LIMITS else Offline.LIMITS
     }
 
     private fun announceSms(address: String, body: String) {
