@@ -70,7 +70,7 @@ class PhoneActions(private val context: Context) : ToolExecutor {
             ?.joinToString("\n") { JarvisAlarm.describe(it) } ?: "Aucun réveil de Jarvis n'est programmé."
         "annuler_reveil" -> cancelWakeUp(input["tous"] == true, input["heure"]?.let { input.int("heure") }, input.int("minute"))
         "lire_agenda" -> readCalendar(input.optStr("date"), input.int("jours"))
-        "supprimer_evenement" -> deleteEvent(input.str("titre"), input.optStr("date"))
+        "supprimer_evenement" -> deleteEvent(input)
         "modifier_evenement" -> editEvent(input)
         "ajouter_evenement" -> addEvent(
             input.str("titre"), input.str("date"), input.optStr("heure"),
@@ -313,6 +313,7 @@ class PhoneActions(private val context: Context) : ToolExecutor {
             arrayOf(
                 CalendarContract.Instances.TITLE, CalendarContract.Instances.BEGIN, CalendarContract.Instances.END,
                 CalendarContract.Instances.ALL_DAY, CalendarContract.Instances.EVENT_LOCATION,
+                CalendarContract.Instances.EVENT_ID, CalendarContract.Instances.DESCRIPTION, CalendarContract.Instances.RRULE,
             ),
             null, null, "${CalendarContract.Instances.BEGIN} ASC",
         )?.use { c ->
@@ -321,10 +322,13 @@ class PhoneActions(private val context: Context) : ToolExecutor {
                 val begin = c.getLong(1)
                 val finish = c.getLong(2)
                 val where = c.getString(4)?.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()
+                // Identifiant et détail : pour viser le bon rendez-vous quand plusieurs se ressemblent.
+                val extra = " [identifiant ${c.getLong(5)}" + (if (!c.getString(7).isNullOrBlank()) ", répété" else "") + "]" +
+                    detailText(c.getString(6))
                 lines += if (c.getInt(3) == 1) {
-                    "${utcDay.format(Date(begin))}, toute la journée : $title$where"
+                    "${utcDay.format(Date(begin))}, toute la journée : $title$where$extra"
                 } else {
-                    "${dayFormat.format(Date(begin))}, ${hourFormat.format(Date(begin))} à ${hourFormat.format(Date(finish))} : $title$where"
+                    "${dayFormat.format(Date(begin))}, ${hourFormat.format(Date(begin))} à ${hourFormat.format(Date(finish))} : $title$where$extra"
                 }
             }
         }
@@ -392,34 +396,63 @@ class PhoneActions(private val context: Context) : ToolExecutor {
         return null
     }
 
-    /** « AAAA-MM-JJ » (ou vide pour aujourd'hui) vers minuit de ce jour, heure locale. */
-    private data class FoundEvent(val id: Long, val title: String, val begin: Long, val allDay: Boolean, val recurring: Boolean)
+    /** Une occurrence d'événement de l'agenda ([begin] : début de cette occurrence). */
+    private data class FoundEvent(
+        val id: Long, val title: String, val begin: Long, val allDay: Boolean, val recurring: Boolean,
+        val description: String, val location: String,
+    )
 
-    /** Événements dont le titre contient [title], le jour [date] ou dans les 60 prochains jours. */
-    private fun findEvents(title: String, date: String?): List<FoundEvent> {
+    /** Détail d'un rendez-vous, court, pour le distinguer d'un autre au même titre. */
+    private fun detailText(description: String?): String {
+        val d = description?.trim()?.replace(Regex("\\s+"), " ").orEmpty()
+        return if (d.isEmpty()) " — sans détail" else " — détail : ${d.take(80)}"
+    }
+
+    /**
+     * Événements dont le titre contient [title] (tous si vide), le jour [date] ou dans les 60 prochains
+     * jours ; seulement ceux qui commencent à [time] (HH:MM) et l'événement [id] s'ils sont donnés.
+     */
+    private fun findEvents(title: String, date: String?, time: String? = null, id: Long? = null): List<FoundEvent> {
         val start = parseDate(date) ?: return emptyList()
-        val end = (start.clone() as java.util.Calendar).apply { add(java.util.Calendar.DAY_OF_YEAR, if (date.isNullOrBlank()) 60 else 1) }
+        // Identifiant sans date : on cherche aussi dans le mois passé (rendez-vous déjà passé).
+        if (date.isNullOrBlank() && id != null) start.add(java.util.Calendar.DAY_OF_YEAR, -31)
+        val days = if (!date.isNullOrBlank()) 1 else if (id != null) 91 else 60
+        val end = (start.clone() as java.util.Calendar).apply { add(java.util.Calendar.DAY_OF_YEAR, days) }
         val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also {
             ContentUris.appendId(it, start.timeInMillis)
             ContentUris.appendId(it, end.timeInMillis)
         }.build()
         val wanted = normalize(title)
+        val wantedTime = time?.split(":", "h")?.mapNotNull { it.trim().toIntOrNull() }?.takeIf { it.isNotEmpty() }
         val found = mutableListOf<FoundEvent>()
         context.contentResolver.query(
             uri,
             arrayOf(
                 CalendarContract.Instances.EVENT_ID, CalendarContract.Instances.TITLE, CalendarContract.Instances.BEGIN,
                 CalendarContract.Instances.ALL_DAY, CalendarContract.Instances.RRULE,
+                CalendarContract.Instances.DESCRIPTION, CalendarContract.Instances.EVENT_LOCATION,
             ),
             null, null, "${CalendarContract.Instances.BEGIN} ASC",
         )?.use { c ->
             while (c.moveToNext()) {
+                if (id != null && c.getLong(0) != id) continue
                 val name = c.getString(1).orEmpty()
                 if (wanted.isNotEmpty() && !normalize(name).contains(wanted)) continue
-                found += FoundEvent(c.getLong(0), name, c.getLong(2), c.getInt(3) == 1, !c.getString(4).isNullOrBlank())
+                val begin = c.getLong(2)
+                val allDay = c.getInt(3) == 1
+                if (wantedTime != null && !allDay) {
+                    val at = java.util.Calendar.getInstance().apply { timeInMillis = begin }
+                    if (at.get(java.util.Calendar.HOUR_OF_DAY) != wantedTime[0] ||
+                        at.get(java.util.Calendar.MINUTE) != wantedTime.getOrElse(1) { 0 }) continue
+                }
+                found += FoundEvent(
+                    c.getLong(0), name, begin, allDay, !c.getString(4).isNullOrBlank(),
+                    c.getString(5).orEmpty(), c.getString(6).orEmpty(),
+                )
             }
         }
-        return found.distinctBy { it.id }
+        // Un jour précis : chaque occurrence compte. Sinon, un événement répété n'apparaît qu'une fois.
+        return if (date.isNullOrBlank()) found.distinctBy { it.id } else found.distinctBy { it.id to it.begin }
     }
 
     private fun describeEvent(e: FoundEvent): String {
@@ -427,33 +460,63 @@ class PhoneActions(private val context: Context) : ToolExecutor {
             if (e.allDay) timeZone = java.util.TimeZone.getTimeZone("UTC")
         }.format(Date(e.begin))
         val at = if (e.allDay) "toute la journée" else "à " + SimpleDateFormat("HH:mm", Locale.FRANCE).format(Date(e.begin))
-        return "« ${e.title} », $day $at" + if (e.recurring) " (événement répété)" else ""
+        val where = e.location.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()
+        return "« ${e.title} », $day $at$where [identifiant ${e.id}" + (if (e.recurring) ", événement répété" else "") + "]" +
+            detailText(e.description)
     }
 
     /** Un seul événement trouvé, ou un message qui explique pourquoi on ne peut pas choisir. */
-    private fun pickEvent(title: String, date: String?): Pair<FoundEvent?, String> {
-        if (title.isBlank()) return null to "Échec : précisez le titre du rendez-vous."
-        val found = findEvents(title, date)
+    private fun pickEvent(input: Map<String, Any?>): Pair<FoundEvent?, String> {
+        val title = input.str("titre")
+        val date = input.optStr("date")
+        val time = input.optStr("heure")
+        val id = input.int("identifiant").takeIf { it > 0 }?.toLong()
+        if (title.isBlank() && id == null) return null to "Échec : précisez le titre ou l'identifiant du rendez-vous."
+        val found = findEvents(title, date, time, id)
         return when {
-            found.isEmpty() -> null to "Aucun rendez-vous « $title » trouvé${if (date == null) " dans les 60 prochains jours" else " ce jour-là"}."
-            found.size > 1 -> null to "Plusieurs rendez-vous correspondent, demandez lequel :\n" + found.take(8).joinToString("\n") { describeEvent(it) }
-            found[0].recurring -> null to "Échec : ${describeEvent(found[0])} se répète ; modifiez-le dans l'appli Agenda pour ne pas toucher toute la série."
+            found.isEmpty() -> null to "Aucun rendez-vous ${if (title.isBlank()) "avec l'identifiant $id" else "« $title »"}" +
+                (if (time != null) " à $time" else "") + (if (date == null) " dans les 60 prochains jours" else " ce jour-là") +
+                (if (date == null) ". Pour un jour passé, donnez sa date." else ".")
+            found.size > 1 -> null to "Plusieurs rendez-vous correspondent. Choisis le bon avec son identifiant " +
+                "(d'après l'heure et le détail, en demandant à l'utilisateur si besoin) :\n" +
+                found.take(8).joinToString("\n") { describeEvent(it) }
             else -> found[0] to ""
         }
     }
 
-    private fun deleteEvent(title: String, date: String?): String {
+    private fun deleteEvent(input: Map<String, Any?>): String {
         if (!granted(Manifest.permission.WRITE_CALENDAR)) return "Échec : permission de modifier l'agenda non accordée dans l'appli."
-        val (event, problem) = pickEvent(title, date)
+        val (event, problem) = pickEvent(input)
         if (event == null) return problem
+        if (event.recurring) {
+            when (input.optStr("portee")) {
+                // Une seule occurrence : Android l'annule par une exception à la série.
+                "occurrence" -> {
+                    val values = android.content.ContentValues().apply {
+                        put(CalendarContract.Events.ORIGINAL_INSTANCE_TIME, event.begin)
+                        put(CalendarContract.Events.STATUS, CalendarContract.Events.STATUS_CANCELED)
+                    }
+                    val ok = runCatching {
+                        context.contentResolver.insert(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_EXCEPTION_URI, event.id), values)
+                    }.getOrNull() != null
+                    return if (ok) "Occurrence supprimée, le reste de la série est gardé : ${describeEvent(event)}."
+                    else "Échec : l'agenda a refusé de supprimer cette seule occurrence."
+                }
+                "serie" -> Unit
+                else -> return "${describeEvent(event)} se répète. Demande à l'utilisateur s'il faut supprimer seulement " +
+                    "cette occurrence (portee occurrence, avec sa date) ou toute la série (portee serie)."
+            }
+        }
         val n = context.contentResolver.delete(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, event.id), null, null)
-        return if (n > 0) "Rendez-vous supprimé : ${describeEvent(event)}." else "Échec : l'agenda a refusé la suppression."
+        val what = if (event.recurring) "Série supprimée" else "Rendez-vous supprimé"
+        return if (n > 0) "$what : ${describeEvent(event)}." else "Échec : l'agenda a refusé la suppression."
     }
 
     private fun editEvent(input: Map<String, Any?>): String {
         if (!granted(Manifest.permission.WRITE_CALENDAR)) return "Échec : permission de modifier l'agenda non accordée dans l'appli."
-        val (event, problem) = pickEvent(input.str("titre"), input.optStr("date"))
+        val (event, problem) = pickEvent(input)
         if (event == null) return problem
+        if (event.recurring) return "Échec : ${describeEvent(event)} se répète ; modifiez-le dans l'appli Agenda pour ne pas toucher toute la série."
         val values = android.content.ContentValues()
         input.optStr("nouveau_titre")?.let { values.put(CalendarContract.Events.TITLE, it) }
         input.optStr("lieu")?.let { values.put(CalendarContract.Events.EVENT_LOCATION, it) }

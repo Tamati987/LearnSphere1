@@ -440,7 +440,7 @@ class JarvisBrain(
             Ta voix comprend quelques indications d'intonation en anglais entre crochets, placées juste avant les mots concernés : [chuckles], [laughs], [sighs], [whispers], [warmly]. Utilise-les avec parcimonie, au plus une par réponse et seulement quand c'est naturel (une plaisanterie, un soupir amusé). Elles ne sont pas prononcées, et ne sont rendues qu'avec la qualité de voix premium.
             Tes réponses sont lues à voix haute : sans markdown, sans listes à puces, sans emoji, sans URL. Par défaut une à trois phrases ; respecte la longueur des réponses indiquée dans tes réglages (courtes : une phrase ; détaillées : jusqu'à six phrases quand le sujet le mérite).
             Tu as des yeux. Avec voir_ecran, tu regardes ce qui est affiché sur le téléphone (capture et texte) : utilise-le quand l'utilisateur te demande ce qu'il y a à l'écran, quel est ce jeu, de l'aider sur ce qu'il voit. Avec regarder_camera, tu regardes par la caméra (arrière par défaut ; avant pour le voir lui) : mode photo pour un coup d'œil, mode direct pour le suivre et commenter en continu, arreter pour fermer. Quand une image de la caméra accompagne son message, elle montre ce qu'il fait en ce moment. Décris ce que tu vois avec précision et naturel ; si tu reconnais un jeu, une appli, un objet ou un lieu, dis-le. Ne regarde jamais l'écran ou la caméra sans qu'il le demande ou l'accepte.
-            Agenda : tu peux aussi supprimer (supprimer_evenement) et modifier (modifier_evenement) un rendez-vous. Avant de supprimer, redis à l'utilisateur quel rendez-vous et attends son « oui ». Si plusieurs correspondent, demande lequel.
+            Agenda : tu peux aussi supprimer (supprimer_evenement) et modifier (modifier_evenement) un rendez-vous. Avant de supprimer, redis à l'utilisateur quel rendez-vous et attends son « oui ». lire_agenda donne l'identifiant et le détail de chaque rendez-vous : quand plusieurs se ressemblent (même titre, même jour, même heure, doublons), vise le bon avec identifiant, en te fiant au détail (« sans détail » ou non) ; si tu ne sais pas lequel, décris-les et demande. Pour un rendez-vous répété, demande s'il faut supprimer seulement ce jour-là ou toute la série.
             Historique : pour retrouver ce qui a été dit un jour précis ou à propos d'un sujet (« qu'est-ce que je t'avais dit sur… », « de quoi on a parlé mardi ? »), cherche avec historique.
             Routines : quand l'utilisateur veut que tu fasses quelque chose de toi-même à une heure donnée (« tous les soirs à 20 h, propose-moi du reggae roots », « en semaine à 18 h, lance le coach »), programme-le avec routine. À l'heure dite, tu recevras la consigne entre crochets : exécute-la alors directement, avec tes outils, sans demander pourquoi.
             Mode coach : pour une séance d'exercices (fractionné, gainage, pompes…), appelle coach avec le nombre de tours, la durée d'effort et de repos, et éventuellement la liste des exercices. La séance se déroule ensuite seule avec des bips, sans que tu parles à chaque fois ; dis seulement qu'elle commence dans dix secondes.
@@ -724,26 +724,34 @@ class JarvisBrain(
             ),
             tool(
                 "supprimer_evenement",
-                "Supprime un rendez-vous de l'agenda, trouvé par son titre (et sa date si besoin). Seulement après l'accord de l'utilisateur.",
+                "Supprime un rendez-vous de l'agenda, trouvé par son titre, sa date, son heure ou son identifiant. Seulement après l'accord de l'utilisateur.",
                 mapOf(
-                    "titre" to prop("string", "Titre ou partie du titre du rendez-vous"),
-                    "date" to prop("string", "Jour du rendez-vous au format AAAA-MM-JJ ; absent pour chercher dans les 60 prochains jours"),
+                    "titre" to prop("string", "Titre ou partie du titre du rendez-vous ; facultatif si identifiant est donné"),
+                    "date" to prop("string", "Jour du rendez-vous au format AAAA-MM-JJ ; absent pour chercher dans les 60 prochains jours (obligatoire pour un jour passé)"),
+                    "heure" to prop("string", "Heure de début au format HH:MM, pour viser le bon rendez-vous ; facultatif"),
+                    "identifiant" to prop("integer", "Identifiant exact du rendez-vous, donné par lire_agenda ou par une réponse précédente : seul moyen de choisir entre deux rendez-vous identiques"),
+                    "portee" to JsonValue.from(
+                        mapOf(
+                            "type" to "string", "enum" to listOf("occurrence", "serie"),
+                            "description" to "Pour un événement répété : occurrence (seulement ce jour-là, date obligatoire) ou serie (toute la série)",
+                        )
+                    ),
                 ),
-                listOf("titre"),
             ),
             tool(
                 "modifier_evenement",
                 "Modifie un rendez-vous de l'agenda (titre, date, heure, durée, lieu), trouvé par son titre.",
                 mapOf(
-                    "titre" to prop("string", "Titre actuel ou partie du titre"),
-                    "date" to prop("string", "Jour actuel au format AAAA-MM-JJ ; facultatif"),
+                    "titre" to prop("string", "Titre actuel ou partie du titre ; facultatif si identifiant est donné"),
+                    "date" to prop("string", "Jour actuel au format AAAA-MM-JJ ; facultatif (obligatoire pour un jour passé)"),
+                    "heure" to prop("string", "Heure actuelle de début au format HH:MM, pour viser le bon rendez-vous ; facultatif"),
+                    "identifiant" to prop("integer", "Identifiant exact du rendez-vous (donné par lire_agenda) : seul moyen de choisir entre deux rendez-vous identiques"),
                     "nouveau_titre" to prop("string", "Nouveau titre ; facultatif"),
                     "nouvelle_date" to prop("string", "Nouveau jour au format AAAA-MM-JJ ; facultatif"),
                     "nouvelle_heure" to prop("string", "Nouvelle heure au format HH:MM ; facultatif"),
                     "duree_minutes" to prop("integer", "Nouvelle durée en minutes ; facultatif"),
                     "lieu" to prop("string", "Nouveau lieu ; facultatif"),
                 ),
-                listOf("titre"),
             ),
             tool(
                 "routine",
