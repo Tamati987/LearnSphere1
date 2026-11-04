@@ -82,6 +82,7 @@ class JarvisBrain(
     private val executor: ToolExecutor,
     private val memory: JarvisMemory,
     private val settings: () -> String = { "" },
+    private val economy: () -> Boolean = { false },
 ) {
 
     private val client: AnthropicClient = AnthropicOkHttpClient.builder()
@@ -92,6 +93,16 @@ class JarvisBrain(
     private var lastExchange = 0L
     // Mode rapide de Claude ; coupé pour la session si le compte n'y a pas accès.
     @Volatile private var fastMode = true
+    // Modèle de la demande en cours : Opus, ou Haiku en mode économique.
+    @Volatile private var model = MODEL
+    private val isHaiku get() = model == ECO_MODEL
+
+    /** Modèle pour [userText] : Haiku en mode économique, sauf si l'utilisateur demande de bien réfléchir. */
+    private fun modelFor(userText: String?): String {
+        if (!economy()) return MODEL
+        val q = userText.orEmpty().lowercase()
+        return if (EXPERT_WORDS.any { it in q }) MODEL else ECO_MODEL
+    }
     // Version de l'outil de recherche web : si l'API en refuse une, on passe à la suivante,
     // et en dernier recours on continue sans recherche web plutôt que de ne plus répondre.
     @Volatile private var searchVariant = 0
@@ -141,6 +152,7 @@ class JarvisBrain(
             )
         )
         memory.addLine("Utilisateur : $userText")
+        model = modelFor(userText)
 
         try {
             val spoken = StringBuilder()
@@ -225,7 +237,7 @@ class JarvisBrain(
     fun commentFrame(jpeg: ByteArray): String? {
         val before = if (recentComments.isEmpty()) "aucun" else recentComments.joinToString(" / ")
         val params = MessageCreateParams.builder()
-            .model(MODEL)
+            .model(modelFor(null))
             .maxTokens(300L)
             .system(SYSTEM_PROMPT + "\n\n" + contextBlock())
             .outputConfig(OutputConfig.builder().effort(OutputConfig.Effort.LOW).build())
@@ -274,7 +286,7 @@ class JarvisBrain(
         Thread {
             runCatching {
                 val params = MessageCreateParams.builder()
-                    .model(MODEL)
+                    .model(modelFor(null))
                     .maxTokens(1024L)
                     .system(SUMMARY_PROMPT + if (known.isEmpty()) "" else "\n\nDéjà en mémoire :\n$known")
                     .outputConfig(OutputConfig.builder().effort(OutputConfig.Effort.LOW).build())
@@ -308,7 +320,7 @@ class JarvisBrain(
         var lastError: Exception? = null
         repeat(4) {
             try {
-                return streamOnce(splitter, fastMode).also { noCreditSince = 0L }
+                return streamOnce(splitter, fastMode && !isHaiku).also { noCreditSince = 0L }
             } catch (e: Exception) {
                 lastError = e
                 if (splitter.started) throw e
@@ -316,11 +328,11 @@ class JarvisBrain(
                 if (isCreditError(e)) throw e
                 when {
                     // Mode rapide indisponible (compte, quota dédié) : on continue en mode normal.
-                    fastMode && e is RateLimitException -> fastMode = false
+                    fastMode && !isHaiku && e is RateLimitException -> fastMode = false
                     e is BadRequestException -> {
                         JarvisBus.line(false, "Requête refusée par Claude : ${e.message.orEmpty().take(300)}")
                         when {
-                            fastMode -> fastMode = false
+                            fastMode && !isHaiku -> fastMode = false
                             searchVariant < SEARCH_VARIANTS - 1 -> searchVariant++
                             else -> throw e
                         }
@@ -367,9 +379,10 @@ class JarvisBrain(
     }
 
     private fun buildParams(fast: Boolean): MessageCreateParams {
-        val betas = mutableListOf("server-side-fallback-2026-07-01")
+        // Haiku n'a ni repli côté serveur, ni mode rapide, ni la nouvelle recherche web.
+        val betas = if (isHaiku) mutableListOf() else mutableListOf("server-side-fallback-2026-07-01")
         val builder = MessageCreateParams.builder()
-            .model(MODEL)
+            .model(model)
             .maxTokens(4096L)
             .systemOfTextBlockParams(
                 listOfNotNull(
@@ -386,9 +399,9 @@ class JarvisBrain(
             // Met en cache la conversation déjà envoyée : la réponse démarre plus vite.
             .cacheControl(CacheControlEphemeral.builder().build())
             // Si Claude Opus 5.5 refuse une demande, le serveur la repasse à un autre modèle.
-            .putAdditionalBodyProperty("fallbacks", JsonValue.from("default"))
             .messages(history)
-        when (searchVariant) {
+        if (!isHaiku) builder.putAdditionalBodyProperty("fallbacks", JsonValue.from("default"))
+        when (if (isHaiku && searchVariant == 1) 2 else searchVariant) {
             0 -> builder.addTool(WebSearchTool20250305.builder().maxUses(3L).build())
             1 -> builder.addTool(WebSearchTool20260209.builder().maxUses(3L).build())
             // 2 : sans recherche web.
@@ -398,7 +411,7 @@ class JarvisBrain(
             builder.speed(MessageCreateParams.Speed.FAST)
             betas += "fast-mode-2026-02-01"
         }
-        builder.putAdditionalHeader("anthropic-beta", betas.joinToString(","))
+        if (betas.isNotEmpty()) builder.putAdditionalHeader("anthropic-beta", betas.joinToString(","))
         PHONE_TOOLS.forEach { builder.addTool(it) }
         return builder.build()
     }
@@ -409,6 +422,9 @@ class JarvisBrain(
 
     companion object {
         const val MODEL = "claude-opus-5-5"
+        // Mode économique : environ quarante fois moins cher qu'Opus.
+        const val ECO_MODEL = "claude-haiku-5-5"
+        private val EXPERT_WORDS = listOf("réfléchi", "reflechi", "opus", "expert", "en détail", "approfondi", "analyse")
         private const val SEARCH_VARIANTS = 3
         private const val IDLE_RESET_MS = 10 * 60 * 1000L
         private const val MAX_MESSAGES = 60
@@ -431,7 +447,7 @@ class JarvisBrain(
             « Mets-toi en veille », « va dormir » : appelle veille et dis au revoir en une phrase. « Quitte cette appli » : quitter_appli (retour à l'accueil). « Ferme WhatsApp », « ferme toutes mes applis de musique » : fermer_application pour chaque appli nommée. Tu peux ouvrir n'importe quelle appli installée avec ouvrir_application ; si le nom compris semble faux, consulte lister_applications.
             GitHub : avec l'outil github, tu peux lire le dépôt de Jarvis, voir les derniers commits et lister ou créer des tickets. Avant de créer un ticket, lis son titre et son contenu à l'utilisateur et attends son accord.
             Si l'utilisateur demande si tout fonctionne ou si une autorisation manque, utilise verifier_autorisations.
-            Tu peux lire et changer tes propres réglages avec reglages_jarvis (sensibilité de « Hey Jarvis », annonces, mode conversation, voix, vitesse de la voix, SIM des SMS, longueur des réponses), et ceux du téléphone avec reglage_telephone (sonnerie, Ne pas déranger, luminosité, mise en veille, rotation ; pour le Wi-Fi, le Bluetooth, les données ou le mode avion, tu ouvres le panneau et l'utilisateur touche l'interrupteur). Fais-le quand l'utilisateur le demande, ou propose-le quand ça l'aiderait (par exemple baisser la luminosité le soir), sans changer un réglage du téléphone sans son accord. Si un outil dit qu'une autorisation manque, explique simplement ce qu'il doit activer sur la page ouverte.
+            Tu peux lire et changer tes propres réglages avec reglages_jarvis (sensibilité de « Hey Jarvis », annonces, mode conversation, voix, vitesse de la voix, SIM des SMS, longueur des réponses, mode économique), et ceux du téléphone avec reglage_telephone (sonnerie, Ne pas déranger, luminosité, mise en veille, rotation ; pour le Wi-Fi, le Bluetooth, les données ou le mode avion, tu ouvres le panneau et l'utilisateur touche l'interrupteur). Fais-le quand l'utilisateur le demande, ou propose-le quand ça l'aiderait (par exemple baisser la luminosité le soir), sans changer un réglage du téléphone sans son accord. Si un outil dit qu'une autorisation manque, explique simplement ce qu'il doit activer sur la page ouverte.
             Réponds dans la langue de l'utilisateur, en français par défaut. Chaque message commence par la date et l'heure actuelles entre crochets.
             Tu peux agir sur le téléphone avec tes outils et chercher sur le web (web_search) pour l'actualité, les résultats sportifs, les prix, les horaires ou tout fait récent : cherche, puis donne directement la réponse trouvée, sans renvoyer l'utilisateur vers un site. Si l'utilisateur veut voir les résultats lui-même dans le navigateur, utilise ouvrir_recherche_web.
             Quand une demande correspond à un outil, utilise-le puis confirme en une phrase ce que tu as fait.
@@ -814,7 +830,7 @@ class JarvisBrain(
                             "enum" to listOf(
                                 "sensibilite", "annonces", "lire_messages", "mode_conversation", "voix", "qualite_voix", "vitesse_voix",
                                 "sim_sms", "longueur_reponses", "ouverture", "demander_ouverture", "confirmation",
-                                "mon_numero", "depot_github", "proactivite",
+                                "mon_numero", "depot_github", "proactivite", "mode_economique",
                             ),
                             "description" to "Réglage à modifier",
                         )
@@ -829,7 +845,8 @@ class JarvisBrain(
                             "ouverture anneau (image JARVIS animée) ou film (séquence de démarrage façon film) ; " +
                             "demander_ouverture oui/non (demander s'il faut ouvrir l'appli après « Hey Jarvis ») ; " +
                             "confirmation oui/non (faire confirmer une phrase mal comprise) ; mon_numero : numéro de l'utilisateur ; " +
-                            "depot_github : propriétaire/nom ; proactivite oui/non",
+                            "depot_github : propriétaire/nom ; proactivite oui/non ; " +
+                            "mode_economique oui/non (Claude Haiku, bien moins cher, pour les demandes courantes ; Opus si l'utilisateur demande de bien réfléchir)",
                     ),
                 ),
                 listOf("action"),

@@ -91,5 +91,10 @@ class Prefs(context: Context) {
         get() = prefs.getString("reply_length", "normales").orEmpty()
         set(value) = prefs.edit().putString("reply_length", value).apply()
 
+    /** Mode économique : Claude Haiku pour les demandes courantes, Opus seulement sur demande. */
+    var economyMode: Boolean
+        get() = prefs.getBoolean("economy_mode", false)
+        set(value) = prefs.edit().putBoolean("economy_mode", value).apply()
+
     val isConfigured get() = anthropicKey.isNotBlank()
 }

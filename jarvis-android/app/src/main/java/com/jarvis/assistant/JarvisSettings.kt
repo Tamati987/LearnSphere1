@@ -91,6 +91,11 @@ class JarvisSettings(private val context: Context) {
                 prefs.replyLength = when { v.startsWith("court") -> "courtes"; v.startsWith("d") -> "détaillées"; else -> "normales" }
                 "Réponses ${prefs.replyLength}."
             }
+            "mode_economique" -> {
+                prefs.economyMode = yes(v)
+                if (prefs.economyMode) "Mode économique activé : Claude Haiku pour les demandes courantes, Opus quand vous me demandez de bien réfléchir."
+                else "Mode économique désactivé : Claude Opus pour tout."
+            }
             else -> return "Échec : réglage « $name » inconnu. ${describe()}"
         }
         // Le service applique tout de suite le changement (micro, voix…).
@@ -101,7 +106,7 @@ class JarvisSettings(private val context: Context) {
     fun describe() = "Réglages de Jarvis : sensibilité ${SENSITIVITY[prefs.wakeSensitivity]} ; " +
         "annonces ${onOff(prefs.announceSms)} (${if (prefs.readMessageContent) "avec le texte" else "sans lire le texte"}) ; mode conversation ${onOff(prefs.conversationMode)} ; " +
         "voix ${if (prefs.realisticVoice && prefs.elevenLabsKey.isNotBlank()) "Jarvis (ElevenLabs)" else "Android"} ; " +
-        "qualité de la voix ${prefs.voiceQuality} ; vitesse de la voix %.1f ; SMS par la SIM ${prefs.smsSim} ; réponses ${prefs.replyLength}.".format(prefs.speechRate)
+        "qualité de la voix ${prefs.voiceQuality} ; vitesse de la voix %.1f ; SMS par la SIM ${prefs.smsSim} ; réponses ${prefs.replyLength} ; mode économique ${onOff(prefs.economyMode)}.".format(prefs.speechRate)
 
     /** Réglage du téléphone. Renvoie un compte rendu, ou ce que l'utilisateur doit autoriser. */
     fun phone(name: String, value: String?, open: (Intent) -> Unit): String {
