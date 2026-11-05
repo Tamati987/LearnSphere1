@@ -28,6 +28,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
+from .images_ia import STYLES, construire_prompt, generer_image
 from .voix import VOIX_PAR_DEFAUT, duree_audio, ffmpeg_exe, generer_voix
 
 FORMATS = {
@@ -66,6 +67,7 @@ PAUSE = 0.6  # secondes de silence après chaque diapositive
 class Diapo:
     texte: str
     titre: bool = False
+    prompt: str | None = None  # description de l'image IA ([image: ...])
 
 
 # --------------------------------------------------------------------------- #
@@ -74,22 +76,27 @@ class Diapo:
 def decouper_texte(texte: str, max_caracteres: int = 220) -> list[Diapo]:
     diapos: list[Diapo] = []
     for bloc in re.split(r"\n\s*\n", texte.strip()):
+        prompt = None
+        m = re.search(r"\[image\s*:\s*([^\]]+)\]", bloc, re.I)
+        if m:
+            prompt = m.group(1).strip()
+            bloc = bloc[: m.start()] + bloc[m.end():]
         bloc = " ".join(bloc.split())
         if not bloc:
             continue
         if bloc.startswith("#"):
-            diapos.append(Diapo(bloc.lstrip("#").strip(), titre=True))
+            diapos.append(Diapo(bloc.lstrip("#").strip(), titre=True, prompt=prompt))
             continue
         phrases = re.split(r"(?<=[.!?…])\s+", bloc)
         courant = ""
         for phrase in phrases:
             if courant and len(courant) + 1 + len(phrase) > max_caracteres:
-                diapos.append(Diapo(courant))
+                diapos.append(Diapo(courant, prompt=prompt))
                 courant = phrase
             else:
                 courant = f"{courant} {phrase}".strip()
         if courant:
-            diapos.append(Diapo(courant))
+            diapos.append(Diapo(courant, prompt=prompt))
     return diapos
 
 
@@ -179,6 +186,49 @@ def dessiner_diapo(
     img.save(chemin)
 
 
+def dessiner_calque(diapo: Diapo, chemin: Path, taille=(1080, 1920), theme_nom="nuit", police=None):
+    """Calque transparent posé sur une image IA : sous-titre ou titre."""
+    largeur, hauteur = taille
+    accent = THEMES.get(theme_nom, THEMES["nuit"])[3]
+    img = Image.new("RGBA", taille, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    base = min(largeur, hauteur)
+    if diapo.titre:
+        draw.rectangle((0, 0, largeur, hauteur), fill=(0, 0, 0, 110))
+        taille_police = int(base * 0.1)
+        zone = int(largeur * 0.84)
+    else:
+        taille_police = int(base * 0.05)
+        zone = int(largeur * 0.82)
+    f = _police(taille_police, police)
+    largeur_car = max(1, f.getlength("abcdefghijklmnopqrstuvwxyz") / 26)
+    lignes = textwrap.wrap(diapo.texte, width=max(8, int(zone / largeur_car)))
+    interligne = int(taille_police * 1.3)
+    if diapo.titre:
+        y = (hauteur - interligne * len(lignes)) // 2
+        for ligne in lignes:
+            x = (largeur - f.getlength(ligne)) // 2
+            draw.text((x + 4, y + 4), ligne, font=f, fill=(0, 0, 0, 170))
+            draw.text((x, y), ligne, font=f, fill=(255, 255, 255, 255))
+            y += interligne
+        lt = int(largeur * 0.12)
+        draw.rounded_rectangle(((largeur - lt) // 2, y + 12, (largeur + lt) // 2, y + 12 + max(6, base // 120)),
+                               radius=4, fill=accent + (255,))
+    else:
+        marge = int(taille_police * 0.6)
+        l_max = max(f.getlength(l) for l in lignes)
+        h_box = interligne * len(lignes) + 2 * marge
+        y0 = int(hauteur * 0.92) - h_box
+        x0 = int((largeur - l_max) / 2 - marge * 1.2)
+        draw.rounded_rectangle((x0, y0, largeur - x0, y0 + h_box), radius=int(taille_police * 0.5),
+                               fill=(0, 0, 0, 160))
+        y = y0 + marge
+        for ligne in lignes:
+            draw.text(((largeur - f.getlength(ligne)) // 2, y), ligne, font=f, fill=(255, 255, 255, 255))
+            y += interligne
+    img.save(chemin)
+
+
 # --------------------------------------------------------------------------- #
 # Assemblage vidéo
 # --------------------------------------------------------------------------- #
@@ -206,11 +256,14 @@ def generer_video(
     volume_musique: float = 0.12,
     moteur_voix: str = "auto",
     police: str | None = None,
+    images_ia: str | None = None,
     progression=None,
 ) -> Path:
     """Crée une vidéo MP4 à partir de `texte`.
 
     voix=None → vidéo sans narration (durée calculée selon la longueur du texte).
+    images_ia : style d'images IA (« cinema », « 3d », « jeunesse »…) pour une image
+                générée par scène avec un zoom lent ; None = diapositives classiques.
     progression : fonction optionnelle appelée avec (étape, total, message).
     """
     diapos = decouper_texte(texte)
@@ -228,7 +281,17 @@ def generer_video(
             if progression:
                 progression(i - 1, total + 1, f"Diapositive {i}/{total}")
             png, clip = tmp / f"d{i:03}.png", tmp / f"c{i:03}.mp4"
-            dessiner_diapo(d, png, taille, theme, image_fond, i, total, police)
+            if images_ia:
+                photo = tmp / f"ia{i:03}.jpg"
+                largeur, hauteur = taille
+                ratio = largeur / hauteur
+                iw, ih = (576, 1024) if ratio < 0.9 else (1024, 576) if ratio > 1.1 else (768, 768)
+                if progression:
+                    progression(i - 1, total + 1, f"Image IA {i}/{total}")
+                generer_image(construire_prompt(d.prompt or d.texte, images_ia), photo, iw, ih, seed=1000 + i)
+                dessiner_calque(d, png, taille, theme, police)
+            else:
+                dessiner_diapo(d, png, taille, theme, image_fond, i, total, police)
 
             if voix:
                 mp3 = tmp / f"v{i:03}.mp3"
@@ -242,6 +305,31 @@ def generer_video(
                 filtre_audio = []
 
             fondu = min(0.35, duree / 4)
+            if images_ia:
+                largeur, hauteur = taille
+                n = max(1, int(duree * FPS))
+                zoom = f"1+0.15*on/{n}" if i % 2 else f"1.15-0.15*on/{n}"
+                pad = f",apad=pad_dur={PAUSE}" if voix else ""
+                _ffmpeg(
+                    "-loop", "1", "-framerate", str(FPS), "-i", str(photo),
+                    "-loop", "1", "-framerate", str(FPS), "-i", str(png), *audio,
+                    "-t", f"{duree:.3f}",
+                    "-filter_complex",
+                    f"[0:v]scale={2 * largeur}:{2 * hauteur}:force_original_aspect_ratio=increase,"
+                    f"crop={2 * largeur}:{2 * hauteur},"
+                    f"zoompan=z='{zoom}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s={largeur}x{hauteur}:fps={FPS},"
+                    f"setsar=1[bg];[bg][1:v]overlay=format=auto,"
+                    f"fade=t=in:st=0:d={fondu},fade=t=out:st={duree - fondu:.3f}:d={fondu},format=yuv420p[v];"
+                    f"[2:a]anull{pad}[a]",
+                    "-map", "[v]", "-map", "[a]",
+                    "-c:v", "libx264", "-preset", "veryfast", "-r", str(FPS),
+                    "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-ac", "2",
+                    str(clip),
+                )
+                clips.append(clip)
+                srt.append(f"{i}\n{_srt_temps(t)} --> {_srt_temps(t + duree - PAUSE)}\n{d.texte}\n")
+                t += duree
+                continue
             _ffmpeg(
                 "-loop", "1", "-framerate", str(FPS), "-i", str(png), *audio,
                 "-t", f"{duree:.3f}",
@@ -295,6 +383,8 @@ def main(argv=None):
     p.add_argument("--volume-musique", type=float, default=0.12)
     p.add_argument("--hors-ligne", action="store_true", help="Voix hors-ligne")
     p.add_argument("--police", help="Chemin d'une police .ttf personnalisée")
+    p.add_argument("--ia", choices=STYLES, metavar="STYLE",
+                   help=f"Images générées par IA, une par scène ({', '.join(STYLES)})")
     a = p.parse_args(argv)
 
     texte = Path(a.fichier).read_text(encoding="utf-8") if a.fichier else a.texte
@@ -305,7 +395,7 @@ def main(argv=None):
         texte, a.sortie, a.format, a.theme,
         voix=None if a.sans_voix else a.voix, vitesse=a.vitesse,
         image_fond=a.image, musique=a.musique, volume_musique=a.volume_musique,
-        moteur_voix="hors-ligne" if a.hors_ligne else "auto", police=a.police,
+        moteur_voix="hors-ligne" if a.hors_ligne else "auto", police=a.police, images_ia=a.ia,
         progression=lambda i, n, m: print(f"[{i}/{n}] {m}"),
     )
     print(f"✅ Vidéo créée : {out}  (+ sous-titres {out.with_suffix('.srt')})")
