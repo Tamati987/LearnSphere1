@@ -178,9 +178,9 @@ Les rivières ramènent l'eau jusqu'à la mer, et le voyage recommence !</textar
     <details>
       <summary>Option : clé Pollinations (plus rapide, sans logo)</summary>
       <div class="field" style="margin-top:10px">
-        <p class="hint">Sans clé, le service gratuit accepte environ 1 image toutes les 45 secondes. Avec une clé gratuite (compte sur enter.pollinations.ai), c'est plus rapide. La clé reste sur ton téléphone.</p>
+        <p class="hint">Sans clé, le service gratuit accepte environ 1 image toutes les 45 secondes. Avec une clé secrète gratuite (sk_…, à créer dans « Secrets » sur enter.pollinations.ai, en cochant « pollen de quête uniquement »), c'est plus rapide. La clé reste sur ton téléphone.</p>
         <label for="apikey">Clé</label>
-        <input type="password" id="apikey" autocomplete="off" placeholder="pk_… ou sk_…">
+        <input type="password" id="apikey" autocomplete="off" placeholder="sk_…">
       </div>
     </details>
   </section>
@@ -351,6 +351,7 @@ async function waitSlot(statusPrefix) {
 async function fetchImage(url) {
   const r = await fetch(url, { mode: "cors" });
   if (r.status === 402 || r.status === 429) { const e = new Error("limite"); e.rate = true; throw e; }
+  if (r.status === 401 || r.status === 403) { const e = new Error("clé refusée"); e.badKey = true; throw e; }
   if (!r.ok) throw new Error("HTTP " + r.status);
   const blob = await r.blob();
   if (!blob.type.startsWith("image/")) throw new Error("réponse inattendue");
@@ -372,7 +373,10 @@ async function genImage(i, now) {
         s.img = await createImageBitmap(blob);
         s.loading = false; renderScenes();
         return;
-      } catch (e) { lastErr = e; }
+      } catch (e) {
+        lastErr = e;
+        if (e.badKey) setStatus("stImg", "Clé refusée par Pollinations : vérifie qu'elle commence par sk_ et qu'il te reste du pollen. Je continue sans clé (plus lent).");
+      }
     }
     if (!(lastErr && lastErr.rate)) await sleep(3000);
   }
