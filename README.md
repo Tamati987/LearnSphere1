@@ -77,7 +77,10 @@ python -m outils.video --fichier script.txt -o video.mp4
 python -m outils.video --fichier script.txt --format portrait --theme coucher --voix henri
 python -m outils.video --fichier script.txt --image fond.jpg --musique musique.mp3
 python -m outils.video --fichier script.txt --sans-voix
+python -m outils.video --fichier script.txt --format portrait --ia cinema   # images générées par IA
 ```
+
+**Mode images IA (`--ia STYLE`)** : une image est générée par IA pour chaque scène (gratuit, via Pollinations.ai), puis animée avec un zoom lent ; le texte s'affiche en sous-titre. Styles : `cinema`, `3d`, `jeunesse`, `aquarelle`, `anime`, `infographie`. Ajoute `[image: description en anglais]` dans un paragraphe pour choisir l'image. Sans clé, compte environ 45 s par image ; une clé secrète gratuite (`sk_…`) dans la variable `POLLINATIONS_KEY` accélère.
 
 | Option | Valeurs |
 |---|---|
