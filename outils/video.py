@@ -322,7 +322,8 @@ def generer_video(
                     f"fade=t=in:st=0:d={fondu},fade=t=out:st={duree - fondu:.3f}:d={fondu},format=yuv420p[v];"
                     f"[2:a]anull{pad}[a]",
                     "-map", "[v]", "-map", "[a]",
-                    "-c:v", "libx264", "-preset", "veryfast", "-r", str(FPS),
+                    "-c:v", "libx264", "-preset", "veryfast", "-r", str(FPS), "-pix_fmt", "yuv420p",
+                    "-color_range", "tv",
                     "-c:a", "aac", "-b:a", "160k", "-ar", "44100", "-ac", "2",
                     str(clip),
                 )
