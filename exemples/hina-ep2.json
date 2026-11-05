@@ -1,0 +1,111 @@
+{
+  "titre": "Hina, épisode 2 : Le Récif qui pleure",
+  "format": "portrait",
+  "volume_musique": 0.5,
+  "personnages": {
+    "Narrateur": { "voix": "fr-FR-RemyMultilingualNeural", "vitesse": -8 },
+    "Hina": {
+      "voix": "fr-FR-EloiseNeural",
+      "couleur": "#7fe9e0",
+      "description": "anime girl Hina, 12 years old Polynesian girl with tan brown skin, long wavy black hair with a white tiare flower behind her ear, big expressive dark eyes, turquoise pareo dress, glowing seashell necklace"
+    },
+    "Honu": {
+      "voix": "fr-CA-AntoineNeural",
+      "vitesse": -18,
+      "hauteur": -8,
+      "couleur": "#a8e6a1",
+      "description": "Honu, a wise old green sea turtle with kind eyes and a shell covered in tiny glowing patterns"
+    },
+    "Ata": {
+      "voix": "fr-FR-HenriNeural",
+      "vitesse": -5,
+      "hauteur": -6,
+      "couleur": "#c9a7ff",
+      "description": "Ata, a small round grey storm cloud spirit with two big sad violet eyes, tiny lightning sparks, cute"
+    }
+  },
+  "scenes": [
+    {
+      "image": "underwater view of a once colorful coral reef now partly white and bleached, sunrays from the surface, melancholic blue atmosphere",
+      "titre": "HINA",
+      "sous_titre": "Épisode 2 : Le Récif qui pleure",
+      "personnage": "Narrateur",
+      "texte": "Depuis la grande tempête, le lagon était calme… mais quelque chose n'allait pas.",
+      "camera": "zoom_out",
+      "duree_min": 4
+    },
+    {
+      "image": "{Hina} snorkeling underwater, looking sadly at white bleached corals, light rays, small fish around",
+      "graine": 777,
+      "personnage": "Hina",
+      "texte": "Le corail… il devient tout blanc ! Hier encore, il était plein de couleurs.",
+      "camera": "pan_droite"
+    },
+    {
+      "image": "{Honu} swimming slowly toward the camera in a blue lagoon, gentle sunlight, magical floating particles",
+      "personnage": "Honu",
+      "texte": "Le corail est malade, petite. Quand la mer devient trop chaude, il perd ses couleurs… et il a faim.",
+      "camera": "zoom_in"
+    },
+    {
+      "image": "{Hina} and {Honu} face to face underwater, Hina listening carefully, glowing seashell necklace, soft blue light",
+      "graine": 777,
+      "personnage": "Hina",
+      "texte": "Alors comment on peut l'aider, Honu ?",
+      "camera": "zoom_in"
+    },
+    {
+      "image": "{Honu} pointing with a flipper toward a dark sky above the ocean surface where a small grey cloud floats alone, view from underwater",
+      "personnage": "Honu",
+      "texte": "Demande à celui qui connaît le ciel et la mer mieux que personne.",
+      "camera": "pan_haut"
+    },
+    {
+      "image": "{Ata} floating alone above a calm turquoise lagoon at dusk, looking ashamed, tiny raindrops falling",
+      "personnage": "Narrateur",
+      "texte": "Au-dessus de l'eau flottait un tout petit nuage. Ce qui restait de l'Esprit de la Tempête.",
+      "camera": "zoom_in"
+    },
+    {
+      "image": "{Hina} standing on the beach looking up at {Ata} floating in front of her, surprised expression, sunset light",
+      "graine": 777,
+      "personnage": "Hina",
+      "texte": "C'est toi ? Tu es revenu pour te venger ?",
+      "camera": "pan_gauche"
+    },
+    {
+      "image": "close-up of {Ata} crying small raindrops, very emotional, soft violet glow, sunset background",
+      "personnage": "Ata",
+      "texte": "Non… Je m'appelle Ata. J'étais en colère parce que l'océan souffre. Il a trop chaud… et moi aussi.",
+      "camera": "zoom_in",
+      "bruitage": "tonnerre"
+    },
+    {
+      "image": "{Hina} gently holding out her hand toward {Ata}, warm golden light between them, friendship moment, beach at sunset",
+      "graine": 777,
+      "personnage": "Hina",
+      "texte": "Alors aide-moi. Ensemble, on peut protéger le récif.",
+      "camera": "zoom_in"
+    },
+    {
+      "image": "Polynesian village children and {Hina} planting small coral fragments on underwater ropes in a clear turquoise lagoon, {Honu} watching, hopeful sunny scene",
+      "graine": 777,
+      "personnage": "Narrateur",
+      "texte": "Avec les enfants du village, Hina replanta des boutures de corail, pendant qu'Ata faisait de l'ombre sur le lagon pour le rafraîchir.",
+      "camera": "pan_droite"
+    },
+    {
+      "image": "vibrant colorful healthy coral reef full of fish, sunlight, small grey cloud shadow on the water surface above, joyful atmosphere",
+      "personnage": "Narrateur",
+      "texte": "Petit à petit, les couleurs revinrent. Car protéger l'océan, c'est l'affaire de tous.",
+      "camera": "zoom_out"
+    },
+    {
+      "image": "silhouette of a giant whale tail rising from a moonlit ocean, mysterious glowing turquoise light under the water, night sky full of stars",
+      "titre": "À suivre…",
+      "sous_titre": "Épisode 3 : Le Chant des Baleines",
+      "camera": "zoom_in",
+      "duree": 4
+    }
+  ]
+}
