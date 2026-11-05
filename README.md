@@ -7,6 +7,17 @@ Deux outils **100 % gratuits** (pas d'abonnement, pas de clé API) :
 | 🎙️ **Texte → Voix** | Transforme un texte en fichier audio MP3 (+ sous-titres `.srt`). Voix neuronales naturelles en français (France, Québec, Belgique, Suisse) et dans d'autres langues. |
 | 🎬 **Texte → Vidéo** | Transforme un script en vidéo MP4 : une diapositive animée par paragraphe, voix off automatique, image et musique de fond en option, sous-titres `.srt`. Formats YouTube (16:9), TikTok/Reels/Shorts (9:16) et Instagram (1:1). |
 
+## 📱 Vidéo IA sur smartphone : `index.html`
+
+Une page web qui fonctionne dans le navigateur du téléphone, sans installation :
+
+1. Tu écris ton script (un paragraphe = une scène, `#` = titre, `[image: ...]` pour décrire l'image toi-même).
+2. L'IA crée une image par scène grâce à [Pollinations.ai](https://pollinations.ai) (gratuit, sans compte, environ 1 image toutes les 45 s ; une clé gratuite accélère).
+3. Tu enregistres ta voix scène par scène avec le micro, ou tu importes un fichier audio, et tu ajoutes une musique si tu veux.
+4. La page anime les images (zoom lent, fondus, sous-titres) et enregistre la vidéo (MP4 sur iPhone et Chrome récent, sinon WebM).
+
+Pour l'utiliser sur ton téléphone, la page doit être en ligne, par exemple avec GitHub Pages (Settings → Pages → branche du dépôt) ou Vercel.
+
 ## Comment c'est gratuit ?
 
 - **Voix en ligne** : [edge-tts](https://github.com/rany2/edge-tts) utilise les voix neuronales de Microsoft Edge, gratuites et sans compte. Il faut une connexion Internet.

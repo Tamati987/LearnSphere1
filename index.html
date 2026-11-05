@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LearnSphere Vidéo IA</title>
+<meta name="description" content="Crée gratuitement des vidéos avec des images générées par IA, ta voix et ta musique, directement sur ton téléphone.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout : une colonne d'étapes numérotées (le flux est réellement séquentiel), pensée pour le pouce. */
+:root {
+  --bg: #f3f6f6;
+  --surface: #ffffff;
+  --fg: #12201f;
+  --muted: #5b6b6a;
+  --line: #d6e0df;
+  --accent: #0b7f7a;        /* lagon */
+  --accent-ink: #ffffff;
+  --rec: #d6493a;           /* enregistrement */
+  --warn-bg: #fff4dc;
+  --warn-fg: #6b4a00;
+  --font-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1716; --surface: #15211f; --fg: #e6efee; --muted: #93a6a4; --line: #27403d;
+    --accent: #3cc4bb; --accent-ink: #062321; --rec: #ff7a6b; --warn-bg: #3a2e12; --warn-fg: #ffd98a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1716; --surface: #15211f; --fg: #e6efee; --muted: #93a6a4; --line: #27403d;
+  --accent: #3cc4bb; --accent-ink: #062321; --rec: #ff7a6b; --warn-bg: #3a2e12; --warn-fg: #ffd98a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 16px/1.5 var(--font-body);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
+}
+.wrap {
+  max-width: 720px; margin: 0 auto;
+  padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 18px;
+}
+header h1 {
+  font: 800 clamp(1.7rem, 6vw, 2.4rem)/1.05 var(--font-display);
+  margin: 0 0 6px; text-wrap: balance; letter-spacing: -0.01em;
+}
+header p { margin: 0; color: var(--muted); max-width: 60ch; }
+.step {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px; display: grid; gap: 12px; min-width: 0;
+}
+.step h2 {
+  font: 600 1.15rem/1.2 var(--font-display); margin: 0;
+  display: flex; align-items: center; gap: 10px;
+}
+.step h2 .n {
+  flex: none; width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center; font-size: .9rem;
+  background: var(--accent); color: var(--accent-ink);
+}
+label { font-weight: 700; font-size: .95rem; }
+.hint { color: var(--muted); font-size: .88rem; margin: 0; }
+textarea, input[type="text"], input[type="password"], select {
+  width: 100%; font: inherit; color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+}
+textarea { min-height: 220px; resize: vertical; }
+textarea:focus, input:focus, select:focus, button:focus-visible, .chip:focus-within {
+  outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 1px;
+}
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.field { display: grid; gap: 6px; min-width: 0; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; font-size: .95rem;
+  background: var(--bg); user-select: none;
+}
+.chip input { position: absolute; opacity: 0; pointer-events: none; }
+.chip:has(input:checked) { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button {
+  font: 700 1rem var(--font-body); border-radius: 12px; padding: 12px 16px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+  min-height: 46px;
+}
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); width: 100%; font-size: 1.05rem; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button.small { min-height: 38px; padding: 7px 12px; font-size: .9rem; }
+button.rec { color: var(--rec); border-color: color-mix(in srgb, var(--rec) 50%, var(--line)); }
+button.rec.on { background: var(--rec); color: #fff; border-color: var(--rec); }
+.status { font-size: .92rem; color: var(--muted); min-height: 1.4em; margin: 0; font-variant-numeric: tabular-nums; }
+.bar { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.bar > i { display: block; height: 100%; width: 0%; background: var(--accent); transition: width .3s; }
+.scenes { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.scene { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: grid; background: var(--bg); min-width: 0; }
+.scene .pic { aspect-ratio: var(--ratio, 9/16); background: var(--line); position: relative; max-width: 100%; }
+.scene .pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.scene .pic .ph { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: .85rem; text-align: center; padding: 8px; }
+.scene .body { padding: 8px; display: grid; gap: 6px; font-size: .85rem; }
+.scene .txt { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.scene .tag { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+.scene audio { width: 100%; height: 34px; }
+.scene .acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.notice { background: var(--warn-bg); color: var(--warn-fg); border-radius: 10px; padding: 10px 12px; font-size: .9rem; margin: 0; }
+video { width: 100%; max-height: 70vh; border-radius: 12px; background: #000; }
+a.dl {
+  display: block; text-align: center; text-decoration: none; font-weight: 700;
+  background: var(--accent); color: var(--accent-ink); border-radius: 12px; padding: 13px;
+}
+details summary { cursor: pointer; font-weight: 700; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+input[type="file"] { font-size: .9rem; max-width: 100%; }
+footer { color: var(--muted); font-size: .82rem; text-align: center; }
+footer a { color: inherit; }
+@media (prefers-reduced-motion: reduce) { .bar > i { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>LearnSphere Vidéo IA</h1>
+    <p>Écris ton script : l'IA dessine une image par scène, tu ajoutes ta voix ou ta musique, et la vidéo se fabrique dans ton téléphone. Gratuit, sans compte.</p>
+  </header>
+
+  <section class="step" aria-labelledby="s1">
+    <h2 id="s1"><span class="n">1</span>Ton script</h2>
+    <p class="hint">Un paragraphe = une scène. Une ligne qui commence par <b>#</b> devient un titre. Pour choisir toi-même l'image d'une scène, ajoute <b>[image: description]</b> (en anglais, c'est encore mieux).</p>
+    <textarea id="script" aria-label="Script de la vidéo">
+# Le voyage de l'eau
+
+Chaque goutte de pluie a fait un long voyage. Elle commence dans l'océan, chauffée par le soleil. [image: sunlight over a turquoise tropical ocean, water vapor rising]
+
+La vapeur monte dans le ciel et forme de gros nuages blancs. [image: big white clouds forming over green volcanic mountains]
+
+Quand les nuages sont lourds, il pleut sur les montagnes. [image: rain falling on lush green mountains, waterfall]
+
+Les rivières ramènent l'eau jusqu'à la mer, et le voyage recommence !</textarea>
+  </section>
+
+  <section class="step" aria-labelledby="s2">
+    <h2 id="s2"><span class="n">2</span>Format et style</h2>
+    <div class="field">
+      <span class="hint">Format</span>
+      <div class="row" role="radiogroup" aria-label="Format">
+        <label class="chip"><input type="radio" name="format" value="portrait" id="f-portrait" checked>Vertical 9:16</label>
+        <label class="chip"><input type="radio" name="format" value="paysage" id="f-paysage">Horizontal 16:9</label>
+        <label class="chip"><input type="radio" name="format" value="carre" id="f-carre">Carré 1:1</label>
+      </div>
+    </div>
+    <div class="field">
+      <label for="style">Style des images</label>
+      <select id="style">
+        <option value="cinematic photograph, dramatic natural light, highly detailed, 35mm">Photo cinéma</option>
+        <option value="3D animated film style, soft lighting, colorful, cute, expressive">Dessin animé 3D</option>
+        <option value="children's book illustration, vibrant colors, soft shapes">Illustration jeunesse</option>
+        <option value="watercolor painting, soft pastel colors, paper texture">Aquarelle</option>
+        <option value="anime style, detailed background, vivid colors">Style anime</option>
+        <option value="flat vector illustration, clean shapes, bright colors, educational">Infographie</option>
+      </select>
+    </div>
+    <div class="field">
+      <span class="hint">Texte sur la vidéo</span>
+      <div class="row">
+        <label class="chip"><input type="checkbox" id="subs" checked>Sous-titres</label>
+      </div>
+    </div>
+    <details>
+      <summary>Option : clé Pollinations (plus rapide, sans logo)</summary>
+      <div class="field" style="margin-top:10px">
+        <p class="hint">Sans clé, le service gratuit accepte environ 1 image toutes les 45 secondes. Avec une clé gratuite (compte sur enter.pollinations.ai), c'est plus rapide. La clé reste sur ton téléphone.</p>
+        <label for="apikey">Clé</label>
+        <input type="password" id="apikey" autocomplete="off" placeholder="pk_… ou sk_…">
+      </div>
+    </details>
+  </section>
+
+  <section class="step" aria-labelledby="s3">
+    <h2 id="s3"><span class="n">3</span>Images IA</h2>
+    <button class="primary" id="btnImages">Générer les images</button>
+    <div class="bar" aria-hidden="true"><i id="barImg"></i></div>
+    <p class="status" id="stImg" role="status">Les images apparaîtront ici. Garde la page ouverte pendant la génération.</p>
+    <div class="scenes" id="scenes"></div>
+  </section>
+
+  <section class="step" aria-labelledby="s4">
+    <h2 id="s4"><span class="n">4</span>Son</h2>
+    <div class="field">
+      <span class="hint">Voix off</span>
+      <div class="row" role="radiogroup" aria-label="Voix off">
+        <label class="chip"><input type="radio" name="voice" value="mic" id="v-mic" checked>Ma voix (micro)</label>
+        <label class="chip"><input type="radio" name="voice" value="file" id="v-file">Fichier audio</label>
+        <label class="chip"><input type="radio" name="voice" value="none" id="v-none">Aucune</label>
+      </div>
+    </div>
+    <p class="hint" id="hintMic">Sous chaque image, appuie sur <b>Enregistrer</b> et lis le texte de la scène. La scène durera le temps de ta lecture.</p>
+    <div class="field" id="boxVoiceFile" hidden>
+      <label for="voiceFile">Fichier de voix off (mp3, m4a, wav…)</label>
+      <input type="file" id="voiceFile" accept="audio/*">
+      <p class="hint">Les scènes se partagent la durée du fichier selon la longueur de leur texte.</p>
+    </div>
+    <div class="field">
+      <label for="musicFile">Musique de fond (facultatif)</label>
+      <input type="file" id="musicFile" accept="audio/*">
+      <label for="musicVol">Volume de la musique</label>
+      <input type="range" id="musicVol" min="0" max="1" step="0.05" value="0.2">
+    </div>
+  </section>
+
+  <section class="step" aria-labelledby="s5">
+    <h2 id="s5"><span class="n">5</span>Vidéo</h2>
+    <p class="hint">La vidéo s'enregistre en temps réel : une vidéo de 30 s prend 30 s. Laisse l'écran allumé et reste sur la page.</p>
+    <button class="primary" id="btnVideo">Créer la vidéo</button>
+    <div class="bar" aria-hidden="true"><i id="barVid"></i></div>
+    <p class="status" id="stVid" role="status"></p>
+    <canvas id="cv" hidden></canvas>
+    <div id="result" hidden class="field">
+      <video id="out" controls playsinline></video>
+      <a class="dl" id="dl" download="video.mp4">Télécharger la vidéo</a>
+      <p class="hint" id="fmtNote"></p>
+    </div>
+  </section>
+
+  <footer>Images : <a href="https://pollinations.ai" target="_blank" rel="noopener">Pollinations.ai</a> (gratuit, libre de droits). Tout le reste se fait dans ton téléphone.</footer>
+</div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const FORMATS = {
+  portrait: { w: 720, h: 1280, iw: 576, ih: 1024, ratio: "9/16" },
+  paysage:  { w: 1280, h: 720, iw: 1024, ih: 576, ratio: "16/9" },
+  carre:    { w: 960,  h: 960, iw: 768,  ih: 768, ratio: "1/1" },
+};
+const FREE_GAP_MS = 46000;   // service gratuit : 1 image / 45 s
+const KEY_GAP_MS = 1500;
+const FADE = 0.6;            // fondu entre scènes (s)
+
+let scenes = [];             // {text, title, prompt, seed, img (ImageBitmap), url, voice (Blob), voiceUrl}
+let busy = false;
+
+/* ---------- Mémoire locale (facultative) ---------- */
+function store(k, v) { try { localStorage.setItem("lsv_" + k, v); } catch (e) {} }
+function load(k) { try { return localStorage.getItem("lsv_" + k); } catch (e) { return null; } }
+(function restore() {
+  const s = load("script"); if (s) $("script").value = s;
+  const k = load("key"); if (k) $("apikey").value = k;
+})();
+$("script").addEventListener("input", () => store("script", $("script").value));
+$("apikey").addEventListener("change", () => store("key", $("apikey").value.trim()));
+
+const fmt = () => FORMATS[document.querySelector('input[name="format"]:checked').value];
+const voiceMode = () => document.querySelector('input[name="voice"]:checked').value;
+document.querySelectorAll('input[name="voice"]').forEach((r) => r.addEventListener("change", () => {
+  $("boxVoiceFile").hidden = voiceMode() !== "file";
+  $("hintMic").hidden = voiceMode() !== "mic";
+  renderScenes();
+}));
+document.querySelectorAll('input[name="format"]').forEach((r) => r.addEventListener("change", () => {
+  if (scenes.some((s) => s.img)) $("stImg").textContent = "Format changé : régénère les images pour un meilleur cadrage.";
+  renderScenes();
+}));
+
+/* ---------- Script -> scènes ---------- */
+function parseScript(txt) {
+  return txt.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean).map((b) => {
+    let prompt = null;
+    b = b.replace(/\[image\s*:\s*([^\]]+)\]/i, (_, p) => { prompt = p.trim(); return ""; });
+    const title = b.startsWith("#");
+    const text = b.replace(/^#+/, "").replace(/\s+/g, " ").trim();
+    return { text, title, prompt, seed: Math.floor(Math.random() * 1e6) };
+  });
+}
+function sameScenes(a, b) {
+  return a.length === b.length && a.every((s, i) => s.text === b[i].text && s.prompt === b[i].prompt);
+}
+
+/* ---------- Affichage des scènes ---------- */
+function renderScenes() {
+  const box = $("scenes");
+  box.style.setProperty("--ratio", fmt().ratio);
+  box.innerHTML = "";
+  scenes.forEach((s, i) => {
+    const el = document.createElement("div");
+    el.className = "scene";
+    el.innerHTML = `
+      <div class="pic">${s.url ? `<img alt="">` : `<div class="ph">${s.loading ? "Création de l'image…" : "En attente"}</div>`}</div>
+      <div class="body">
+        <span class="tag">Scène ${i + 1}${s.title ? " · titre" : ""}</span>
+        <span class="txt"></span>
+        ${voiceMode() === "mic" ? `<div class="acts">
+          <button class="small rec${s.recording ? " on" : ""}" data-act="rec" data-i="${i}">${s.recording ? "■ Arrêter" : (s.voice ? "Refaire" : "● Enregistrer")}</button>
+        </div>${s.voiceUrl ? `<audio controls src="${s.voiceUrl}"></audio>` : ""}` : ""}
+        <div class="acts"><button class="small" data-act="regen" data-i="${i}" ${busy ? "disabled" : ""}>Autre image</button></div>
+      </div>`;
+    el.querySelector(".txt").textContent = s.text;
+    if (s.url) el.querySelector("img").src = s.url;
+    box.appendChild(el);
+  });
+}
+$("scenes").addEventListener("click", async (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  const i = +b.dataset.i;
+  if (b.dataset.act === "rec") toggleRecord(i);
+  if (b.dataset.act === "regen" && !busy) {
+    busy = true; scenes[i].seed = Math.floor(Math.random() * 1e6);
+    try { await genImage(i, true); setStatus("stImg", `Nouvelle image pour la scène ${i + 1}.`); }
+    catch (err) { setStatus("stImg", err.message); }
+    busy = false; renderScenes();
+  }
+});
+
+/* ---------- Génération d'images (Pollinations) ---------- */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let lastStart = 0;
+function setStatus(id, t) { $(id).textContent = t; }
+function setBar(id, p) { $(id).style.width = Math.round(p * 100) + "%"; }
+
+function buildPrompt(s) {
+  const base = s.prompt || s.text;
+  return `${base}, ${$("style").value}, no text, no letters, no watermark`;
+}
+function imageUrls(s) {
+  const f = fmt(), key = $("apikey").value.trim();
+  const p = encodeURIComponent(buildPrompt(s));
+  const q = `width=${f.iw}&height=${f.ih}&seed=${s.seed}&nologo=true`;
+  const urls = [];
+  if (key) urls.push(`https://gen.pollinations.ai/image/${p}?${q}&model=flux&key=${encodeURIComponent(key)}`);
+  urls.push(`https://image.pollinations.ai/prompt/${p}?${q}`);
+  return urls;
+}
+async function waitSlot(statusPrefix) {
+  const gap = $("apikey").value.trim() ? KEY_GAP_MS : FREE_GAP_MS;
+  while (Date.now() - lastStart < gap) {
+    const left = Math.ceil((gap - (Date.now() - lastStart)) / 1000);
+    setStatus("stImg", `${statusPrefix} — prochaine image dans ${left} s (limite du service gratuit)`);
+    await sleep(1000);
+  }
+  lastStart = Date.now();
+}
+async function fetchImage(url) {
+  const r = await fetch(url, { mode: "cors" });
+  if (r.status === 402 || r.status === 429) { const e = new Error("limite"); e.rate = true; throw e; }
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const blob = await r.blob();
+  if (!blob.type.startsWith("image/")) throw new Error("réponse inattendue");
+  return blob;
+}
+async function genImage(i, now) {
+  const s = scenes[i];
+  s.loading = true; renderScenes();
+  let lastErr;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (!now || attempt > 0) await waitSlot(`Scène ${i + 1}/${scenes.length}`);
+    else lastStart = Date.now();
+    setStatus("stImg", `Scène ${i + 1}/${scenes.length} : l'IA dessine… (20 à 60 s)`);
+    for (const url of imageUrls(s)) {
+      try {
+        const blob = await fetchImage(url);
+        if (s.url) URL.revokeObjectURL(s.url);
+        s.url = URL.createObjectURL(blob);
+        s.img = await createImageBitmap(blob);
+        s.loading = false; renderScenes();
+        return;
+      } catch (e) { lastErr = e; }
+    }
+    if (!(lastErr && lastErr.rate)) await sleep(3000);
+  }
+  s.loading = false; renderScenes();
+  throw new Error(`Scène ${i + 1} : image impossible à créer (${lastErr ? lastErr.message : "erreur"}). Réessaie avec « Autre image ».`);
+}
+$("btnImages").addEventListener("click", async () => {
+  if (busy) return;
+  const parsed = parseScript($("script").value);
+  if (!parsed.length) { setStatus("stImg", "Écris d'abord un script à l'étape 1."); return; }
+  // Garde les images et voix déjà faites pour les scènes inchangées
+  parsed.forEach((p, i) => {
+    const old = scenes.find((s) => s.text === p.text && s.prompt === p.prompt);
+    if (old) Object.assign(p, { seed: old.seed, img: old.img, url: old.url, voice: old.voice, voiceUrl: old.voiceUrl });
+  });
+  scenes = parsed;
+  busy = true; $("btnImages").disabled = true; renderScenes();
+  const todo = scenes.map((s, i) => i).filter((i) => !scenes[i].img);
+  let done = scenes.length - todo.length, errors = 0;
+  setBar("barImg", done / scenes.length);
+  for (const [k, i] of todo.entries()) {
+    try { await genImage(i, k === 0); } catch (e) { errors++; setStatus("stImg", e.message); }
+    done++; setBar("barImg", done / scenes.length);
+  }
+  busy = false; $("btnImages").disabled = false; renderScenes();
+  setStatus("stImg", errors ? `${errors} image(s) manquante(s) : appuie sur « Autre image » sous la scène.` : "Toutes les images sont prêtes. Passe à l'étape 4.");
+});
+
+/* ---------- Enregistrement de la voix (micro) ---------- */
+let mic = null;
+async function toggleRecord(i) {
+  const s = scenes[i];
+  if (mic && mic.i === i) { mic.rec.stop(); return; }
+  if (mic) mic.rec.stop();
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
+  catch (e) { setStatus("stImg", "Micro refusé : autorise le micro pour ce site dans les réglages du navigateur."); return; }
+  const rec = new MediaRecorder(stream);
+  const chunks = [];
+  rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+  rec.onstop = () => {
+    stream.getTracks().forEach((t) => t.stop());
+    s.recording = false; mic = null;
+    s.voice = new Blob(chunks, { type: rec.mimeType || "audio/webm" });
+    if (s.voiceUrl) URL.revokeObjectURL(s.voiceUrl);
+    s.voiceUrl = URL.createObjectURL(s.voice);
+    renderScenes();
+  };
+  rec.start(); mic = { i, rec }; s.recording = true; renderScenes();
+}
+
+/* ---------- Dessin ---------- */
+function wrapLines(ctx, text, maxW) {
+  const words = text.split(" "), lines = [];
+  let line = "";
+  for (const w of words) {
+    const t = line ? line + " " + w : w;
+    if (ctx.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+function drawScene(ctx, W, H, s, i, local, dur, alpha) {
+  ctx.globalAlpha = alpha;
+  if (s.img) {
+    const p = Math.min(1, local / dur);
+    const zoomIn = i % 2 === 0;
+    const z = zoomIn ? 1.04 + 0.14 * p : 1.18 - 0.14 * p;
+    const dir = i % 4 < 2 ? 1 : -1;
+    const sc = Math.max(W / s.img.width, H / s.img.height) * z;
+    const dw = s.img.width * sc, dh = s.img.height * sc;
+    const dx = (W - dw) / 2 + dir * (p - 0.5) * W * 0.04;
+    const dy = (H - dh) / 2;
+    ctx.drawImage(s.img, dx, dy, dw, dh);
+  } else {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "#0b3b3a"); g.addColorStop(1, "#0b7f7a");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+  const base = Math.min(W, H);
+  if (s.title) {
+    ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.fillRect(0, 0, W, H);
+    ctx.font = `800 ${Math.round(base * 0.085)}px "Bricolage Grotesque", system-ui, sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    const lines = wrapLines(ctx, s.text, W * 0.84), lh = base * 0.1;
+    lines.forEach((l, k) => {
+      const y = H / 2 + (k - (lines.length - 1) / 2) * lh;
+      ctx.fillStyle = "rgba(0,0,0,.6)"; ctx.fillText(l, W / 2 + 3, y + 3);
+      ctx.fillStyle = "#fff"; ctx.fillText(l, W / 2, y);
+    });
+  } else if ($("subs").checked) {
+    const fs = Math.round(base * 0.048);
+    ctx.font = `700 ${fs}px "Atkinson Hyperlegible", system-ui, sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    const lines = wrapLines(ctx, s.text, W * 0.82), lh = fs * 1.3, pad = fs * 0.6;
+    const boxH = lines.length * lh + pad * 2;
+    const y0 = H - boxH - H * 0.07;
+    let maxW = 0; lines.forEach((l) => (maxW = Math.max(maxW, ctx.measureText(l).width)));
+    const bw = maxW + pad * 2.4;
+    ctx.fillStyle = "rgba(0,0,0,.62)";
+    roundRect(ctx, (W - bw) / 2, y0, bw, boxH, fs * 0.5); ctx.fill();
+    ctx.fillStyle = "#fff";
+    lines.forEach((l, k) => ctx.fillText(l, W / 2, y0 + pad + lh * (k + 0.5)));
+  }
+  ctx.globalAlpha = 1;
+}
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+
+/* ---------- Fabrication de la vidéo ---------- */
+function pickMime() {
+  const c = ["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4;codecs=avc1,mp4a", "video/mp4",
+             "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"];
+  return c.find((m) => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || "";
+}
+async function decode(ac, blob) { return await ac.decodeAudioData(await blob.arrayBuffer()); }
+
+$("btnVideo").addEventListener("click", async () => {
+  if (busy) return;
+  if (!scenes.length) { setStatus("stVid", "Commence par générer les images (étape 3)."); return; }
+  if (!scenes.every((s) => s.img)) { setStatus("stVid", "Il manque des images : termine l'étape 3 (les scènes sans image auront un fond uni)."); }
+  if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
+    setStatus("stVid", "Ton navigateur ne sait pas enregistrer de vidéo. Utilise Chrome (Android) ou Safari à jour (iPhone)."); return;
+  }
+  busy = true; $("btnVideo").disabled = true; $("result").hidden = true;
+  let wake = null;
+  try { wake = await navigator.wakeLock?.request("screen"); } catch (e) {}
+  try {
+    await document.fonts?.ready;
+    const f = fmt(), cv = $("cv"); cv.width = f.w; cv.height = f.h;
+    const ctx = cv.getContext("2d");
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    await ac.resume();
+    const dest = ac.createMediaStreamDestination();
+
+    // Durées des scènes
+    setStatus("stVid", "Préparation du son…");
+    const mode = voiceMode();
+    const words = scenes.map((s) => Math.max(s.title ? 4 : 3, s.text.split(" ").length));
+    let durs, voiceBufs = [], fileBuf = null;
+    if (mode === "mic") {
+      voiceBufs = await Promise.all(scenes.map((s) => (s.voice ? decode(ac, s.voice).catch(() => null) : null)));
+      durs = scenes.map((s, i) => voiceBufs[i] ? voiceBufs[i].duration + 0.5 : Math.max(s.title ? 3 : 3.5, words[i] / 2.6));
+    } else if (mode === "file" && $("voiceFile").files[0]) {
+      fileBuf = await decode(ac, $("voiceFile").files[0]);
+      const total = fileBuf.duration + 0.8, sum = words.reduce((a, b) => a + b, 0);
+      durs = words.map((w) => (total * w) / sum);
+    } else {
+      durs = scenes.map((s, i) => Math.max(s.title ? 3 : 3.5, words[i] / 2.6));
+    }
+    const starts = []; let acc = 0;
+    durs.forEach((d) => { starts.push(acc); acc += d; });
+    const total = acc;
+
+    // Pistes audio
+    const t0 = ac.currentTime + 0.3;
+    const play = (buf, when, gainVal = 1, loop = false, stopAt = null) => {
+      const src = ac.createBufferSource(); src.buffer = buf; src.loop = loop;
+      const g = ac.createGain(); g.gain.value = gainVal;
+      src.connect(g); g.connect(dest); g.connect(ac.destination);
+      src.start(when); if (stopAt) src.stop(stopAt);
+      return g;
+    };
+    voiceBufs.forEach((b, i) => b && play(b, t0 + starts[i] + 0.15));
+    if (fileBuf) play(fileBuf, t0 + 0.2);
+    if ($("musicFile").files[0]) {
+      const mb = await decode(ac, $("musicFile").files[0]);
+      const g = play(mb, t0, +$("musicVol").value, true, t0 + total);
+      g.gain.setValueAtTime(+$("musicVol").value, t0 + Math.max(0, total - 1.5));
+      g.gain.linearRampToValueAtTime(0, t0 + total);
+    }
+    // Un son quasi muet garde la piste audio active même sans voix ni musique
+    const osc = ac.createOscillator(), og = ac.createGain(); og.gain.value = 0.00001;
+    osc.connect(og); og.connect(dest); osc.start(t0); osc.stop(t0 + total + 0.5);
+
+    // Enregistrement
+    const stream = new MediaStream([...cv.captureStream(30).getVideoTracks(), ...dest.stream.getAudioTracks()]);
+    const mime = pickMime();
+    const rec = new MediaRecorder(stream, { mimeType: mime || undefined, videoBitsPerSecond: 5_000_000 });
+    const chunks = [];
+    rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+    const finished = new Promise((r) => (rec.onstop = r));
+
+    drawScene(ctx, f.w, f.h, scenes[0], 0, 0, durs[0], 1);
+    rec.start(500);
+    await new Promise((resolve) => {
+      function frame() {
+        const t = ac.currentTime - t0;
+        if (t >= total) { resolve(); return; }
+        let i = starts.findIndex((s, k) => t >= s && t < s + durs[k]); if (i < 0) i = 0;
+        const local = Math.max(0, t - starts[i]);
+        ctx.fillStyle = "#000"; ctx.fillRect(0, 0, f.w, f.h);
+        drawScene(ctx, f.w, f.h, scenes[i], i, local, durs[i], 1);
+        const toEnd = durs[i] - local;
+        if (i + 1 < scenes.length && toEnd < FADE) {
+          drawScene(ctx, f.w, f.h, scenes[i + 1], i + 1, 0, durs[i + 1], 1 - toEnd / FADE);
+        }
+        if (t < 0.4) { ctx.fillStyle = `rgba(0,0,0,${1 - Math.max(0, t) / 0.4})`; ctx.fillRect(0, 0, f.w, f.h); }
+        if (toEnd < 0.5 && i === scenes.length - 1) { ctx.fillStyle = `rgba(0,0,0,${1 - toEnd / 0.5})`; ctx.fillRect(0, 0, f.w, f.h); }
+        setBar("barVid", t / total);
+        setStatus("stVid", `Enregistrement : ${Math.floor(t)} / ${Math.ceil(total)} s — garde l'écran allumé`);
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    });
+    await sleep(300);
+    rec.stop(); await finished; ac.close();
+
+    const type = (mime || "video/webm").split(";")[0];
+    const blob = new Blob(chunks, { type });
+    const url = URL.createObjectURL(blob);
+    const ext = type.includes("mp4") ? "mp4" : "webm";
+    $("out").src = url; $("dl").href = url; $("dl").download = `video-ia-${Date.now()}.${ext}`;
+    $("dl").textContent = `Télécharger la vidéo (.${ext}, ${(blob.size / 1e6).toFixed(1)} Mo)`;
+    $("fmtNote").textContent = ext === "webm"
+      ? "Ton navigateur produit du .webm : YouTube l'accepte. Pour TikTok/Instagram, convertis-le en .mp4 (ex. avec CapCut, gratuit)."
+      : "Format .mp4 : prêt pour TikTok, Instagram et YouTube.";
+    $("result").hidden = false; setBar("barVid", 1);
+    setStatus("stVid", "Vidéo prête !");
+  } catch (e) {
+    console.error(e);
+    setStatus("stVid", "La création a échoué : " + (e.message || e) + ". Réessaie en restant sur la page.");
+  } finally {
+    busy = false; $("btnVideo").disabled = false;
+    try { wake && wake.release(); } catch (e) {}
+  }
+});
+
+// Aperçu de départ : les scènes du script d'exemple
+scenes = parseScript($("script").value);
+renderScenes();
+</script>
+</body>
+</html>
