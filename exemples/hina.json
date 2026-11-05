@@ -1,0 +1,87 @@
+{
+  "titre": "Hina, la Gardienne du Lagon",
+  "format": "portrait",
+  "volume_musique": 0.55,
+  "personnages": {
+    "Narrateur": { "voix": "fr-FR-RemyMultilingualNeural", "vitesse": -8 },
+    "Hina": {
+      "voix": "fr-FR-EloiseNeural",
+      "vitesse": 0,
+      "couleur": "#7fe9e0",
+      "description": "anime girl Hina, 12 years old, long wavy black hair with a white tiare flower behind her ear, warm brown skin, big expressive dark eyes, turquoise pareo dress, glowing seashell necklace"
+    },
+    "L'Esprit de la Tempête": {
+      "voix": "fr-FR-HenriNeural",
+      "vitesse": -15,
+      "hauteur": -22,
+      "couleur": "#c9a7ff",
+      "description": "colossal storm spirit made of swirling dark clouds and lightning, two glowing violet eyes, towering over the ocean"
+    }
+  },
+  "scenes": [
+    {
+      "image": "aerial view of a tiny lush tropical volcanic island surrounded by a glowing turquoise lagoon at dusk, pink and orange sky, first stars",
+      "titre": "HINA",
+      "sous_titre": "La Gardienne du Lagon",
+      "personnage": "Narrateur",
+      "texte": "Sur une île perdue au milieu du Pacifique…",
+      "camera": "zoom_out",
+      "duree_min": 4
+    },
+    {
+      "image": "{Hina} standing barefoot on a white sand beach at sunset, talking to the gentle waves, palm trees, warm golden light, wide shot",
+      "personnage": "Narrateur",
+      "texte": "vivait Hina, une jeune fille qui savait parler à l'océan.",
+      "camera": "pan_droite"
+    },
+    {
+      "image": "close-up portrait of {Hina} holding a glowing turquoise seashell in her hands, light reflecting on her face, worried expression, night beach",
+      "personnage": "Hina",
+      "texte": "Grand-mère disait que ce coquillage protège notre lagon… Mais pourquoi brille-t-il ce soir ?",
+      "camera": "zoom_in"
+    },
+    {
+      "image": "massive dark storm clouds rolling over a turquoise ocean at night, violet lightning striking the sea, huge waves, dramatic wide shot",
+      "camera": "tremblement",
+      "bruitage": "tonnerre",
+      "duree": 3
+    },
+    {
+      "image": "{L'Esprit de la Tempête} looming above a small tropical island at night, menacing, low angle shot",
+      "personnage": "L'Esprit de la Tempête",
+      "texte": "Petite humaine… Ce lagon m'appartient désormais !",
+      "camera": "tremblement",
+      "bruitage": "tonnerre"
+    },
+    {
+      "image": "{Hina} standing on a black lava rock facing a raging storm, hair and pareo blowing in the wind, determined fierce expression, low angle hero shot",
+      "personnage": "Hina",
+      "texte": "Non ! Ce lagon est notre maison. Je ne te laisserai pas faire !",
+      "camera": "zoom_in"
+    },
+    {
+      "image": "{Hina} raising a glowing seashell to the sky, a huge beam of turquoise light bursting upward into the storm clouds, spirits of ancestors made of light, epic magical moment",
+      "personnage": "Narrateur",
+      "texte": "Hina leva le coquillage vers le ciel… et la lumière de ses ancêtres jaillit.",
+      "camera": "pan_haut"
+    },
+    {
+      "image": "{L'Esprit de la Tempête} dissolving into turquoise light particles, clouds breaking apart, rays of light, dramatic",
+      "personnage": "L'Esprit de la Tempête",
+      "texte": "Cette lumière… Impossible !",
+      "camera": "tremblement"
+    },
+    {
+      "image": "{Hina} smiling peacefully on the beach at sunrise, calm crystal clear turquoise lagoon, rainbow in the sky, hopeful atmosphere",
+      "personnage": "Narrateur",
+      "texte": "Le calme revint sur le lagon. Et depuis ce jour, tout le monde l'appelle : la Gardienne du Lagon.",
+      "camera": "pan_gauche"
+    },
+    {
+      "image": "a glowing turquoise seashell resting on white sand at night under a sky full of stars, waves gently touching it",
+      "titre": "À suivre…",
+      "camera": "zoom_in",
+      "duree": 3.5
+    }
+  ]
+}
