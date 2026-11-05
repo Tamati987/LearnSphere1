@@ -74,7 +74,9 @@
       "camera": "pan_gauche"
     },
     {
-      "image": "close-up of {Ata} crying small raindrops, very emotional, soft violet glow, sunset background",
+      "image": "a single fluffy grey rain cloud floating in the sky with a cute sad face, two big shiny violet eyes, tears of raindrops falling into the ocean, tiny lightning sparks, sunset",
+      "style": "kawaii cartoon mascot illustration, soft cel shading, vibrant colors, simple painted sky background, no humans, no text",
+      "graine": 4242,
       "personnage": "Ata",
       "texte": "Non… Je m'appelle Ata. J'étais en colère parce que l'océan souffre. Il a trop chaud… et moi aussi.",
       "camera": "zoom_in",

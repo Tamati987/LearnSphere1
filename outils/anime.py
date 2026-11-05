@@ -222,17 +222,17 @@ def creer_anime(script: dict, sortie: str | Path, cache: str | Path | None = Non
         cache.mkdir(parents=True, exist_ok=True)
     scenes = script["scenes"]
 
-    def decrire(prompt: str) -> str:
+    def decrire(prompt: str, style_scene: str | None = None) -> str:
         for nom, p in persos.items():
             if p.get("description"):
                 prompt = re.sub(r"\{" + re.escape(nom) + r"\}", p["description"], prompt)
-        return f"{prompt}, {style}"
+        return f"{prompt}, {style_scene or style}"
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         clips, srt, debuts, t = [], [], [], 0.0
         for i, sc in enumerate(scenes, 1):
-            prompt = decrire(sc["image"])
+            prompt = decrire(sc["image"], sc.get("style"))
             graine = sc.get("graine", 100 + i)
             cle = hashlib.sha1(f"{prompt}|{graine}|{iw}x{ih}".encode()).hexdigest()[:16]
             photo = (cache or tmp) / f"{cle}.jpg"
