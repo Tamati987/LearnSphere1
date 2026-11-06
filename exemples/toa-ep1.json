@@ -2,10 +2,16 @@
   "titre": "TOA, épisode 1 : Le toa vide",
   "format": "portrait",
   "volume_musique": 0.42,
-  "musique": { "bpm": 92, "epique": true },
+  "musique": {
+    "bpm": 92,
+    "epique": true
+  },
   "style": "dynamic shonen anime key visual, bold ink lines, cel shading, intense saturated colors, dramatic lighting, speed lines, Polynesian setting, no text, no letters",
   "personnages": {
-    "Narrateur": { "voix": "fr-FR-VivienneMultilingualNeural", "vitesse": -5 },
+    "Narrateur": {
+      "voix": "fr-FR-VivienneMultilingualNeural",
+      "vitesse": -5
+    },
     "Manu": {
       "voix": "fr-FR-RemyMultilingualNeural",
       "vitesse": 5,
@@ -41,42 +47,56 @@
       "titre": "TOA",
       "sous_titre": "Épisode 1 : Le toa vide",
       "personnage": "Narrateur",
-      "texte": "À Tahiti, certains naissent avec un tatau. Un jour, il s'éveille… et donne la force d'un esprit.",
+      "texte": "[mysterieux] À Tahiti, certains naissent avec un tatau. Un jour, il s'éveille… [determine] et donne la force d'un esprit.",
       "camera": "zoom_out",
       "ambiance": "ville",
-      "bruitages": [{"son": "pahu", "a": 0.3, "volume": 0.6}],
+      "bruitages": [
+        {
+          "son": "pahu",
+          "a": 0.3,
+          "volume": 0.6
+        }
+      ],
       "duree_min": 5
     },
     {
       "image": "{Manu} sitting alone on a concrete wall at dusk in Faa'a, staring at the dull grey tatau on his arm, sad, planes in the orange sky",
       "graine": 1601,
       "personnage": "Narrateur",
-      "texte": "Mais celui de Manu, seize ans, ne s'est jamais réveillé. Ici, tout le monde l'appelle : le toa vide.",
+      "texte": "[triste] Mais celui de Manu, seize ans, ne s'est jamais réveillé. [moqueur] Ici, tout le monde l'appelle : le toa vide.",
       "camera": "pan_droite",
       "ambiance": "ville",
-      "effets": ["respiration"]
+      "effets": [
+        "respiration"
+      ]
     },
     {
       "image": "{Kahu} sitting next to {Manu} on a wall, Kahu putting a hand on Manu's shoulder and smiling, warm evening light, friendship",
       "graine": 1602,
       "personnage": "Kahu",
-      "texte": "Laisse-les parler, Manu. Moi je sais que t'es un vrai toa. Un jour, ton tatau va se réveiller, tu vas voir !",
+      "texte": "[joie] Laisse-les parler, Manu ! Moi je sais que t'es un vrai toa. [excite] Un jour, ton tatau va se réveiller, tu vas voir !",
       "camera": "zoom_in",
       "ambiance": "nuit"
     },
     {
       "image": "a small traditional Tahitian family house fare at night with a single warm light, an official eviction letter on a wooden table in the foreground, dramatic shadows",
       "personnage": "Narrateur",
-      "texte": "Ce soir-là, une lettre arrive. Si la famille ne paie pas, elle perdra son fare.",
+      "texte": "[mysterieux] Ce soir-là, une lettre arrive. [triste] Si la famille ne paie pas… elle perdra son fare.",
       "camera": "zoom_in",
       "ambiance": "nuit",
-      "bruitages": [{"son": "coeur", "a": 0.5, "volume": 0.8}]
+      "bruitages": [
+        {
+          "son": "coeur",
+          "a": 0.5,
+          "volume": 0.8
+        }
+      ]
     },
     {
       "image": "{Manu} clenching his fist with determination in front of his family house at night, wind in his hair, low angle heroic shot",
       "graine": 1601,
       "personnage": "Manu",
-      "texte": "Il y a un seul moyen. Le Tournoi des Toa, à Taputapuātea. Le vainqueur gagne de quoi sauver notre maison.",
+      "texte": "[determine] Il y a un seul moyen. Le Tournoi des Toa, à Taputapuātea. [cri] Le vainqueur gagne de quoi sauver notre maison !",
       "camera": "zoom_in",
       "ambiance": "vent"
     },
@@ -84,78 +104,150 @@
       "image": "{Kahu} panicking with wide eyes and arms in the air, comedic anime expression, sweat drops, night",
       "graine": 1602,
       "personnage": "Kahu",
-      "texte": "T'es fou ?! Là-bas, il y aura Vaimiti, la raie manta de Bora Bora ! Elle n'a jamais perdu un seul combat !",
+      "texte": "[panique] T'es fou ?! [cri] Là-bas, il y aura Vaimiti, la raie manta de Bora Bora ! [peur] Elle n'a jamais perdu un seul combat…",
       "camera": "tremblement",
       "ambiance": "nuit",
-      "bruitages": [{"son": "impact", "a": 0.1, "volume": 0.5}]
+      "bruitages": [
+        {
+          "son": "impact",
+          "a": 0.1,
+          "volume": 0.5
+        }
+      ]
     },
     {
       "image": "{Manu} training alone on a black sand beach at night in the rain, punching through crashing waves, splashes, moonlight",
       "graine": 1601,
       "personnage": "Narrateur",
-      "texte": "Chaque nuit, Manu s'entraîne face aux vagues. Mais son tatau reste muet.",
+      "texte": "[determine] Chaque nuit, Manu s'entraîne face aux vagues. [triste] Mais son tatau reste muet.",
       "camera": "pan_gauche",
       "ambiance": "pluie",
-      "effets": ["pluie"],
-      "bruitages": [{"son": "vague", "a": 0.4, "volume": 0.7}, {"son": "impact", "a": 2.2, "volume": 0.6}]
+      "effets": [
+        "pluie"
+      ],
+      "bruitages": [
+        {
+          "son": "vague",
+          "a": 0.4,
+          "volume": 0.7
+        },
+        {
+          "son": "impact",
+          "a": 2.2,
+          "volume": 0.6
+        }
+      ]
     },
     {
       "image": "deep dark underwater abyss, the gigantic silhouette of {Maʻo} emerging from the darkness toward the viewer, a tiny boy floating in front of it, ominous",
       "graine": 1604,
       "personnage": "Narrateur",
-      "texte": "Une nuit, épuisé, il tombe dans l'eau… et quelque chose l'attend dans les profondeurs.",
+      "texte": "[chuchote] Une nuit, épuisé, il tombe dans l'eau… [mysterieux] et quelque chose l'attend dans les profondeurs.",
       "camera": "zoom_in",
       "ambiance": "sous_marin",
-      "effets": ["particules", "respiration"],
-      "bruitages": [{"son": "coeur", "a": 0.3, "volume": 0.9}]
+      "effets": [
+        "particules",
+        "respiration"
+      ],
+      "bruitages": [
+        {
+          "son": "coeur",
+          "a": 0.3,
+          "volume": 0.9
+        }
+      ]
     },
     {
       "image": "extreme close-up of the burning red eyes and huge teeth of {Maʻo} underwater, glowing red tatau patterns on its skin",
       "graine": 1604,
       "personnage": "Maʻo",
-      "texte": "Tu veux ma force, petit ? Elle a un prix. Je dévore aussi celui qui me porte.",
+      "texte": "[menace] Tu veux ma force, petit ? [mysterieux] Elle a un prix. [colere] Je dévore aussi celui qui me porte !",
       "camera": "tremblement",
       "ambiance": "sous_marin",
-      "effets": ["eclairs"],
-      "bruitages": [{"son": "rugissement", "a": 0.0, "volume": 0.9}]
+      "effets": [
+        "eclairs"
+      ],
+      "bruitages": [
+        {
+          "son": "rugissement",
+          "a": 0.0,
+          "volume": 0.9
+        }
+      ]
     },
     {
       "image": "{Manu} bursting out of the ocean at night, gasping, his arm tatau now glowing bright red-orange like fire, water splashing, epic",
       "graine": 1601,
       "personnage": "Manu",
-      "texte": "Mon tatau… il brûle !",
+      "texte": "[surpris] Mon tatau… [cri] il brûle !",
       "camera": "zoom_in",
       "ambiance": "ocean",
-      "effets": ["lueur", "particules"],
-      "bruitages": [{"son": "vague", "a": 0.0, "volume": 0.8}, {"son": "magie", "a": 0.6, "volume": 0.8}],
+      "effets": [
+        "lueur",
+        "particules"
+      ],
+      "bruitages": [
+        {
+          "son": "vague",
+          "a": 0.0,
+          "volume": 0.8
+        },
+        {
+          "son": "magie",
+          "a": 0.6,
+          "volume": 0.8
+        }
+      ],
       "duree_min": 3.5
     },
     {
       "image": "the ancient stone marae of Taputapuātea on Raiatea at dawn, crowd of Polynesian warriors gathering, flags and drums, misty sacred atmosphere",
       "personnage": "Narrateur",
-      "texte": "Quelques semaines plus tard. Marae de Taputapuātea. Le Tournoi des Toa commence.",
+      "texte": "[mysterieux] Quelques semaines plus tard. Marae de Taputapuātea. [excite] Le Tournoi des Toa commence !",
       "camera": "pan_droite",
       "ambiance": "foule",
-      "bruitages": [{"son": "pahu", "a": 0.2, "volume": 0.9}]
+      "bruitages": [
+        {
+          "son": "pahu",
+          "a": 0.2,
+          "volume": 0.9
+        }
+      ]
     },
     {
       "image": "{Vaimiti} standing on a stone platform, arms crossed, smirking down at the viewer, a giant glowing blue manta ray spirit behind her, dawn light",
       "graine": 1603,
       "personnage": "Vaimiti",
-      "texte": "Alors c'est toi, le toa vide ? Rentre chez toi avant de te faire mal.",
+      "texte": "[moqueur] Alors c'est toi, le toa vide ? Rentre chez toi… avant de te faire mal.",
       "camera": "zoom_in",
       "ambiance": "foule",
-      "effets": ["particules"]
+      "effets": [
+        "particules"
+      ]
     },
     {
       "image": "{Manu} in a fighting stance, his tatau blazing red, the ghostly shape of a giant tiger shark spirit behind him, speed lines, epic low angle shot",
       "graine": 1601,
       "personnage": "Manu",
-      "texte": "Je suis pas vide. Je suis Manu, de Faa'a. Et je suis venu gagner.",
+      "texte": "[determine] Je suis pas vide. Je suis Manu, de Faa'a. [cri] Et je suis venu gagner !",
       "camera": "tremblement",
       "ambiance": "foule",
-      "effets": ["lueur", "eclairs"],
-      "bruitages": [{"son": "rugissement", "a": 0.0, "volume": 0.6}, {"son": "pahu", "a": 2.0, "volume": 0.9}]
+      "effets": [
+        "lueur",
+        "eclairs"
+      ],
+      "bruitages": [
+        {
+          "son": "rugissement",
+          "a": 0.0,
+          "volume": 0.6
+        },
+        {
+          "son": "pahu",
+          "a": 2.0,
+          "volume": 0.9
+        }
+      ]
     },
     {
       "image": "a shark tooth necklace glowing red on a black volcanic rock under a stormy sky, Polynesian tatau patterns glowing around it",
@@ -163,7 +255,13 @@
       "sous_titre": "Épisode 2 : L'esprit qui dort",
       "camera": "zoom_in",
       "ambiance": "vent",
-      "bruitages": [{"son": "tonnerre", "a": 0.4, "volume": 0.8}],
+      "bruitages": [
+        {
+          "son": "tonnerre",
+          "a": 0.4,
+          "volume": 0.8
+        }
+      ],
       "duree": 4.5
     }
   ]

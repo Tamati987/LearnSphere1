@@ -247,6 +247,73 @@ def _ff(*args):
     subprocess.run([ffmpeg_exe(), "-y", "-hide_banner", "-loglevel", "error", *args], check=True)
 
 
+# --------------------------------------------------------------------------- #
+# Voix expressives (gratuites) : émotions par phrase avec [étiquettes]
+# --------------------------------------------------------------------------- #
+# vitesse (%), hauteur (Hz), volume (%), filtre ffmpeg appliqué au segment
+EMOTIONS = {
+    "neutre": (0, 0, 0, "anull"),
+    "joie": (8, 10, 5, "anull"),
+    "excite": (14, 14, 10, "anull"),
+    "cri": (10, 16, 25, "acompressor=threshold=-20dB:ratio=6:makeup=4,treble=g=4"),
+    "colere": (6, -4, 20, "acompressor=threshold=-20dB:ratio=6:makeup=4,bass=g=3,treble=g=3"),
+    "determine": (-4, -3, 12, "bass=g=2"),
+    "peur": (12, 10, 0, "vibrato=f=6.5:d=0.22"),
+    "panique": (22, 16, 12, "vibrato=f=7.5:d=0.3"),
+    "triste": (-14, -8, -8, "vibrato=f=4:d=0.08,lowpass=f=6000"),
+    "chuchote": (-6, -4, -35, "highpass=f=350,treble=g=6,volume=1.6"),
+    "mysterieux": (-14, -6, -5, "aecho=0.8:0.6:90:0.25"),
+    "menace": (-20, -14, 10, "bass=g=5,aecho=0.8:0.5:60:0.2"),
+    "moqueur": (4, 6, 5, "anull"),
+    "surpris": (10, 18, 15, "anull"),
+}
+_ETIQUETTE = re.compile(r"\[([a-zA-Zéèêàçù_ ]+)\]")
+
+
+def sans_etiquettes(texte: str) -> str:
+    return " ".join(_ETIQUETTE.sub(" ", texte).split())
+
+
+def voix_expressive(texte: str, sortie: Path, perso: dict, emotion_scene: str = "neutre") -> Path:
+    """Génère la réplique segment par segment, chacun avec son émotion."""
+    morceaux, emotion = [], emotion_scene
+    pos = 0
+    for m in _ETIQUETTE.finditer(texte):
+        if texte[pos:m.start()].strip():
+            morceaux.append((emotion, texte[pos:m.start()].strip()))
+        nom = m.group(1).strip().lower().replace("é", "e").replace("è", "e")
+        emotion = nom if nom in EMOTIONS else emotion
+        pos = m.end()
+    if texte[pos:].strip():
+        morceaux.append((emotion, texte[pos:].strip()))
+    # Découpe aussi par phrase pour donner plus d'énergie aux exclamations
+    segments = []
+    for emo, bout in morceaux:
+        for phrase in re.split(r"(?<=[.!?…])\s+", bout):
+            if phrase.strip():
+                segments.append((emo, phrase.strip()))
+    dossier = sortie.parent / (sortie.stem + "_seg")
+    dossier.mkdir(exist_ok=True)
+    wavs = []
+    for k, (emo, phrase) in enumerate(segments):
+        dv, dh, dvol, filtre = EMOTIONS.get(emo, EMOTIONS["neutre"])
+        if phrase.endswith("!") and emo in ("neutre", "determine", "joie"):
+            dv, dh, dvol = dv + 6, dh + 6, dvol + 8
+        mp3 = dossier / f"{k:02d}.mp3"
+        generer_voix(phrase, mp3, perso["voix"], vitesse=perso.get("vitesse", 0) + dv,
+                     hauteur=perso.get("hauteur", 0) + dh, volume=max(-90, min(100, dvol)))
+        wav = dossier / f"{k:02d}.wav"
+        _ff("-i", str(mp3), "-af", f"{filtre},aresample=44100", "-ac", "2", str(wav))
+        wavs.append(wav)
+    entrees, parts = [], []
+    for k, w in enumerate(wavs):
+        entrees += ["-i", str(w)]
+        parts.append(f"[{k}:a]apad=pad_dur=0.12[s{k}];")
+    graphe = "".join(parts) + "".join(f"[s{k}]" for k in range(len(wavs))) + f"concat=n={len(wavs)}:v=0:a=1[a]"
+    _ff(*entrees, "-filter_complex", graphe, "-map", "[a]", str(sortie))
+    return sortie
+
+
 def creer_anime(script: dict, sortie: str | Path, cache: str | Path | None = None, journal=print) -> Path:
     persos = script.get("personnages", {})
     style = script.get("style", STYLE_ANIME)
@@ -278,14 +345,14 @@ def creer_anime(script: dict, sortie: str | Path, cache: str | Path | None = Non
                 generer_image(prompt, photo, iw, ih, seed=graine)
             # Voix
             perso = persos.get(sc.get("personnage", ""), {})
-            texte = sc.get("texte", "")
+            texte_brut = sc.get("texte", "")
+            texte = sans_etiquettes(texte_brut)
             audio_in = ["-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo"]
             effet_voix = {"esprit": "aecho=0.8:0.75:70|140:0.45|0.3,lowpass=f=3800,volume=1.4",
                           "radio": "highpass=f=400,lowpass=f=3000"}.get(perso.get("effet_voix", ""), "anull")
             if texte and perso.get("voix"):
-                mp3 = tmp / f"v{i:03}.mp3"
-                generer_voix(texte, mp3, perso["voix"], vitesse=perso.get("vitesse", 0),
-                             hauteur=perso.get("hauteur", 0))
+                mp3 = tmp / f"v{i:03}.wav"
+                voix_expressive(texte_brut, mp3, perso, sc.get("emotion", "neutre"))
                 duree = duree_audio(mp3) + sc.get("pause", 0.45)
                 audio_in = ["-i", str(mp3)]
             else:
