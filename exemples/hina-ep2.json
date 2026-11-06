@@ -3,7 +3,10 @@
   "format": "portrait",
   "volume_musique": 0.5,
   "personnages": {
-    "Narrateur": { "voix": "fr-FR-RemyMultilingualNeural", "vitesse": -8 },
+    "Narrateur": {
+      "voix": "fr-FR-RemyMultilingualNeural",
+      "vitesse": -8
+    },
     "Hina": {
       "voix": "fr-FR-EloiseNeural",
       "couleur": "#7fe9e0",
@@ -109,5 +112,10 @@
       "camera": "zoom_in",
       "duree": 4
     }
-  ]
+  ],
+  "prononciation": {
+    "Honu": "Honou",
+    "tiare": "tiaré"
+  },
+  "volume_bruitages": 0.35
 }

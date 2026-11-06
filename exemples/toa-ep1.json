@@ -17,14 +17,14 @@
       "vitesse": 5,
       "hauteur": 6,
       "couleur": "#ff9a4d",
-      "description": "Manu, 16 year old Tahitian boy, short messy black hair, tan brown skin, sharp determined eyes, white tank top, red pareo shorts, a dark Polynesian tatau tattoo of shark teeth patterns on his right arm and shoulder"
+      "description": "Manu, 16 year old Tahitian boy, shirtless, bare muscular chest, short messy black hair, tan brown skin, sharp determined eyes, red pareo shorts, a dark Polynesian tatau tattoo of shark teeth patterns on his right arm and shoulder"
     },
     "Kahu": {
       "voix": "fr-CA-AntoineNeural",
       "vitesse": 12,
       "hauteur": 14,
       "couleur": "#ffe066",
-      "description": "Kahu, 16 year old chubby Tahitian boy, curly hair, round face, big nervous smile, yellow floral shirt"
+      "description": "Kahu, 16 year old chubby Tahitian boy, shirtless, wearing a flower lei necklace and blue pareo shorts, curly hair, round face, big nervous smile"
     },
     "Vaimiti": {
       "voix": "fr-CA-SylvieNeural",
@@ -93,7 +93,7 @@
       ]
     },
     {
-      "image": "{Manu} clenching his fist with determination in front of his family house at night, wind in his hair, low angle heroic shot",
+      "image": "Manu, 16 year old Tahitian boy, short messy black hair, tan brown skin, sharp determined eyes, white tank top, red pareo shorts, a dark Polynesian tatau tattoo of shark teeth patterns on his right arm and shoulder clenching his fist with determination in front of his family house at night, wind in his hair, low angle heroic shot",
       "graine": 1601,
       "personnage": "Manu",
       "texte": "[determine] Il y a un seul moyen. Le Tournoi des Toa, à Taputapuātea. [cri] Le vainqueur gagne de quoi sauver notre maison !",
@@ -116,7 +116,7 @@
       ]
     },
     {
-      "image": "{Manu} training alone on a black sand beach at night in the rain, punching through crashing waves, splashes, moonlight",
+      "image": "Manu, 16 year old Tahitian boy, short messy black hair, tan brown skin, sharp determined eyes, white tank top, red pareo shorts, a dark Polynesian tatau tattoo of shark teeth patterns on his right arm and shoulder training alone on a black sand beach at night in the rain, punching through crashing waves, splashes, moonlight",
       "graine": 1601,
       "personnage": "Narrateur",
       "texte": "[determine] Chaque nuit, Manu s'entraîne face aux vagues. [triste] Mais son tatau reste muet.",
@@ -226,7 +226,7 @@
       ]
     },
     {
-      "image": "{Manu} in a fighting stance, his tatau blazing red, the ghostly shape of a giant tiger shark spirit behind him, speed lines, epic low angle shot",
+      "image": "Manu, 16 year old Tahitian boy, short messy black hair, tan brown skin, sharp determined eyes, white tank top, red pareo shorts, a dark Polynesian tatau tattoo of shark teeth patterns on his right arm and shoulder in a fighting stance, his tatau blazing red, the ghostly shape of a giant tiger shark spirit behind him, speed lines, epic low angle shot",
       "graine": 1601,
       "personnage": "Manu",
       "texte": "[determine] Je suis pas vide. Je suis Manu, de Faa'a. [cri] Et je suis venu gagner !",
@@ -264,5 +264,17 @@
       ],
       "duree": 4.5
     }
-  ]
+  ],
+  "volume_bruitages": 0.35,
+  "prononciation": {
+    "Manu": "Manou",
+    "Kahu": "Kahou",
+    "tatau": "tataou",
+    "Taputapuātea": "Tapoutapouatéa",
+    "fare": "faré",
+    "marae": "maraé",
+    "Vaimiti": "Vaïmiti",
+    "Faa'a": "Fa-a-a",
+    "Maʻo": "Ma-o"
+  }
 }

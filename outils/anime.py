@@ -13,7 +13,9 @@
   * musique originale générée par le programme (option "musique": {"epique": true}) ;
   * ambiances et bruitages synthétisés (voir outils/bruitages.py) :
     "ambiance": "ocean" et "bruitages": ["tonnerre", {"son": "impact", "a": 1.5}] ;
-  * effet sur la voix d'un personnage ("effet_voix": "esprit").
+  * effet sur la voix d'un personnage ("effet_voix": "esprit") ;
+  * dictionnaire "prononciation" (ex. {"Manu": "Manou"}) appliqué à la voix seulement ;
+  * "volume_bruitages" global ; la musique et les bruitages baissent quand on parle.
 
 Utilisation :
     python -m outils.anime script.json -o anime.mp4 [--cache dossier_images]
@@ -274,8 +276,17 @@ def sans_etiquettes(texte: str) -> str:
     return " ".join(_ETIQUETTE.sub(" ", texte).split())
 
 
-def voix_expressive(texte: str, sortie: Path, perso: dict, emotion_scene: str = "neutre") -> Path:
+def prononcer(texte: str, dico: dict) -> str:
+    """Remplace les mots par leur prononciation (ex. Manu → Manou), pour la voix seulement."""
+    for mot, son in sorted(dico.items(), key=lambda kv: -len(kv[0])):
+        texte = re.sub(r"(?<![\w'ʻ])" + re.escape(mot) + r"(?![\w'ʻ])", son, texte, flags=re.I)
+    return texte
+
+
+def voix_expressive(texte: str, sortie: Path, perso: dict, emotion_scene: str = "neutre",
+                    prononciation: dict | None = None) -> Path:
     """Génère la réplique segment par segment, chacun avec son émotion."""
+    texte = prononcer(texte, prononciation or {})
     morceaux, emotion = [], emotion_scene
     pos = 0
     for m in _ETIQUETTE.finditer(texte):
@@ -352,7 +363,7 @@ def creer_anime(script: dict, sortie: str | Path, cache: str | Path | None = Non
                           "radio": "highpass=f=400,lowpass=f=3000"}.get(perso.get("effet_voix", ""), "anull")
             if texte and perso.get("voix"):
                 mp3 = tmp / f"v{i:03}.wav"
-                voix_expressive(texte_brut, mp3, perso, sc.get("emotion", "neutre"))
+                voix_expressive(texte_brut, mp3, perso, sc.get("emotion", "neutre"), script.get("prononciation"))
                 duree = duree_audio(mp3) + sc.get("pause", 0.45)
                 audio_in = ["-i", str(mp3)]
             else:
@@ -414,20 +425,21 @@ def creer_anime(script: dict, sortie: str | Path, cache: str | Path | None = Non
             seg = son[: max(0, n_tot - i0)] * volume
             fond[i0:i0 + len(seg)] += seg[:, None]
 
+        vol_fx = float(script.get("volume_bruitages", 0.35))
         whoosh = _bruitage("whoosh")
         for k, sc in enumerate(scenes):
             fin = debuts[k + 1] if k + 1 < len(scenes) else total
             if k > 0:
-                ajouter(whoosh, debuts[k] - 0.4, 0.35)
+                ajouter(whoosh, debuts[k] - 0.4, 0.35 * vol_fx)
             amb = sc.get("ambiance")
             if amb in AMBIANCES:
-                ajouter(_ambiance(amb, fin - debuts[k] + 0.6), debuts[k] - 0.3, float(sc.get("volume_ambiance", 0.55)))
+                ajouter(_ambiance(amb, fin - debuts[k] + 0.6), debuts[k] - 0.3, float(sc.get("volume_ambiance", 0.55)) * vol_fx)
             sons = sc.get("bruitages", [])
             if sc.get("bruitage"):
                 sons = [sc["bruitage"], *sons]
             for son in sons:
                 son = {"son": son} if isinstance(son, str) else son
-                ajouter(_bruitage(son["son"]), debuts[k] + float(son.get("a", 0.2)), float(son.get("volume", 0.7)))
+                ajouter(_bruitage(son["son"]), debuts[k] + float(son.get("a", 0.2)), float(son.get("volume", 0.7)) * vol_fx)
         wav = tmp / "fond.wav"
         ecrire_wav(wav, fond)
 
@@ -437,7 +449,10 @@ def creer_anime(script: dict, sortie: str | Path, cache: str | Path | None = Non
         assemble = tmp / "assemble.mp4"
         _ff("-f", "concat", "-safe", "0", "-i", str(liste), "-c", "copy", str(assemble))
         _ff("-i", str(assemble), "-i", str(wav),
-            "-filter_complex", "[0:a][1:a]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.95[a]",
+            "-filter_complex",
+            "[0:a]asplit=2[voix][cle];"
+            "[1:a][cle]sidechaincompress=threshold=0.02:ratio=5:attack=30:release=450:makeup=1[fond];"
+            "[voix][fond]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.95[a]",
             "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
             "-movflags", "+faststart", str(sortie))
     sortie.with_suffix(".srt").write_text("\n".join(srt), encoding="utf-8")
