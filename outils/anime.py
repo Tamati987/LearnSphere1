@@ -6,6 +6,8 @@
   * une voix différente par personnage (edge-tts) ;
   * mouvements de caméra : zoom_in, zoom_out, pan_gauche, pan_droite,
     pan_haut, tremblement ;
+  * effets animés par scène ("effets": [...]) : pluie, eclairs, particules,
+    lueur, respiration ;
   * rendu « film » : grain, vignette, couleurs renforcées ;
   * sous-titres avec le nom du personnage qui parle ;
   * musique originale générée par le programme + bruitages (whoosh, tonnerre).
@@ -185,9 +187,50 @@ def calque_texte(chemin: Path, taille, texte: str = "", nom: str = "", couleur="
 
 
 # --------------------------------------------------------------------------- #
+# Effets animés (gratuits) : pluie, particules de lumière
+# --------------------------------------------------------------------------- #
+def couche_effets(dossier: Path, taille, duree: float, effets: list[str]) -> bool:
+    """Écrit une suite d'images PNG transparentes (demi-résolution) avec
+    pluie et/ou particules lumineuses. Retourne False s'il n'y a rien à dessiner."""
+    if not {"pluie", "particules"} & set(effets):
+        return False
+    W, H = taille[0] // 2, taille[1] // 2
+    rng = np.random.default_rng(11)
+    n = max(1, int(duree * FPS))
+    gouttes = [(rng.uniform(-W * 0.3, W), rng.uniform(0, H), rng.uniform(900, 1500), rng.uniform(14, 34))
+               for _ in range(260 if "pluie" in effets else 0)]
+    parts = [(rng.uniform(0, W), rng.uniform(0, H), rng.uniform(25, 70), rng.uniform(1.5, 4.5),
+              rng.uniform(0, 6.28)) for _ in range(70 if "particules" in effets else 0)]
+    dossier.mkdir(parents=True, exist_ok=True)
+    for k in range(n):
+        t = k / FPS
+        img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+        for x0, y0, v, lg in gouttes:
+            y = (y0 + v * t) % (H + 60) - 30
+            x = x0 + 0.25 * (y - y0 + v * t) * 0.3
+            d.line([(x, y), (x - lg * 0.25, y - lg)], fill=(200, 215, 255, 90), width=1)
+        for x0, y0, v, r, ph in parts:
+            y = (y0 - v * t) % (H + 20)
+            x = x0 + 12 * math.sin(t * 1.3 + ph)
+            a = int(150 + 100 * math.sin(t * 3 + ph))
+            for rr, aa in ((r * 3, a // 6), (r * 1.8, a // 3), (r, a)):
+                d.ellipse([x - rr, y - rr, x + rr, y + rr], fill=(140, 255, 240, max(0, aa)))
+        img.save(dossier / f"fx_{k:04d}.png")
+    return True
+
+
+# --------------------------------------------------------------------------- #
 # Caméra
 # --------------------------------------------------------------------------- #
-def expr_camera(camera: str, n: int) -> tuple[str, str, str]:
+def expr_camera(camera: str, n: int, respiration: bool = False) -> tuple[str, str, str]:
+    z, x, y = _expr_camera(camera, n)
+    if respiration:
+        z = f"({z})+0.012*sin(on*0.21)"
+    return z, x, y
+
+
+def _expr_camera(camera: str, n: int) -> tuple[str, str, str]:
     c = "iw/2-(iw/zoom/2)", "ih/2-(ih/zoom/2)"
     p = f"on/{n}"
     if camera == "zoom_out":
@@ -259,18 +302,28 @@ def creer_anime(script: dict, sortie: str | Path, cache: str | Path | None = Non
                          perso.get("couleur", "#ffffff"), sc.get("titre", ""), sc.get("sous_titre", ""))
             # Clip
             n = max(1, int(duree * FPS))
-            z, x, y = expr_camera(sc.get("camera", "zoom_in"), n)
+            effets = sc.get("effets", [])
+            z, x, y = expr_camera(sc.get("camera", "zoom_in"), n, "respiration" in effets)
+            lumiere = ""
+            if "eclairs" in effets:
+                lumiere = ":brightness='0.45*lt(mod(t+0.3,2.1),0.07)+0.3*lt(mod(t+1.1,3.4),0.05)':eval=frame"
+            elif "lueur" in effets:
+                lumiere = ":brightness='0.05*sin(t*3)':eval=frame"
+            dossier_fx = tmp / f"fx{i:03}"
+            a_fx = couche_effets(dossier_fx, (W, H), duree, effets)
+            entree_fx = ["-framerate", str(FPS), "-i", str(dossier_fx / "fx_%04d.png")] if a_fx else []
+            filtre_fx = f"[3:v]scale={W}:{H}[fx];[bg][fx]overlay=format=auto[bg2];[bg2]" if a_fx else "[bg]"
             fondu = min(0.3, duree / 5)
             clip = tmp / f"c{i:03}.mp4"
             _ff(
                 "-loop", "1", "-framerate", str(FPS), "-i", str(photo),
-                "-loop", "1", "-framerate", str(FPS), "-i", str(calque), *audio_in,
+                "-loop", "1", "-framerate", str(FPS), "-i", str(calque), *audio_in, *entree_fx,
                 "-t", f"{duree:.3f}",
                 "-filter_complex",
                 f"[0:v]scale={2 * W}:{2 * H}:force_original_aspect_ratio=increase,crop={2 * W}:{2 * H},"
                 f"zoompan=z='{z}':x='{x}':y='{y}':d=1:s={W}x{H}:fps={FPS},setsar=1,"
-                f"eq=saturation=1.18:contrast=1.06,vignette=PI/5,noise=alls=4:allf=t[bg];"
-                f"[bg][1:v]overlay=format=auto,"
+                f"eq=saturation=1.18:contrast=1.06{lumiere},vignette=PI/5,noise=alls=4:allf=t[bg];"
+                f"{filtre_fx}[1:v]overlay=format=auto,"
                 f"fade=t=in:st=0:d={fondu},fade=t=out:st={duree - fondu:.3f}:d={fondu},format=yuv420p[v];"
                 f"[2:a]apad[a]",
                 "-map", "[v]", "-map", "[a]",
