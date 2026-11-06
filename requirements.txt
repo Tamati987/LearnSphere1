@@ -3,3 +3,4 @@ pyttsx3>=2.90        # voix hors-ligne (Windows / macOS / Linux)
 Pillow>=10.1         # dessin des diapositives
 imageio-ffmpeg>=0.5  # ffmpeg fourni automatiquement (pas d'installation manuelle)
 gradio>=4.0          # interface web locale
+scipy>=1.10        # filtres audio des bruitages

@@ -10,7 +10,10 @@
     lueur, respiration ;
   * rendu « film » : grain, vignette, couleurs renforcées ;
   * sous-titres avec le nom du personnage qui parle ;
-  * musique originale générée par le programme + bruitages (whoosh, tonnerre).
+  * musique originale générée par le programme (option "musique": {"epique": true}) ;
+  * ambiances et bruitages synthétisés (voir outils/bruitages.py) :
+    "ambiance": "ocean" et "bruitages": ["tonnerre", {"son": "impact", "a": 1.5}] ;
+  * effet sur la voix d'un personnage ("effet_voix": "esprit").
 
 Utilisation :
     python -m outils.anime script.json -o anime.mp4 [--cache dossier_images]
@@ -34,6 +37,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw
 
+from .bruitages import AMBIANCES, ambiance as _ambiance, bruitage as _bruitage
 from .images_ia import generer_image
 from .video import FORMATS, FPS, _police, _srt_temps
 from .voix import duree_audio, ffmpeg_exe, generer_voix
@@ -51,7 +55,7 @@ def _note(n: int) -> float:
     return 440.0 * 2 ** ((n - 69) / 12)
 
 
-def composer_musique(duree: float, bpm: int = 78, graine: int = 7) -> np.ndarray:
+def composer_musique(duree: float, bpm: int = 78, graine: int = 7, epique: bool = False) -> np.ndarray:
     """Musique d'ambiance épique et douce (la mineur), en stéréo float32."""
     rng = np.random.default_rng(graine)
     n = int(duree * SR)
@@ -97,6 +101,14 @@ def composer_musique(duree: float, bpm: int = 78, graine: int = 7) -> np.ndarray
                 f = 70 * np.exp(-tk * 8) + 40
                 kick = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-tk * 9) * 0.12
                 placer(kick, m * mesure + b * temps)
+        # Mode épique : percussions façon pahu en croches (à partir de la 3e mesure)
+        if epique and m >= 2:
+            for b in range(8):
+                tk = np.arange(int(0.35 * SR)) / SR
+                f = 120 * np.exp(-tk * 10) + 70
+                force = 0.11 if b in (0, 3, 6) else 0.05
+                tam = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-tk * 12) * force
+                placer(tam, m * mesure + b * temps / 2, pan=-0.2 if b % 2 else 0.2)
         m += 1
     # Légère « respiration » stéréo et fondus
     out += rng.normal(0, 0.0015, out.shape).astype(np.float32)
@@ -104,24 +116,6 @@ def composer_musique(duree: float, bpm: int = 78, graine: int = 7) -> np.ndarray
     out[:int(1.5 * SR)] *= np.linspace(0, 1, min(n, int(1.5 * SR)))[:, None]
     out[n - fade:] *= np.linspace(1, 0, fade)[:, None]
     return out
-
-
-def bruit_whoosh(duree: float = 0.7) -> np.ndarray:
-    t = np.arange(int(duree * SR)) / SR
-    bruit = np.random.default_rng(1).normal(0, 1, len(t))
-    # filtre passe-bas glissant (moyenne mobile de taille variable)
-    lisse = np.convolve(bruit, np.ones(12) / 12, mode="same")
-    env = np.sin(np.pi * t / duree) ** 2
-    return (lisse * env * 0.35).astype(np.float32)
-
-
-def bruit_tonnerre(duree: float = 2.5) -> np.ndarray:
-    t = np.arange(int(duree * SR)) / SR
-    bruit = np.random.default_rng(3).normal(0, 1, len(t))
-    grave = np.convolve(bruit, np.ones(120) / 120, mode="same")
-    env = np.exp(-t * 1.6) * (1 + 0.6 * np.sin(2 * np.pi * 3 * t))
-    craquement = np.convolve(bruit, np.ones(4) / 4, mode="same") * np.exp(-t * 18) * 0.5
-    return ((grave * 4 + craquement) * env * 0.5).astype(np.float32)
 
 
 def ecrire_wav(chemin: Path, signal: np.ndarray):
@@ -286,6 +280,8 @@ def creer_anime(script: dict, sortie: str | Path, cache: str | Path | None = Non
             perso = persos.get(sc.get("personnage", ""), {})
             texte = sc.get("texte", "")
             audio_in = ["-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo"]
+            effet_voix = {"esprit": "aecho=0.8:0.75:70|140:0.45|0.3,lowpass=f=3800,volume=1.4",
+                          "radio": "highpass=f=400,lowpass=f=3000"}.get(perso.get("effet_voix", ""), "anull")
             if texte and perso.get("voix"):
                 mp3 = tmp / f"v{i:03}.mp3"
                 generer_voix(texte, mp3, perso["voix"], vitesse=perso.get("vitesse", 0),
@@ -325,7 +321,7 @@ def creer_anime(script: dict, sortie: str | Path, cache: str | Path | None = Non
                 f"eq=saturation=1.18:contrast=1.06{lumiere},vignette=PI/5,noise=alls=4:allf=t[bg];"
                 f"{filtre_fx}[1:v]overlay=format=auto,"
                 f"fade=t=in:st=0:d={fondu},fade=t=out:st={duree - fondu:.3f}:d={fondu},format=yuv420p[v];"
-                f"[2:a]apad[a]",
+                f"[2:a]{effet_voix},apad[a]",
                 "-map", "[v]", "-map", "[a]",
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-maxrate", "6M", "-bufsize", "12M", "-r", str(FPS),
                 "-pix_fmt", "yuv420p", "-color_range", "tv",
@@ -341,17 +337,30 @@ def creer_anime(script: dict, sortie: str | Path, cache: str | Path | None = Non
         total = t
 
         journal("Musique et bruitages…")
-        fond = composer_musique(total) * float(script.get("volume_musique", 0.55))
-        whoosh = bruit_whoosh()
-        tonnerre = bruit_tonnerre()
+        musique = script.get("musique", {})
+        fond = composer_musique(total, bpm=int(musique.get("bpm", 78)), epique=bool(musique.get("epique"))) \
+            * float(script.get("volume_musique", 0.55))
+        n_tot = len(fond)
+
+        def ajouter(son: np.ndarray, debut: float, volume: float = 1.0):
+            i0 = max(0, int(debut * SR))
+            seg = son[: max(0, n_tot - i0)] * volume
+            fond[i0:i0 + len(seg)] += seg[:, None]
+
+        whoosh = _bruitage("whoosh")
         for k, sc in enumerate(scenes):
+            fin = debuts[k + 1] if k + 1 < len(scenes) else total
             if k > 0:
-                i0 = max(0, int((debuts[k] - 0.35) * SR))
-                fond[i0:i0 + len(whoosh)] += whoosh[: len(fond) - i0, None][: len(whoosh)]
-            if sc.get("bruitage") == "tonnerre":
-                i0 = int((debuts[k] + 0.2) * SR)
-                seg = tonnerre[: max(0, len(fond) - i0)]
-                fond[i0:i0 + len(seg)] += seg[:, None]
+                ajouter(whoosh, debuts[k] - 0.4, 0.35)
+            amb = sc.get("ambiance")
+            if amb in AMBIANCES:
+                ajouter(_ambiance(amb, fin - debuts[k] + 0.6), debuts[k] - 0.3, float(sc.get("volume_ambiance", 0.55)))
+            sons = sc.get("bruitages", [])
+            if sc.get("bruitage"):
+                sons = [sc["bruitage"], *sons]
+            for son in sons:
+                son = {"son": son} if isinstance(son, str) else son
+                ajouter(_bruitage(son["son"]), debuts[k] + float(son.get("a", 0.2)), float(son.get("volume", 0.7)))
         wav = tmp / "fond.wav"
         ecrire_wav(wav, fond)
 
